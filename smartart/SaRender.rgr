@@ -15,6 +15,13 @@
 ;   pal.set("accent1" "#1F6FEB")  ...
 ;   SaRender.paint(out res.shape pal x y)
 ;
+; A colour set names light 1 and dark 1 for the text, which assumes the
+; light background PowerPoint's own themes have. On a dark slide the host's
+; light 1 is its dark paper and dark 1 its light ink, so a pale fill (a list
+; column's tint of an accent) would carry pale text. `keepReadable` gives text
+; that does not stand out from what it is drawn on (under 3:1, WCAG's large
+; text) whichever of the two reads better there.
+;
 ; A host that measured with its fonts (SaMeasure.over) draws with
 ; `drawWith(out res.shape x y res.measure)`, so the lines break where the
 ; engine measured them.
@@ -25,6 +32,7 @@ Import "SaPresets.rgr"
 Import "../src/PptxResolver.rgr"
 Import "../src/PptxToEvg.rgr"
 Import "pkg:evg/EVGDisplayList.rgr"
+Import "pkg:evg/EvgTraceColor.rgr"
 
 class SaPalette {
     def names:[string]
@@ -138,6 +146,120 @@ class SaRender {
         def i:int 0
         while (i < (array_length s.children)) {
             SaRender.resolveAll((itemAt s.children i) pal)
+            i = (i + 1)
+        }
+    }
+
+    ; --- text that reads on its ground -------------------------------------
+
+    sfn hexByte:double (hex:string at:int) {
+        def v:int 0
+        def i:int at
+        while (i < (at + 2)) {
+            def ch:int (charAt (to_lowercase hex) i)
+            def d:int 0
+            if ((ch >= 48) && (ch <= 57)) {
+                d = (ch - 48)
+            }
+            if ((ch >= 97) && (ch <= 102)) {
+                d = ((ch - 97) + 10)
+            }
+            v = ((v * 16) + d)
+            i = (i + 1)
+        }
+        return ((to_double v) / 255.0)
+    }
+
+    sfn channel:double (c:double) {
+        if (c <= 0.03928) {
+            return (c / 12.92)
+        }
+        return (EvgTraceColor.pow24(((c + 0.055) / 1.055)))
+    }
+
+    ; WCAG relative luminance of RRGGBB
+    sfn luminance:double (hex:string) {
+        if ((strlen hex) < 6) {
+            return 0.0
+        }
+        def r:double (SaRender.channel((SaRender.hexByte(hex 0))))
+        def g:double (SaRender.channel((SaRender.hexByte(hex 2))))
+        def b:double (SaRender.channel((SaRender.hexByte(hex 4))))
+        return (((0.2126 * r) + (0.7152 * g)) + (0.0722 * b))
+    }
+
+    sfn contrast:double (a:string b:string) {
+        def la:double (SaRender.luminance(a))
+        def lb:double (SaRender.luminance(b))
+        if (la < lb) {
+            def t:double la
+            la = lb
+            lb = t
+        }
+        return ((la + 0.05) / (lb + 0.05))
+    }
+
+    sfn twoHex:string (v:double) {
+        def n:int (to_int ((v * 255.0) + 0.5))
+        if (n < 0) { n = 0 }
+        if (n > 255) { n = 255 }
+        def digits:string "0123456789ABCDEF"
+        def hi:int (to_int ((to_double n) / 16.0))
+        def lo:int (n - (hi * 16))
+        return ((substring digits hi (hi + 1)) + (substring digits lo (lo + 1)))
+    }
+
+    ; `top` at `alpha` over `under`
+    sfn over:string (top:string alpha:double under:string) {
+        if (alpha >= 1.0) {
+            return top
+        }
+        def out:string ""
+        def i:int 0
+        while (i < 6) {
+            def v:double (((SaRender.hexByte(top i)) * alpha) + ((SaRender.hexByte(under i)) * (1.0 - alpha)))
+            out = (out + (SaRender.twoHex(v)))
+            i = (i + 2)
+        }
+        return out
+    }
+
+    ; Every run's colour checked against what it is drawn on — its shape's
+    ; fill, or `ground` (the slide) where the shape has none — and made light
+    ; 1 or dark 1, whichever reads better, when it does not stand out.
+    ; Colours must be resolved first (resolveAll).
+    sfn keepReadable:void (s:PptxShape pal:SaPalette ground:string) {
+        def under:string ground
+        if ((s.noFill == false) && (s.fill.isSet && ((strlen s.fill.srgb) >= 6))) {
+            under = (SaRender.over(s.fill.srgb s.fill.alpha ground))
+        }
+        def light:string (pal.hexOf("lt1"))
+        def dark:string (pal.hexOf("dk1"))
+        def p:int 0
+        while (p < (array_length s.text.paragraphs)) {
+            def para:PptxParagraph (itemAt s.text.paragraphs p)
+            def r:int 0
+            while (r < (array_length para.runs)) {
+                def run:PptxTextRun (itemAt para.runs r)
+                if (run.color.isSet && ((strlen run.color.srgb) >= 6)) {
+                    def now:double (SaRender.contrast(run.color.srgb under))
+                    if (now < 3.0) {
+                        def best:string light
+                        if ((SaRender.contrast(dark under)) > (SaRender.contrast(light under))) {
+                            best = dark
+                        }
+                        if ((SaRender.contrast(best under)) > now) {
+                            run.color.srgb = best
+                        }
+                    }
+                }
+                r = (r + 1)
+            }
+            p = (p + 1)
+        }
+        def i:int 0
+        while (i < (array_length s.children)) {
+            SaRender.keepReadable((itemAt s.children i) pal ground)
             i = (i + 1)
         }
     }

@@ -153,13 +153,97 @@ class SaRenderTest {
         c.eqStr("and names its family" (hc.measure.drawnFamily("" false false)) "Wide")
     }
 
+    ; A sub-item's bullet hangs in front of its text, never over its first
+    ; letter (vList2 and hList1 drew "•" on top of every sub-item).
+    sfn bulletsClear:void (c:SaKit lay:string) {
+        def r:SaResult (SaEngine.layout((SaKit.twoLevels(lay 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r.shape (SaRenderTest.palette()))
+        def out (new EVGDisplayList())
+        SaRender.drawWith(out r.shape 0.0 0.0 r.measure)
+        def cmds:[EVGDrawCmd] (SaRenderTest.texts(out))
+        def m:PptxToEvg (SaRender.painter())
+        def bullets:int 0
+        def clear:int 0
+        def i:int 0
+        while ((i + 1) < (array_length cmds)) {
+            def b:EVGDrawCmd (itemAt cmds i)
+            if ((indexOf b.text "•") == 0) {
+                bullets = (bullets + 1)
+                def t:EVGDrawCmd (itemAt cmds (i + 1))
+                def bw:double (m.measure.widthOf("•" b.fontSize false false))
+                if ((b.x + bw) <= (t.x + 0.01)) {
+                    clear = (clear + 1)
+                }
+            }
+            i = (i + 1)
+        }
+        c.eqInt((lay + ": a bullet per sub-item") bullets 6)
+        c.eqInt((lay + ": every bullet left of its text") clear 6)
+    }
+
+    ; hList1 on a dark slide: light 1 is the dark paper, dark 1 the light
+    ; ink, and the columns' pale tint of the accent carried light text.
+    sfn testReadable:void (c:SaKit) {
+        print "-- text reads on its fill, on a dark slide too --"
+        def dark (new SaPalette())
+        dark.set("accent1" "#E07A2F")
+        dark.set("lt1" "#0B1030")
+        dark.set("dk1" "#E8ECFF")
+        def r:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r.shape dark)
+        def body:PptxShape (itemAt (SaKit.shapes(r "desTx")) 0)
+        def para:PptxParagraph (itemAt body.text.paragraphs 0)
+        def run:PptxTextRun (itemAt para.runs 0)
+        def fill:string (SaRender.over(body.fill.srgb body.fill.alpha "0B1030"))
+        c.ok(("before: pale text on the pale column (" + (to_string (SaRender.contrast(run.color.srgb fill))) + ")") ((SaRender.contrast(run.color.srgb fill)) < 3.0))
+        SaRender.keepReadable(r.shape dark "0B1030")
+        c.ok(("after: it reads (" + (to_string (SaRender.contrast(run.color.srgb fill))) + ")") ((SaRender.contrast(run.color.srgb fill)) >= 4.5))
+        c.eqStr("in the dark of the two" run.color.srgb "0B1030")
+        ; the same diagram on a light slide is left as it is
+        def r2:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r2.shape (SaRenderTest.palette()))
+        def before:string (SaRenderTest.runColours(r2.shape))
+        SaRender.keepReadable(r2.shape (SaRenderTest.palette()) "FFFFFF")
+        c.eqStr("text that reads is not touched" (SaRenderTest.runColours(r2.shape)) before)
+        c.near("contrast: black on white" (SaRender.contrast("000000" "FFFFFF")) 21.0)
+    }
+
+    sfn runColours:string (s:PptxShape) {
+        def out:string ""
+        def p:int 0
+        while (p < (array_length s.text.paragraphs)) {
+            def para:PptxParagraph (itemAt s.text.paragraphs p)
+            def r:int 0
+            while (r < (array_length para.runs)) {
+                def run:PptxTextRun (itemAt para.runs r)
+                out = (out + run.color.srgb + ";")
+                r = (r + 1)
+            }
+            p = (p + 1)
+        }
+        def i:int 0
+        while (i < (array_length s.children)) {
+            out = (out + (SaRenderTest.runColours((itemAt s.children i))))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testBullets:void (c:SaKit) {
+        print "-- bullets beside their text --"
+        SaRenderTest.bulletsClear(c "vList2")
+        SaRenderTest.bulletsClear(c "hList1")
+    }
+
     sfn testFile:void (c:SaKit) {
         print "-- a file in a deck --"
         def xml:string (SaKit.flat("process1" 2))
         c.ok("its own type" (SaFile.isSmartArt("x.bin" (SaFile.TYPE()) "")))
         c.ok(".xml with a data model in it" (SaFile.isSmartArt("media/Steps.XML" "" xml)))
         c.ok(".xml sent as application/xml" (SaFile.isSmartArt("a.xml" "application/xml" xml)))
-        c.ok(".xml that is something else" ((SaFile.isSmartArt("a.xml" "" "<svg/>")) == false))
+        c.ok("SVG named .xml stays a picture" ((SaFile.isSmartArt("a.xml" "" "<svg/>")) == false))
+        ; another kind of XML is taken, so the engine says why it is not one
+        c.ok(".xml that is something else is refused, not drawn blank" (SaFile.isSmartArt("a.xml" "" "<ostoslista><tuote>maito</tuote></ostoslista>")))
         c.ok("a picture named .xml" ((SaFile.isSmartArt("a.xml" "image/png" xml)) == false))
         c.ok("a data model not named .xml" ((SaFile.isSmartArt("a.txt" "" xml)) == false))
         def utf:string (EVGCodepoint.encodeUtf8("Hämeenlinna – Ω"))
@@ -205,6 +289,8 @@ class SaRenderTest {
         SaRenderTest.testPaint(c)
         SaRenderTest.testHostFonts(c)
         SaRenderTest.testFile(c)
+        SaRenderTest.testBullets(c)
+        SaRenderTest.testReadable(c)
         SaRenderTest.testPresets(c)
         c.finish("SaRenderTest")
     }
