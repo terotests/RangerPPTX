@@ -1,0 +1,137 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+
+; ==============================================================================
+; OdpPptxParityTest — one document, two formats, two readers
+; ==============================================================================
+;
+; The .odp fixture in Ranger's gallery/odp is LibreOffice's own conversion of
+; this repository's 01-text.pptx. This opens BOTH files with BOTH readers and
+; requires them to agree: same page count, same page box, same first sentence,
+; same box for the shape that holds it. A parity test between formats is the
+; only kind that can fail when a reader is confidently wrong.
+;
+; It was the last section of gallery/odp/tests/OdpTest.rgr in Ranger, and moved
+; here with the .pptx reader; the rest of OdpTest stayed with the .odp reader.
+;
+;   npm run pptx:odp:parity:test
+; ==============================================================================
+
+Import "../../odp/OdpParser.rgr"
+Import "../src/PptxParser.rgr"
+Import "../src/PptxResolver.rgr"
+
+class ParityCheck {
+    def passed:int 0
+    def failed:int 0
+
+    fn ok:void (name:string cond:boolean) {
+        if cond {
+            passed = (passed + 1)
+            print ("  PASS " + name)
+        } {
+            failed = (failed + 1)
+            print ("  FAIL " + name)
+        }
+    }
+
+    fn eqStr:void (name:string got:string want:string) {
+        this.ok((name + " (got '" + got + "' want '" + want + "')") (got == want))
+    }
+
+    fn eqInt:void (name:string got:int want:int) {
+        this.ok((name + " (got " + (to_string got) + " want " + (to_string want) + ")") (got == want))
+    }
+
+    fn near:void (name:string got:double want:double tol:double) {
+        def d:double (got - want)
+        if (d < 0.0) {
+            d = (0.0 - d)
+        }
+        this.ok((name + " (got " + (to_string got) + " want " + (to_string want) + ")") (d <= tol))
+    }
+}
+
+class OdpPptxParityTest {
+
+    ; ------------------------------------------------------------------
+    ; The same document, both formats, both readers
+    ; ------------------------------------------------------------------
+
+    sfn testParity:void (c:ParityCheck) {
+        print "--- one document, two formats, two readers ---"
+        def op (new OdpParser())
+        def ook:boolean (op.openParts("gallery/odp/fixtures" "01-text.odp"))
+        def pp (new PptxParser())
+        def pok:boolean (pp.openParts("gallery/pptx/fixtures" "01-text.pptx"))
+        c.ok("the .odp opens" ook)
+        c.ok("the .pptx opens" pok)
+        if ((ook && pok) == false) {
+            return
+        }
+        def odp:OdpPresentation (op.parsePresentation())
+        def raw:PptxPresentation (pp.parsePresentation())
+        def resolver (new PptxResolver())
+        def deck:PptxPresentation (resolver.resolvePresentation(raw))
+
+        c.eqInt("the same number of pages" (odp.pageCount()) (deck.slideCount()))
+        def slide:PptxSlide (itemAt deck.slides 0)
+        def page:OdpPage (itemAt odp.pages 0)
+        ; The page box, to a tenth of a point. ODF states it in centimetres and
+        ; OOXML in EMU, so this is also the check that both unit readers are
+        ; right — the numbers are not each other's rounding.
+        c.near("the same page width" odp.widthPt slide.width 0.5)
+        c.near("the same page height" odp.heightPt slide.height 0.5)
+
+        c.eqStr("the same first sentence" (OdpPptxParityTest.firstText(page)) (OdpPptxParityTest.firstPptxText(slide)) )
+        ; And the same box for the shape that holds it. A reader that had the
+        ; units wrong would still get the text right, which is why the sentence
+        ; alone is not enough.
+        def oShape:OdpShape (itemAt page.shapes 0)
+        def pShape:PptxShape (itemAt slide.shapes 0)
+        c.near("the same left edge" oShape.x pShape.x 0.1)
+        c.near("the same top edge" oShape.y pShape.y 0.1)
+        c.near("the same width" oShape.width pShape.width 0.1)
+        c.near("the same height" oShape.height pShape.height 0.1)
+        op.close()
+        pp.close()
+    }
+
+    sfn firstText:string (page:OdpPage) {
+        def i:int 0
+        while (i < (array_length page.shapes)) {
+            def s:OdpShape (itemAt page.shapes i)
+            def t:string (s.plainText())
+            if ((strlen t) > 0) {
+                return t
+            }
+            i = (i + 1)
+        }
+        return ""
+    }
+
+    sfn firstPptxText:string (slide:PptxSlide) {
+        def i:int 0
+        while (i < (array_length slide.shapes)) {
+            def s:PptxShape (itemAt slide.shapes i)
+            def t:string (s.text.plainText())
+            if ((strlen t) > 0) {
+                return t
+            }
+            i = (i + 1)
+        }
+        return ""
+    }
+
+    sfn main:void () {
+        print "== OdpPptxParityTest =="
+        def c (new ParityCheck())
+        OdpPptxParityTest.testParity(c)
+        print ""
+        print ("passed = " + (to_string c.passed) + "  failed = " + (to_string c.failed))
+        if (c.failed == 0) {
+            print "ALL PASS"
+        } {
+            print "FAILURES"
+        }
+    }
+}

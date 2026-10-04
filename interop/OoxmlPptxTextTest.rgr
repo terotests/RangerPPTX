@@ -1,0 +1,103 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+
+; ==============================================================================
+; OoxmlPptxTextTest — the .pptx third of Ranger's OoxmlPackageTest
+; ==============================================================================
+;
+; 27-accented-text.pptx carries one sentence written twice: once as real UTF-8
+; bytes, once as numeric character references. The .pptx reader has to read
+; both as the same 21 characters, on both targets — it once failed the first
+; spelling on JavaScript (parts never decoded as UTF-8) and the second on every
+; target (numeric entities unknown). Ranger's gallery/ooxml/tests/
+; OoxmlPackageTest.rgr checks the same sentence out of .docx and .xlsx.
+;
+;   npm run pptx:ooxml:text:test
+; ==============================================================================
+
+Import "../src/PptxParser.rgr"
+Import "pkg:evg/EVGCodepoint.rgr"
+
+class PkgCheck {
+    def passed:int 0
+    def failed:int 0
+
+    fn ok:void (name:string cond:boolean) {
+        if cond {
+            passed = (passed + 1)
+            print ("  PASS " + name)
+        } {
+            failed = (failed + 1)
+            print ("  FAIL " + name)
+        }
+    }
+
+    fn eqStr:void (name:string got:string want:string) {
+        this.ok((name + " (got '" + got + "' want '" + want + "')") (got == want))
+    }
+
+    fn eqInt:void (name:string got:int want:int) {
+        this.ok((name + " (got " + (to_string got) + " want " + (to_string want) + ")") (got == want))
+    }
+}
+
+class OoxmlPptxTextTest {
+    ; The sentence the fixtures carry, built from code points so this
+    ; file stays ASCII: two-byte letters, a three-byte dash, and a Greek
+    ; capital — every width a UTF-8 walk has to handle.
+    sfn sentence:string () {
+        def s:string "H"
+        str_append s (strfromcode 228)
+        str_append s "meenlinna "
+        str_append s (strfromcode 8211)
+        str_append s " "
+        str_append s (strfromcode 198)
+        str_append s "r"
+        str_append s (strfromcode 248)
+        str_append s " & "
+        str_append s (strfromcode 937)
+        return s
+    }
+
+    sfn main:void () {
+        def c:PkgCheck (new PkgCheck)
+        print "== OoxmlPptxTextTest =="
+        def want:string (OoxmlPptxTextTest.sentence())
+        def wantGlyphs:int (EVGCodepoint.charCount(want))
+        c.eqInt("21 characters, whatever a unit is" wantGlyphs 21)
+
+        print "-- .pptx --"
+        def pp:PptxParser (new PptxParser)
+        def pok:boolean (pp.openParts("gallery/pptx/fixtures" "27-accented-text.pptx"))
+        c.ok("the deck opened" pok)
+        if pok {
+            def deck:PptxPresentation (pp.parsePresentation())
+            c.ok("one slide" ((deck.slideCount()) == 1))
+            if ((deck.slideCount()) > 0) {
+                def slide:PptxSlide (itemAt deck.slides 0)
+                def texts:[string]
+                def i:int 0
+                while (i < (array_length slide.shapes)) {
+                    def sh:PptxShape (itemAt slide.shapes i)
+                    if sh.hasText {
+                        push texts (sh.text.plainText())
+                    }
+                    i = (i + 1)
+                }
+                c.ok("two text shapes" ((array_length texts) >= 2))
+                if ((array_length texts) >= 2) {
+                    c.eqStr("written as bytes" (itemAt texts 0) want)
+                    c.eqStr("written as entities" (itemAt texts 1) want)
+                    c.eqInt("and both are 21 characters" (EVGCodepoint.charCount((itemAt texts 0))) wantGlyphs)
+                }
+            }
+            pp.close()
+        }
+
+        print ("passed=" + (to_string c.passed) + " failed=" + (to_string c.failed))
+        if (c.failed == 0) {
+            print "ALL PASS"
+        } {
+            print "FAILURES"
+        }
+    }
+}

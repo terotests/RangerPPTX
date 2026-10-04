@@ -1,0 +1,20 @@
+*.js
+!web/*.mjs
+!harness/**/*.mjs
+bin/
+*.png
+!artifacts/
+!artifacts/**
+demo_*.png
+harness/out/
+
+# Were in Ranger's root .gitignore while this lived at gallery/pptx there.
+# Built JavaScript API bundles — compiled from the Ranger sources beside them.
+api/js/dist/
+# The playground build output.
+web/playground/dist/
+web/playground/.stage/
+# The WebAssembly build: the generated C++, the Emscripten output and the
+# assembled page. All three come out of web/wasm/build.sh.
+web/wasm/build/
+web/wasm/dist/
