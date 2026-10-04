@@ -108,6 +108,28 @@ class SaRenderTest {
         c.eqStr("read from bytes, drawn with its own letters" (n0.text.plainText()) "Hämeenlinna")
     }
 
+    sfn testPresets:void (c:SaKit) {
+        print "-- the geometry it draws with --"
+        def conv:PptxToEvg (SaRender.painter())
+        c.ok("the painter has its presets" (conv.presetsReady()))
+        def names:string (SaPresets.names())
+        c.ok("every shape the built-in layouts name" ((((indexOf names "chevron") >= 0) && ((indexOf names "roundRect") >= 0)) && ((indexOf names "rightArrow") >= 0)))
+        ; a chevron drawn is a path with its point, not a box
+        def r:SaResult (SaEngine.layout((SaKit.flat("chevron1" 2)) (new SaOptions()) 480.0 270.0))
+        def out (new EVGDisplayList())
+        SaRender.paint(out r.shape (SaRenderTest.palette()) 0.0 0.0)
+        def paths:int 0
+        def i:int 0
+        while (i < (array_length out.cmds)) {
+            def cmd:EVGDrawCmd (itemAt out.cmds i)
+            if (cmd.kind == 6) {
+                paths = (paths + 1)
+            }
+            i = (i + 1)
+        }
+        c.ok(("chevrons are drawn as outlines (" + (to_string paths) + ")") (paths >= 2))
+    }
+
     sfn main:void () {
         print "== SaRenderTest =="
         def c (new SaKit())
@@ -115,6 +137,7 @@ class SaRenderTest {
         SaRenderTest.testResolve(c)
         SaRenderTest.testPaint(c)
         SaRenderTest.testFile(c)
+        SaRenderTest.testPresets(c)
         c.finish("SaRenderTest")
     }
 }
