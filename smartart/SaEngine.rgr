@@ -408,6 +408,7 @@ class SaEngine {
                 }
                 push para.runs run
                 push body.paragraphs para
+                push sh.diagramParaPts ln.ptId
                 k = (k + 1)
             }
         }

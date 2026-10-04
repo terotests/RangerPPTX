@@ -1728,7 +1728,9 @@ class PptxParser {
                 if ((child.name != "nvGrpSpPr") && (child.name != "grpSpPr")) {
                     def parsed@(optional):PptxShape (this.parseTreeChild(child drawPart))
                     if (!null? parsed) {
-                        push shape.children (unwrap parsed)
+                        def ps:PptxShape (unwrap parsed)
+                        ps.diagramParaPts = (PptxParser.paraPtsOf(model (child.attr("modelId")) (array_length ps.text.paragraphs)))
+                        push shape.children ps
                     }
                 }
             }
@@ -1740,8 +1742,96 @@ class PptxParser {
         shape.diagramFrame.set(slidePart gf.srcStart gf.srcEnd)
         shape.diagramText = (model.outline())
         shape.diagramSig = (shape.diagramSignature())
+        shape.diagramHadDrawing = true
+        ; what it was made from, so an edit to its text can lay it out again
+        ; (the engine then draws it; until then, PowerPoint's drawing stands)
+        shape.diagramModelXml = (pkg.readXml(dataPart))
+        shape.diagramLayoutXml = (this.diagramLayoutFor(rel slidePart model))
+        def d0:SaPoint (model.doc())
+        shape.diagramLayoutId = d0.layoutId
+        shape.diagramStyleId = d0.styleId
+        if ((strlen shape.diagramStyleId) == 0) {
+            shape.diagramStyleId = "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1"
+        }
+        shape.diagramColorsId = d0.colorsId
+        if ((SaStyle.knownColors(shape.diagramColorsId)) == false) {
+            shape.diagramColorsId = ""
+        }
+        if ((strlen shape.diagramColorsId) == 0) {
+            shape.diagramColorsId = "urn:microsoft.com/office/officeart/2005/8/colors/accent1_2"
+        }
         def hit@(optional):PptxShape shape
         return hit
+    }
+
+    ; The layout definition a diagram can be laid out again with: the
+    ; engine's own for the id its data names, else the one saved in the file
+    ; when the engine reads it, else none.
+    fn diagramLayoutFor:string (rel:XmlNode slidePart:string model:SaModel) {
+        def builtin:string (SaBuiltins.layoutXml((SaLayoutDef.shortOf((model.layoutId())))))
+        if ((strlen builtin) > 0) {
+            return builtin
+        }
+        def lo:string (rel.attr("r:lo"))
+        if ((strlen lo) == 0) {
+            return ""
+        }
+        def loPart:string (pkg.resolveRelationship(slidePart lo))
+        if ((strlen loPart) == 0) {
+            return ""
+        }
+        def loXml:string (pkg.readXml(loPart))
+        def lr:SaLayoutReadResult (SaLayoutReader.read(loXml))
+        if lr.ok {
+            return loXml
+        }
+        return ""
+    }
+
+    ; For a drawing shape (its `modelId` a presentation point), the data point
+    ; behind each of its `n` paragraphs: the point it presents, then the
+    ; points under that one in order (a bullet list), the last repeated.
+    sfn paraPtsOf:[string] (model:SaModel presId:string n:int) {
+        def out:[string]
+        if ((n == 0) || ((strlen presId) == 0)) {
+            return out
+        }
+        def hit@(optional):SaPoint (model.pointById(presId))
+        if (null? hit) {
+            return out
+        }
+        def p:SaPoint (unwrap hit)
+        def assoc:string p.presAssocId
+        if (p.type != "pres") {
+            assoc = p.id
+        }
+        if ((strlen assoc) == 0) {
+            return out
+        }
+        def order:[string]
+        push order assoc
+        PptxParser.nodesUnder(model assoc order)
+        def i:int 0
+        while (i < n) {
+            if (i < (array_length order)) {
+                push out (itemAt order i)
+            } {
+                push out (itemAt order ((array_length order) - 1))
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn nodesUnder:void (model:SaModel id:string out:[string]) {
+        def kids:[SaPoint] (model.children(id))
+        def i:int 0
+        while (i < (array_length kids)) {
+            def k:SaPoint (itemAt kids i)
+            push out k.id
+            PptxParser.nodesUnder(model k.id out)
+            i = (i + 1)
+        }
     }
 
     ; A diagram with no drawing part — what anything but PowerPoint writes —

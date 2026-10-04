@@ -22,6 +22,7 @@
 Import "PptxModel.rgr"
 Import "PptxTextEdit.rgr"
 Import "PptxResolver.rgr"
+Import "../smartart/SaEdit.rgr"
 Import "../../office/editor/OfficeHistory.rgr"
 Import "../../office/text/OfficeCaretMotion.rgr"
 
@@ -304,6 +305,12 @@ class PptxClone {
         s.diagramLayoutId = src.diagramLayoutId
         s.diagramStyleId = src.diagramStyleId
         s.diagramColorsId = src.diagramColorsId
+        s.diagramHadDrawing = src.diagramHadDrawing
+        def dppi:int 0
+        while (dppi < (array_length src.diagramParaPts)) {
+            push s.diagramParaPts (itemAt src.diagramParaPts dppi)
+            dppi = (dppi + 1)
+        }
         def i:int 0
         while (i < (array_length src.children)) {
             def child:PptxShape (itemAt src.children i)
@@ -2644,6 +2651,7 @@ class PptxEditor {
         def sh:PptxShape (unwrap hit)
         sh.hasText = true
         PptxEditor.setBodyText(sh.text text)
+        this.relayoutDiagramOf(id)
         this.pushSnapshot("text")
         return true
     }
@@ -3142,8 +3150,99 @@ class PptxEditor {
         return true
     }
 
+    ; The end of an edit: a shape inside a SmartArt diagram that can be laid
+    ; out again (SaEdit), whose text changed, has that text written back to
+    ; the diagram's data and the diagram is laid out anew. The new layout is
+    ; part of the edit that caused it: it replaces that step, so one undo
+    ; takes back the text and the layout together.
     fn endTextEdit:void () {
+        def was:int editingId
         editingId = 0
+        if (was <= 0) {
+            return
+        }
+        def dh@(optional):PptxShape (this.diagramHolding(was))
+        if (null? dh) {
+            return
+        }
+        def d:PptxShape (unwrap dh)
+        if (d.diagramSig == (d.diagramSignature())) {
+            return
+        }
+        if (this.relayoutDiagramOf(was)) {
+            def label:string "diagram"
+            if ((history.depth()) > 0) {
+                def top:PptxEditSnapshot (history.peekUndo())
+                label = top.label
+            }
+            this.pushCoalesced(label)
+        }
+    }
+
+    ; The diagram on this slide that holds shape `id`, not being it.
+    fn diagramHolding@(optional):PptxShape (id:int) {
+        def none@(optional):PptxShape
+        def slide@(optional):PptxSlide (this.currentSlide())
+        if (null? slide) {
+            return none
+        }
+        def s:PptxSlide (unwrap slide)
+        def i:int 0
+        while (i < (array_length s.shapes)) {
+            def sh:PptxShape (itemAt s.shapes i)
+            if (sh.isDiagram && (sh.editId != id)) {
+                def inside@(optional):PptxShape (PptxEditor.findIn(sh id))
+                if (!null? inside) {
+                    def hit@(optional):PptxShape sh
+                    return hit
+                }
+            }
+            i = (i + 1)
+        }
+        return none
+    }
+
+    ; The diagram holding shape `id`, laid out again from its data with the
+    ; text `id` now has. True when it was; false — and nothing changed — for
+    ; a shape in no diagram, or in one that holds no data to lay it out from.
+    fn relayoutDiagramOf:boolean (id:int) {
+        def dh@(optional):PptxShape (this.diagramHolding(id))
+        if (null? dh) {
+            return false
+        }
+        def d:PptxShape (unwrap dh)
+        if ((SaEdit.canRelayout(d)) == false) {
+            return false
+        }
+        def eh@(optional):PptxShape (PptxEditor.findIn(d id))
+        if (null? eh) {
+            return false
+        }
+        def r:SaResult (SaEdit.relayout(d (unwrap eh)))
+        if (r.ok == false) {
+            return false
+        }
+        def g:PptxShape r.shape
+        resolver.resolveShape(g doc.theme)
+        def kids:[PptxShape]
+        def i:int 0
+        while (i < (array_length g.children)) {
+            def c:PptxShape (itemAt g.children i)
+            this.assignIdTo(c)
+            push kids c
+            i = (i + 1)
+        }
+        d.children = kids
+        d.chX = 0.0
+        d.chY = 0.0
+        d.chW = d.width
+        d.chH = d.height
+        d.diagramModelXml = g.diagramModelXml
+        d.diagramText = g.diagramText
+        d.diagramSig = (d.diagramSignature())
+        ; PowerPoint's drawing of it no longer says what it shows
+        d.diagramHadDrawing = false
+        return true
     }
 
     fn textSelectionEmpty:boolean () {

@@ -76,6 +76,8 @@ class SaLine {
     def text:string ""
     def level:int 0
     def bold:boolean false
+    ; the data point the line is the text of
+    def ptId:string ""
 
     Constructor () {
     }
@@ -128,6 +130,7 @@ class SaText {
                         def para:SaPara (itemAt pt.paras k)
                         def ln (new SaLine())
                         ln.text = (para.plainText())
+                        ln.ptId = id
                         ln.level = (lvl + para.level)
                         if ((array_length para.runs) > 0) {
                             def r0:SaRun (itemAt para.runs 0)

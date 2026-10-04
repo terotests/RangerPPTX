@@ -1,0 +1,162 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaEditTest — a diagram laid out again after its text was edited
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+Import "../SaEdit.rgr"
+
+class SaEditTest {
+
+    sfn draw:PptxShape (xml:string) {
+        def r:SaResult (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+        return r.shape
+    }
+
+    ; the group's shapes whose names start with `prefix`
+    sfn kids:[PptxShape] (g:PptxShape prefix:string) {
+        def out:[PptxShape]
+        def i:int 0
+        while (i < (array_length g.children)) {
+            def c:PptxShape (itemAt g.children i)
+            if ((indexOf c.name prefix) == 0) {
+                push out c
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn setPara:void (sh:PptxShape i:int text:string) {
+        def para:PptxParagraph (itemAt sh.text.paragraphs i)
+        def run:PptxTextRun (itemAt para.runs 0)
+        run.text = text
+    }
+
+    sfn texts:string (g:PptxShape prefix:string) {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length g.children)) {
+            def c:PptxShape (itemAt g.children i)
+            if (((indexOf c.name prefix) == 0) && ((strlen (c.text.plainText())) > 0)) {
+                if ((strlen out) > 0) {
+                    out = (out + "|")
+                }
+                out = (out + (c.text.plainText()))
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testMap:void (c:SaKit) {
+        print "-- which point a paragraph is --"
+        def g:PptxShape (SaEditTest.draw((SaKit.flat("process1" 3))))
+        def n1:PptxShape (itemAt (SaEditTest.kids(g "node")) 1)
+        c.eqInt("a step: one paragraph, one point" (array_length n1.diagramParaPts) 1)
+        c.eqStr("its own" (itemAt n1.diagramParaPts 0) "n2")
+        def arrows:[PptxShape] (SaEditTest.kids(g "sibTrans"))
+        def a0:PptxShape (itemAt arrows 0)
+        c.eqInt("an arrow shows none" (array_length a0.diagramParaPts) 0)
+        def v:PptxShape (SaEditTest.draw((SaKit.twoLevels("vList2" 2 2))))
+        def ct:PptxShape (itemAt (SaEditTest.kids(v "childText")) 0)
+        c.eqStr("a bullet list: each line its point" (join ct.diagramParaPts ",") "n1.1,n1.2")
+        def pt:PptxShape (itemAt (SaEditTest.kids(v "parentText")) 0)
+        c.eqStr("its heading its own" (join pt.diagramParaPts ",") "n1")
+    }
+
+    sfn testRelayout:void (c:SaKit) {
+        print "-- laid out again --"
+        def g:PptxShape (SaEditTest.draw((SaKit.flat("process1" 3))))
+        def n1:PptxShape (itemAt (SaEditTest.kids(g "node")) 1)
+        def oldSize:double (SaKit.sizeOf(n1))
+        SaEditTest.setPara(n1 0 "A much longer second step")
+        def r:SaResult (SaEdit.relayout(g n1))
+        c.ok("laid out" r.ok)
+        c.eqStr("with the edit" (SaEditTest.texts(r.shape "node")) "Item 1|A much longer second step|Item 3")
+        def m1:PptxShape (itemAt (SaEditTest.kids(r.shape "node")) 1)
+        c.ok("smaller, to fit" ((SaKit.sizeOf(m1)) < oldSize))
+        def m0:PptxShape (itemAt (SaEditTest.kids(r.shape "node")) 0)
+        c.near("and its neighbours with it" (SaKit.sizeOf(m0)) (SaKit.sizeOf(m1)))
+        c.ok("the data holds it" ((indexOf r.shape.diagramModelXml "A much longer second step") >= 0))
+        c.eqStr("the same layout" r.shape.diagramLayoutId g.diagramLayoutId)
+        c.eqStr("the same colours" r.shape.diagramColorsId g.diagramColorsId)
+        ; the colours a Markdown asked for are kept
+        def o (new SaOptions())
+        o.colors = "colorful1"
+        def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o 480.0 270.0))
+        def k0:PptxShape (itemAt (SaEditTest.kids(r2.shape "node")) 0)
+        SaEditTest.setPara(k0 0 "First")
+        def r3:SaResult (SaEdit.relayout(r2.shape k0))
+        c.eqStr("colorful1 kept" r3.shape.diagramColorsId "urn:microsoft.com/office/officeart/2005/8/colors/colorful1")
+        def k1:PptxShape (itemAt (SaEditTest.kids(r3.shape "node")) 0)
+        c.eqStr("and drawn" k1.fill.scheme "accent2")
+    }
+
+    sfn testParagraphs:void (c:SaKit) {
+        print "-- paragraphs added and taken away --"
+        def v:PptxShape (SaEditTest.draw((SaKit.twoLevels("vList2" 2 2))))
+        def ct:PptxShape (itemAt (SaEditTest.kids(v "childText")) 0)
+        ; three lines where there were two: the third goes to the last point
+        def extra (new PptxParagraph())
+        def run (new PptxTextRun())
+        run.text = "and more"
+        push extra.runs run
+        push ct.text.paragraphs extra
+        def r:SaResult (SaEdit.relayout(v ct))
+        c.ok("laid out" r.ok)
+        def ct2:PptxShape (itemAt (SaEditTest.kids(r.shape "childText")) 0)
+        c.eqStr("the extra line kept, under the last point" (ct2.text.plainText()) "Item 1.1\nItem 1.2\nand more")
+        ; one line where there were two: the second point is left empty
+        def v2:PptxShape (SaEditTest.draw((SaKit.twoLevels("vList2" 2 2))))
+        def cs:PptxShape (itemAt (SaEditTest.kids(v2 "childText")) 0)
+        def keep:[PptxParagraph]
+        push keep (itemAt cs.text.paragraphs 0)
+        cs.text.paragraphs = keep
+        def r2:SaResult (SaEdit.relayout(v2 cs))
+        def cs2:PptxShape (itemAt (SaEditTest.kids(r2.shape "childText")) 0)
+        c.eqStr("a line deleted: its point empty" (cs2.text.plainText()) "Item 1.1")
+        c.ok("still a point in the data" ((indexOf r2.shape.diagramModelXml "modelId=\"n1.2\"") >= 0))
+        ; levels and bold kept when the count is the same
+        def bold:string (SaKit.data("process1" "<dgm:pt modelId=\"a\"><dgm:t><a:p><a:r><a:rPr b=\"1\"/><a:t>Bold</a:t></a:r></a:p></dgm:t></dgm:pt>" (SaKit.cx("0" "a"))))
+        def b:PptxShape (SaEditTest.draw(bold))
+        def b0:PptxShape (itemAt (SaEditTest.kids(b "node")) 0)
+        SaEditTest.setPara(b0 0 "Still bold")
+        def r3:SaResult (SaEdit.relayout(b b0))
+        c.ok("a bold run stays bold" ((indexOf r3.shape.diagramModelXml "b=\"1\"") >= 0))
+    }
+
+    sfn testRefusals:void (c:SaKit) {
+        print "-- what cannot be laid out again --"
+        def bare (new PptxShape())
+        bare.isDiagram = true
+        c.ok("no data: no" ((SaEdit.canRelayout(bare)) == false))
+        def r:SaResult (SaEdit.relayout(bare bare))
+        c.ok("refused" (r.ok == false))
+        c.ok("saying why" ((strlen r.error) > 0))
+        def g:PptxShape (SaEditTest.draw((SaKit.flat("process1" 2))))
+        c.ok("an engine diagram: yes" (SaEdit.canRelayout(g)))
+        def notDiagram (new PptxShape())
+        c.ok("not a diagram: no" ((SaEdit.canRelayout(notDiagram)) == false))
+        def arrow:PptxShape (itemAt (SaEditTest.kids(g "sibTrans")) 0)
+        def r2:SaResult (SaEdit.relayout(g arrow))
+        c.ok("a shape that shows no point: refused" (r2.ok == false))
+        def broken:PptxShape (SaEditTest.draw((SaKit.flat("process1" 2))))
+        broken.diagramModelXml = "<x/>"
+        def bn:PptxShape (itemAt (SaEditTest.kids(broken "node")) 0)
+        def r3:SaResult (SaEdit.relayout(broken bn))
+        c.ok("data that does not read: refused" (r3.ok == false))
+        def none:[string]
+        c.eqInt("indexIn: missing" (SaEdit.indexIn(none "a")) -1)
+    }
+
+    sfn main:void () {
+        print "== SaEditTest =="
+        def c (new SaKit())
+        SaEditTest.testMap(c)
+        SaEditTest.testRelayout(c)
+        SaEditTest.testParagraphs(c)
+        SaEditTest.testRefusals(c)
+        c.finish("SaEditTest")
+    }
+}

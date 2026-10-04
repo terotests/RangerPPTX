@@ -992,10 +992,19 @@ class PptxShape {
     def diagramLayoutId:string ""
     def diagramStyleId:string ""
     def diagramColorsId:string ""
+    ; On a shape INSIDE such a diagram: for each of its paragraphs, the data
+    ; point that paragraph's text came from, so an edit to the text can be
+    ; written back to the data and the diagram laid out again.
+    def diagramParaPts:[string]
+    ; read from a file with PowerPoint's own drawing of it, and not laid out
+    ; here since: saved, its original frame and parts are kept
+    def diagramHadDrawing:boolean false
 
     Constructor () {
         def c:[PptxShape]
         children = c
+        def dpp:[string]
+        diagramParaPts = dpp
         def sc:[string]
         styleClasses = sc
         def isn:[string]

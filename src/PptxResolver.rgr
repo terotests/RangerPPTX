@@ -219,6 +219,12 @@ class PptxResolver {
         out.diagramLayoutId = shape.diagramLayoutId
         out.diagramStyleId = shape.diagramStyleId
         out.diagramColorsId = shape.diagramColorsId
+        out.diagramHadDrawing = shape.diagramHadDrawing
+        def dppi:int 0
+        while (dppi < (array_length shape.diagramParaPts)) {
+            push out.diagramParaPts (itemAt shape.diagramParaPts dppi)
+            dppi = (dppi + 1)
+        }
         def i:int 0
         while (i < (array_length shape.children)) {
             push out.children (this.cloneShape((itemAt shape.children i)))

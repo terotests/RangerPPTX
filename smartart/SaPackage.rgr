@@ -30,6 +30,26 @@ Import "SaDataReader.rgr"
 Import "SaDataWriter.rgr"
 Import "SaStyle.rgr"
 
+; A data model numbered for a package, and what each old id became.
+class SaNumbering {
+    def ok:boolean false
+    def model:SaModel (new SaModel())
+    def from:[string]
+    def to:[string]
+
+    Constructor () {
+    }
+
+    fn mapped:string (id:string) {
+        return (SaPackage.mapped(from to id))
+    }
+
+    fn dataXml:string (drawingRelId:string) {
+        model.drawingRelId = drawingRelId
+        return (SaDataWriter.write(model))
+    }
+}
+
 class SaPackage {
 
     sfn dgmNs:string () {
@@ -52,52 +72,61 @@ class SaPackage {
     ; number and its drawing named by `drawingRelId`; empty when it does not
     ; read
     sfn dataXml:string (modelXml:string drawingRelId:string) {
+        def nb:SaNumbering (SaPackage.number(modelXml))
+        if (nb.ok == false) {
+            return ""
+        }
+        return (nb.dataXml(drawingRelId))
+    }
+
+    ; the model with every id a number, and which number each old id got
+    sfn number:SaNumbering (modelXml:string) {
+        def nb (new SaNumbering())
         def r:SaReadResult (SaDataReader.read(modelXml))
         if (r.ok == false) {
-            return ""
+            return nb
         }
         def m:SaModel r.model
         m.complete()
-        def from:[string]
-        def to:[string]
         def n:int 0
         def i:int 0
         while (i < (array_length m.points)) {
             def p:SaPoint (itemAt m.points i)
-            push from p.id
-            push to (to_string n)
+            push nb.from p.id
+            push nb.to (to_string n)
             n = (n + 1)
             i = (i + 1)
         }
         i = 0
         while (i < (array_length m.cxns)) {
             def c:SaCxn (itemAt m.cxns i)
-            push from c.id
-            push to (to_string n)
+            push nb.from c.id
+            push nb.to (to_string n)
             n = (n + 1)
             i = (i + 1)
         }
         i = 0
         while (i < (array_length m.points)) {
             def p2:SaPoint (itemAt m.points i)
-            p2.id = (SaPackage.mapped(from to p2.id))
-            p2.cxnId = (SaPackage.mapped(from to p2.cxnId))
-            p2.presAssocId = (SaPackage.mapped(from to p2.presAssocId))
+            p2.id = (nb.mapped(p2.id))
+            p2.cxnId = (nb.mapped(p2.cxnId))
+            p2.presAssocId = (nb.mapped(p2.presAssocId))
             i = (i + 1)
         }
         i = 0
         while (i < (array_length m.cxns)) {
             def c2:SaCxn (itemAt m.cxns i)
-            c2.id = (SaPackage.mapped(from to c2.id))
-            c2.srcId = (SaPackage.mapped(from to c2.srcId))
-            c2.destId = (SaPackage.mapped(from to c2.destId))
-            c2.parTransId = (SaPackage.mapped(from to c2.parTransId))
-            c2.sibTransId = (SaPackage.mapped(from to c2.sibTransId))
-            c2.presId = (SaPackage.mapped(from to c2.presId))
+            c2.id = (nb.mapped(c2.id))
+            c2.srcId = (nb.mapped(c2.srcId))
+            c2.destId = (nb.mapped(c2.destId))
+            c2.parTransId = (nb.mapped(c2.parTransId))
+            c2.sibTransId = (nb.mapped(c2.sibTransId))
+            c2.presId = (nb.mapped(c2.presId))
             i = (i + 1)
         }
-        m.drawingRelId = drawingRelId
-        return (SaDataWriter.write(m))
+        nb.model = m
+        nb.ok = true
+        return nb
     }
 
     sfn mapped:string (from:[string] to:[string] id:string) {

@@ -275,11 +275,12 @@ class PptxSmartArtTest {
         def ok:boolean (out.openParts("gallery/pptx/bin" "smartart-new.pptx"))
         c.ok("a new file is written" ok)
         def xml:string (out.readXml("ppt/slides/slide1.xml"))
-        ; a new package has none of the drawn diagram's parts, so a frame
-        ; naming them would name nothing: it goes as shapes. The one the
-        ; engine laid out has what it was made from, and goes as SmartArt.
-        c.eqInt("one SmartArt frame in a new file: the one laid out here" (PptxSmartArtTest.countOf(xml "<dgm:relIds")) 1)
-        c.ok("the drawn diagram is there as shapes" ((indexOf xml "Plan") >= 0))
+        ; a new package has none of the diagram's own parts, so its frame
+        ; would name nothing: both are written whole, from their data, the
+        ; drawn one with PowerPoint's drawing as its drawing part
+        c.eqInt("both SmartArt in a new file" (PptxSmartArtTest.countOf(xml "<dgm:relIds")) 2)
+        c.ok("none as loose shapes" ((indexOf xml "Plan") < 0))
+        c.ok("the drawn one's drawing, as PowerPoint drew it" ((indexOf (out.readXml("ppt/diagrams/drawing1.xml")) ">Plan<") >= 0))
     }
 
     sfn dataOf:string (texts:[string]) {
@@ -308,6 +309,8 @@ class PptxSmartArtTest {
 
     sfn testNative:void (c:SmartArtCheck) {
         print "-- a diagram laid out here, saved as SmartArt --"
+        ; the drawn diagram (Process) is written first, as data1 …; this one,
+        ; NoDrawing, as data2 …
         def parser:PptxParser (PptxSmartArtTest.open())
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
         def writer (new PptxWriter())
@@ -317,34 +320,34 @@ class PptxSmartArtTest {
         def xml:string (out.readXml("ppt/slides/slide1.xml"))
         def rels:string (out.readXml("ppt/slides/_rels/slide1.xml.rels"))
         def ct:string (out.readXml("[Content_Types].xml"))
-        c.ok("the frame names its data" ((indexOf xml "r:dm=\"rIdDgm-data1\"") >= 0))
-        c.ok("its layout, style and colours" ((((indexOf xml "r:lo=\"rIdDgm-layout1\"") >= 0) && ((indexOf xml "r:qs=\"rIdDgm-quickStyle1\"") >= 0)) && ((indexOf xml "r:cs=\"rIdDgm-colors1\"") >= 0)))
+        c.ok("the frame names its data" ((indexOf xml "r:dm=\"rIdDgm-data2\"") >= 0))
+        c.ok("its layout, style and colours" ((((indexOf xml "r:lo=\"rIdDgm-layout2\"") >= 0) && ((indexOf xml "r:qs=\"rIdDgm-quickStyle2\"") >= 0)) && ((indexOf xml "r:cs=\"rIdDgm-colors2\"") >= 0)))
         c.ok("the frame is where the diagram was" ((indexOf xml "<a:off x=\"1524000\" y=\"3600000\"/>") >= 0))
-        def dm:string (PptxSmartArtTest.relOf(rels "rIdDgm-data1"))
-        c.ok(("the data relationship (" + dm + ")") (((indexOf dm "relationships/diagramData\"") >= 0) && ((indexOf dm "Target=\"../diagrams/data1.xml\"") >= 0)))
-        c.ok("the layout's" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-layout1")) "relationships/diagramLayout\"") >= 0))
-        c.ok("the quick style's" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-quickStyle1")) "relationships/diagramQuickStyle\"") >= 0))
-        c.ok("the colours'" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-colors1")) "relationships/diagramColors\"") >= 0))
-        c.ok("the drawing's, Microsoft's kind" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-drawing1")) "http://schemas.microsoft.com/office/2007/relationships/diagramDrawing") >= 0))
-        c.ok("content types: data" ((indexOf ct "PartName=\"/ppt/diagrams/data1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml\"") >= 0))
-        c.ok("layout" ((indexOf ct "PartName=\"/ppt/diagrams/layout1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml\"") >= 0))
-        c.ok("style" ((indexOf ct "PartName=\"/ppt/diagrams/quickStyle1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml\"") >= 0))
-        c.ok("colours" ((indexOf ct "PartName=\"/ppt/diagrams/colors1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml\"") >= 0))
-        c.ok("drawing" ((indexOf ct "PartName=\"/ppt/diagrams/drawing1.xml\" ContentType=\"application/vnd.ms-office.drawingml.diagramDrawing+xml\"") >= 0))
-        def data:string (out.readXml("ppt/diagrams/data1.xml"))
-        c.ok("the data names its drawing by the slide's relationship" ((indexOf data "relId=\"rIdDgm-drawing1\"") >= 0))
+        def dm:string (PptxSmartArtTest.relOf(rels "rIdDgm-data2"))
+        c.ok(("the data relationship (" + dm + ")") (((indexOf dm "relationships/diagramData\"") >= 0) && ((indexOf dm "Target=\"../diagrams/data2.xml\"") >= 0)))
+        c.ok("the layout's" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-layout2")) "relationships/diagramLayout\"") >= 0))
+        c.ok("the quick style's" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-quickStyle2")) "relationships/diagramQuickStyle\"") >= 0))
+        c.ok("the colours'" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-colors2")) "relationships/diagramColors\"") >= 0))
+        c.ok("the drawing's, Microsoft's kind" ((indexOf (PptxSmartArtTest.relOf(rels "rIdDgm-drawing2")) "http://schemas.microsoft.com/office/2007/relationships/diagramDrawing") >= 0))
+        c.ok("content types: data" ((indexOf ct "PartName=\"/ppt/diagrams/data2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml\"") >= 0))
+        c.ok("layout" ((indexOf ct "PartName=\"/ppt/diagrams/layout2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml\"") >= 0))
+        c.ok("style" ((indexOf ct "PartName=\"/ppt/diagrams/quickStyle2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml\"") >= 0))
+        c.ok("colours" ((indexOf ct "PartName=\"/ppt/diagrams/colors2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml\"") >= 0))
+        c.ok("drawing" ((indexOf ct "PartName=\"/ppt/diagrams/drawing2.xml\" ContentType=\"application/vnd.ms-office.drawingml.diagramDrawing+xml\"") >= 0))
+        def data:string (out.readXml("ppt/diagrams/data2.xml"))
+        c.ok("the data names its drawing by the slide's relationship" ((indexOf data "relId=\"rIdDgm-drawing2\"") >= 0))
         c.ok("every id a number" (((indexOf data "modelId=\"0\"") >= 0) && ((indexOf data "modelId=\"{") < 0)))
         c.ok("the document point names the layout it was drawn with" ((indexOf data "loTypeId=\"urn:microsoft.com/office/officeart/2005/8/layout/process1\"") >= 0))
         c.ok("and the style and colours" (((indexOf data "qsTypeId=\"urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1\"") >= 0) && ((indexOf data "csTypeId=\"urn:microsoft.com/office/officeart/2005/8/colors/accent1_2\"") >= 0)))
         c.ok("with its text" (((indexOf data ">Ask<") >= 0) && ((indexOf data ">Answer<") >= 0)))
-        def lo:string (out.readXml("ppt/diagrams/layout1.xml"))
+        def lo:string (out.readXml("ppt/diagrams/layout2.xml"))
         c.ok("the layout part is a layout definition" (((indexOf lo "<dgm:layoutDef") >= 0) && ((indexOf lo "layout/process1\"") >= 0)))
-        def qs:string (out.readXml("ppt/diagrams/quickStyle1.xml"))
+        def qs:string (out.readXml("ppt/diagrams/quickStyle2.xml"))
         c.ok("the quick style part" (((indexOf qs "<dgm:styleDef") >= 0) && ((indexOf qs "<dgm:styleLbl name=\"node1\">") >= 0)))
-        def cs:string (out.readXml("ppt/diagrams/colors1.xml"))
+        def cs:string (out.readXml("ppt/diagrams/colors2.xml"))
         c.ok("the colour part" (((indexOf cs "<dgm:colorsDef") >= 0) && ((indexOf cs "colors/accent1_2\"") >= 0)))
         c.ok("a node is filled with the accent" ((indexOf cs "<dgm:styleLbl name=\"node1\"><dgm:fillClrLst meth=\"repeat\"><a:schemeClr val=\"accent1\"/>") >= 0))
-        def dr:string (out.readXml("ppt/diagrams/drawing1.xml"))
+        def dr:string (out.readXml("ppt/diagrams/drawing2.xml"))
         c.eqInt("the drawing: two steps and an arrow" (PptxSmartArtTest.countOf(dr "<dsp:sp ")) 3)
         c.ok("with their text" (((indexOf dr ">Ask<") >= 0) && ((indexOf dr "<dsp:txBody>") >= 0)))
         c.ok("in the drawing's own namespace" ((indexOf dr "<p:") < 0))
@@ -415,6 +418,165 @@ class PptxSmartArtTest {
         c.eqInt("still three frames" (PptxSmartArtTest.countOf((out2.readXml("ppt/slides/slide1.xml")) "<dgm:relIds")) 3)
     }
 
+    sfn sizeOf:double (sh:PptxShape) {
+        if ((array_length sh.text.paragraphs) == 0) {
+            return 0.0
+        }
+        def para:PptxParagraph (itemAt sh.text.paragraphs 0)
+        if ((array_length para.runs) == 0) {
+            return 0.0
+        }
+        def run:PptxTextRun (itemAt para.runs 0)
+        return run.fontSizePt
+    }
+
+    ; the diagram's shapes that have text, in order
+    sfn texted:[PptxShape] (d:PptxShape) {
+        def out:[PptxShape]
+        def i:int 0
+        while (i < (array_length d.children)) {
+            def c:PptxShape (itemAt d.children i)
+            if ((strlen (c.text.plainText())) > 0) {
+                push out c
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testRelayout:void (c:SmartArtCheck) {
+        print "-- its text edited in the editor: laid out again --"
+        def parser:PptxParser (PptxSmartArtTest.open())
+        def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
+        def slide:PptxSlide (itemAt pres.slides 0)
+        def texts:[string] ([] _:string ("Spring" "Summer" "Autumn"))
+        def r:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (new SaOptions()) 300.0 200.0))
+        def g:PptxShape r.shape
+        g.name = "Seasons"
+        g.x = 400.0
+        g.y = 300.0
+        def rs (new PptxResolver())
+        rs.resolveShape(g pres.theme)
+        push slide.shapes g
+        def ed (new PptxEditor())
+        ed.attach(pres)
+        ed.gotoSlide(0)
+        def d:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
+        def before:[PptxShape] (PptxSmartArtTest.texted(d))
+        c.eqInt("three steps with text" (array_length before) 3)
+        def first:PptxShape (itemAt before 0)
+        def oldSize:double (PptxSmartArtTest.sizeOf(first))
+        c.eqStr("each knows its point" (itemAt first.diagramParaPts 0) "n0")
+        def oldId:int first.editId
+        c.ok("a shape in the diagram can be typed into" (ed.beginTextEdit(oldId)))
+        ed.selectAllText()
+        ed.typeAtCaret("Spring is the season of new beginnings")
+        ed.endTextEdit()
+        def d2:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
+        def after:[PptxShape] (PptxSmartArtTest.texted(d2))
+        def f2:PptxShape (itemAt after 0)
+        c.eqStr("the edit is in the diagram" (f2.text.plainText()) "Spring is the season of new beginnings")
+        c.ok("laid out again: new shapes" (f2.editId != oldId))
+        c.ok(("the longer text set smaller (" + (to_string (PptxSmartArtTest.sizeOf(f2))) + " < " + (to_string oldSize) + ")") ((PptxSmartArtTest.sizeOf(f2)) < oldSize))
+        def s2:PptxShape (itemAt after 1)
+        c.near("and the others with it: one size" (PptxSmartArtTest.sizeOf(s2)) (PptxSmartArtTest.sizeOf(f2)))
+        c.ok("the data says so" ((indexOf d2.diagramModelXml "Spring is the season of new beginnings") >= 0))
+        c.ok("its shapes are what it was laid out as" (d2.diagramSig == (d2.diagramSignature())))
+        c.ok(("in the slide's colours: resolved (" + f2.fill.srgb + ")") ((strlen f2.fill.srgb) == 6))
+        c.ok("still where it was" ((d2.x == 400.0) && (d2.width == 300.0)))
+        ; saved: SmartArt with the new text
+        def after2:string (PptxSmartArtTest.save(pres parser "smartart-relaid.pptx"))
+        def out (new OpcPackage())
+        out.openParts("gallery/pptx/bin" "smartart-relaid.pptx")
+        def datas:[string] (out.listParts())
+        def found:boolean false
+        def i:int 0
+        while (i < (array_length datas)) {
+            def part:string (itemAt datas i)
+            if ((indexOf part "ppt/diagrams/data") == 0) {
+                if ((indexOf (out.readXml(part)) "season of new beginnings") >= 0) {
+                    found = true
+                }
+            }
+            i = (i + 1)
+        }
+        c.ok("saved as SmartArt, its data the edited text" found)
+        c.eqInt("three frames" (PptxSmartArtTest.countOf(after2 "<dgm:relIds")) 3)
+        ; undone: the text and the layout before it
+        ed.undo()
+        def d3:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
+        def f3:PptxShape (itemAt (PptxSmartArtTest.texted(d3)) 0)
+        c.ok(("undo takes the layout back with the text (" + (f3.text.plainText()) + ")") ((f3.text.plainText()) != "Spring is the season of new beginnings"))
+        ; setShapeText lays it out again too
+        def d4:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
+        def f4:PptxShape (itemAt (PptxSmartArtTest.texted(d4)) 1)
+        ed.setShapeText(f4.editId "High summer")
+        def d5:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
+        c.ok("setShapeText: in the data" ((indexOf d5.diagramModelXml "High summer") >= 0))
+        c.ok("and drawn" ((PptxSmartArtTest.texts(d5)) == "Spring|High summer|Autumn"))
+        ; a shape that is not in a diagram: nothing to lay out
+        c.ok("a shape in no diagram: no" ((ed.relayoutDiagramOf(d5.editId)) == false))
+    }
+
+    sfn texts:string (d:PptxShape) {
+        def out:string ""
+        def l:[PptxShape] (PptxSmartArtTest.texted(d))
+        def i:int 0
+        while (i < (array_length l)) {
+            if (i > 0) {
+                out = (out + "|")
+            }
+            def sh:PptxShape (itemAt l i)
+            out = (out + (sh.text.plainText()))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testRelayoutReopened:void (c:SmartArtCheck) {
+        print "-- a diagram reopened from the file we wrote, edited --"
+        def parser (new PptxParser())
+        parser.openParts("gallery/pptx/bin" "smartart-native-over.pptx")
+        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def slide:PptxSlide (itemAt pres.slides 0)
+        def d:PptxShape (PptxSmartArtTest.byName(slide.shapes "Seasons"))
+        c.ok("read from its drawing" d.diagramHadDrawing)
+        c.ok("with what it was made from" (SaEdit.canRelayout(d)))
+        def f:PptxShape (itemAt (PptxSmartArtTest.texted(d)) 0)
+        c.ok("each shape knows its point" ((array_length f.diagramParaPts) == 1))
+        def ed (new PptxEditor())
+        ed.attach(pres)
+        ed.gotoSlide(0)
+        def de:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
+        def fe:PptxShape (itemAt (PptxSmartArtTest.texted(de)) 0)
+        ed.setShapeText(fe.editId "Early spring")
+        def d2:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
+        c.eqStr("laid out again with the edit" (PptxSmartArtTest.texts(d2)) "Early spring|Summer|Autumn")
+        c.ok("no longer PowerPoint's drawing of it" (d2.diagramHadDrawing == false))
+        def w (new PptxWriter())
+        w.saveOver(pres parser.pkg "gallery/pptx/bin" "smartart-reopened.pptx")
+        def again (new PptxParser())
+        again.openParts("gallery/pptx/bin" "smartart-reopened.pptx")
+        def raw:PptxPresentation (again.parsePresentation())
+        def s0:PptxSlide (itemAt raw.slides 0)
+        def back:PptxShape (PptxSmartArtTest.byName(s0.shapes "Seasons"))
+        c.eqStr("saved and read back with the edit" (PptxSmartArtTest.texts(back)) "Early spring|Summer|Autumn")
+        c.ok("as SmartArt" back.isDiagram)
+        ; the untouched PowerPoint diagram keeps its own frame
+        def xml:string (again.pkg.readXml("ppt/slides/slide1.xml"))
+        c.ok("the untouched one keeps its frame" ((indexOf xml "r:dm=\"rId10\"") >= 0))
+        ; a drawing whose shapes name no point of the data cannot be laid out
+        ; again from an edit: its shapes are kept as edited
+        def p2:PptxParser (PptxSmartArtTest.open())
+        def pres2:PptxPresentation (PptxSmartArtTest.edited(p2))
+        def ed2 (new PptxEditor())
+        ed2.attach(pres2)
+        ed2.gotoSlide(0)
+        def proc:PptxShape (PptxSmartArtTest.byName(ed2.editableShapes() "Process"))
+        def pc:PptxShape (itemAt proc.children 2)
+        c.ok("a drawing that names no point: not laid out again" ((ed2.relayoutDiagramOf(pc.editId)) == false))
+    }
+
     sfn testNativeEdited:void (c:SmartArtCheck) {
         print "-- a diagram laid out here, its shapes moved by hand --"
         def parser:PptxParser (PptxSmartArtTest.open())
@@ -451,6 +613,8 @@ class PptxSmartArtTest {
         PptxSmartArtTest.testNative(c)
         PptxSmartArtTest.testNativeOver(c)
         PptxSmartArtTest.testNativeEdited(c)
+        PptxSmartArtTest.testRelayout(c)
+        PptxSmartArtTest.testRelayoutReopened(c)
         print ""
         print ("passed = " + (to_string c.passed) + "  failed = " + (to_string c.failed))
         if (c.failed == 0) {

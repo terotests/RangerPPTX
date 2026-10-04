@@ -1,0 +1,148 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaEdit — a diagram laid out again after its text was edited
+; ==============================================================================
+;
+; A shape inside a diagram the engine laid out knows, paragraph by
+; paragraph, which data point its text came from (`diagramParaPts`). An edit
+; to that text is written back to those points and the diagram is laid out
+; again from its data, with the layout, colours and style it was drawn with,
+; at its own size. So typing a longer label shrinks every step's type the
+; way PowerPoint does, and the file saved afterwards is still SmartArt.
+;
+; Each point gets the paragraphs that now map to it. A point that keeps its
+; number of paragraphs keeps their levels and run properties, only the text
+; changes; otherwise its paragraphs are made again, plain. Paragraphs beyond
+; the ones the shape had go to the last point it showed; a point whose
+; paragraphs were all deleted is left with no text, as PowerPoint leaves an
+; emptied node. Adding or removing nodes is not an edit of text and is not
+; done here.
+; ==============================================================================
+
+Import "SaEngine.rgr"
+
+class SaEdit {
+
+    ; Whether `d` (a diagram group) can be laid out again from what it holds.
+    sfn canRelayout:boolean (d:PptxShape) {
+        if (d.isDiagram == false) {
+            return false
+        }
+        return (((strlen d.diagramModelXml) > 0) && ((strlen d.diagramLayoutXml) > 0))
+    }
+
+    ; `d` laid out again with the text `edited` (one of its shapes) now has.
+    ; `ok` false, and the diagram left as it is, when it cannot be.
+    sfn relayout:SaResult (d:PptxShape edited:PptxShape) {
+        def fail (new SaResult())
+        if ((SaEdit.canRelayout(d)) == false) {
+            fail.error = "the diagram has no data to lay it out from"
+            return fail
+        }
+        def pts:[string] edited.diagramParaPts
+        if ((array_length pts) == 0) {
+            fail.error = "the shape shows no point of the diagram's data"
+            return fail
+        }
+        def read:SaReadResult (SaDataReader.read(d.diagramModelXml))
+        if (read.ok == false) {
+            fail.error = read.error
+            return fail
+        }
+        def model:SaModel read.model
+        model.complete()
+        ; the points, in the order the shape showed them, and the paragraphs
+        ; that now belong to each
+        def order:[string]
+        def i:int 0
+        while (i < (array_length pts)) {
+            def id:string (itemAt pts i)
+            if ((SaEdit.indexIn(order id)) < 0) {
+                push order id
+            }
+            i = (i + 1)
+        }
+        def last:string (itemAt pts ((array_length pts) - 1))
+        def k:int 0
+        while (k < (array_length order)) {
+            def pid:string (itemAt order k)
+            def hit@(optional):SaPoint (model.pointById(pid))
+            if (!null? hit) {
+                def p:SaPoint (unwrap hit)
+                def mine:[PptxParagraph]
+                def j:int 0
+                while (j < (array_length edited.text.paragraphs)) {
+                    def owner:string last
+                    if (j < (array_length pts)) {
+                        owner = (itemAt pts j)
+                    }
+                    if (owner == pid) {
+                        push mine (itemAt edited.text.paragraphs j)
+                    }
+                    j = (j + 1)
+                }
+                SaEdit.setText(p mine)
+            }
+            k = (k + 1)
+        }
+        def opts (new SaOptions())
+        opts.layoutXml = d.diagramLayoutXml
+        opts.colors = d.diagramColorsId
+        opts.style = d.diagramStyleId
+        return (SaEngine.layoutModel(model opts d.width d.height))
+    }
+
+    sfn indexIn:int (list:[string] v:string) {
+        def i:int 0
+        while (i < (array_length list)) {
+            if ((itemAt list i) == v) {
+                return i
+            }
+            i = (i + 1)
+        }
+        return -1
+    }
+
+    ; A point's text made the paragraphs' text. The same number of
+    ; paragraphs: each keeps its level and its first run's properties.
+    sfn setText:void (p:SaPoint paras:[PptxParagraph]) {
+        def same:boolean ((array_length paras) == (array_length p.paras))
+        def out:[SaPara]
+        def i:int 0
+        while (i < (array_length paras)) {
+            def src:PptxParagraph (itemAt paras i)
+            def text:string (SaEdit.plain(src))
+            def np (new SaPara())
+            def run (new SaRun())
+            if same {
+                def old:SaPara (itemAt p.paras i)
+                np.level = old.level
+                if ((array_length old.runs) > 0) {
+                    def r0:SaRun (itemAt old.runs 0)
+                    run.bold = r0.bold
+                    run.italic = r0.italic
+                    run.underline = r0.underline
+                    run.sizePt = r0.sizePt
+                    run.color = r0.color
+                }
+            }
+            run.text = text
+            push np.runs run
+            push out np
+            i = (i + 1)
+        }
+        p.paras = out
+        p.hasText = true
+    }
+
+    sfn plain:string (para:PptxParagraph) {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length para.runs)) {
+            def r:PptxTextRun (itemAt para.runs i)
+            out = (out + r.text)
+            i = (i + 1)
+        }
+        return out
+    }
+}

@@ -32,6 +32,7 @@ Import "../../zip/ZipWriter.rgr"
 Import "../../ooxml/OpcPackage.rgr"
 Import "../../office/assets/OfficeAsset.rgr"
 Import "../smartart/SaPackage.rgr"
+Import "../smartart/SaEdit.rgr"
 
 class PptxWriteMedia {
     def part:string ""          ; the model's package path
@@ -966,10 +967,17 @@ class PptxWriter {
 
     fn shapeXml:string (shape:PptxShape) {
         if shape.isDiagram {
-            ; laid out here — made here, or read from a file that had no
-            ; drawing for it: written whole, drawing included, so a reader
-            ; that cannot lay SmartArt out (anything but PowerPoint) still
-            ; draws it
+            ; PowerPoint's own, untouched: its frame and parts as they were
+            if shape.diagramHadDrawing {
+                def kept0:string (this.diagramFrameXml(shape))
+                if ((strlen kept0) > 0) {
+                    return kept0
+                }
+            }
+            ; laid out here — made here, read from a file that had no drawing
+            ; for it, or laid out again after an edit: written whole, drawing
+            ; included, so a reader that cannot lay SmartArt out (anything but
+            ; PowerPoint) still draws it
             def made:string (this.smartArtXml(shape))
             if ((strlen made) > 0) {
                 return made
@@ -2039,16 +2047,17 @@ class PptxWriter {
             push paths path
             k = (k + 1)
         }
-        def data:string (SaPackage.dataXml(shape.diagramModelXml (PptxWriter.diagramRelId((itemAt paths 4)))))
-        if ((strlen data) == 0) {
+        def nb:SaNumbering (SaPackage.number(shape.diagramModelXml))
+        if (nb.ok == false) {
             return ""
         }
+        def data:string (nb.dataXml((PptxWriter.diagramRelId((itemAt paths 4)))))
         def bodies:[string]
         push bodies data
         push bodies shape.diagramLayoutXml
         push bodies (SaPackage.styleDefXml(shape.diagramStyleId))
         push bodies (SaPackage.colorsDefXml(shape.diagramColorsId))
-        push bodies (PptxWriter.diagramDrawingXml(shape))
+        push bodies (PptxWriter.diagramDrawingXml(shape nb))
         k = 0
         while (k < 5) {
             push diagramPaths (itemAt paths k)
@@ -2070,20 +2079,33 @@ class PptxWriter {
 
     ; The drawing part: the group's shapes in the frame's own space, each a
     ; `dsp:sp` with its geometry, fill, line and text as drawn here.
-    sfn diagramDrawingXml:string (g:PptxShape) {
+    sfn diagramDrawingXml:string (g:PptxShape nb:SaNumbering) {
         def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
         out = (out + "<dsp:drawing xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:dsp=\"http://schemas.microsoft.com/office/drawing/2008/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">")
         out = (out + "<dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>")
+        ; a shape's model id: the (numbered) data point it shows, so a
+        ; reader can tell which point its text is; a GUID for a shape that
+        ; shows none, or one whose point another shape already named
+        def used:[string]
         def i:int 0
         while (i < (array_length g.children)) {
-            out = (out + (PptxWriter.dspSpXml((itemAt g.children i) i)))
+            def c:PptxShape (itemAt g.children i)
+            def mid:string (SaPackage.shapeModelId(i))
+            if ((array_length c.diagramParaPts) > 0) {
+                def pt:string (nb.mapped((itemAt c.diagramParaPts 0)))
+                if ((SaEdit.indexIn(used pt)) < 0) {
+                    mid = pt
+                    push used pt
+                }
+            }
+            out = (out + (PptxWriter.dspSpXml(c mid)))
             i = (i + 1)
         }
         return (out + "</dsp:spTree></dsp:drawing>")
     }
 
-    sfn dspSpXml:string (sh:PptxShape i:int) {
-        def out:string ("<dsp:sp modelId=\"" + (SaPackage.shapeModelId(i)) + "\"><dsp:nvSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr>")
+    sfn dspSpXml:string (sh:PptxShape modelId:string) {
+        def out:string ("<dsp:sp modelId=\"" + modelId + "\"><dsp:nvSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr>")
         out = (out + (PptxWriter.xfrmXml(sh "a:xfrm" false)) + (PptxWriter.geomXml(sh)))
         if sh.noFill {
             out = (out + "<a:noFill/>")
