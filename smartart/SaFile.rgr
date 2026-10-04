@@ -39,10 +39,13 @@ class SaFile {
         return ((substring s (n - t) n) == tail)
     }
 
-    ; A diagram: stored under its own type, or an .xml file whose first
-    ; element is a dgm:dataModel or a Flat OPC package (a whole diagram,
-    ; SaWhole). A file of another kind is never one, however
-    ; it is named.
+    ; A diagram: stored under its own type, or an .xml file that is not a
+    ; picture. An .xml file is never a picture a host can draw, so one that
+    ; holds something other than a diagram is still taken as one: the engine
+    ; then refuses it with the reason ("the root element is <x>"), which the
+    ; host shows in its place, instead of a broken picture that draws
+    ; nothing. Only SVG kept under an .xml name, and a file stored under a
+    ; picture's type, stay pictures.
     sfn isSmartArt:boolean (name:string type:string head:string) {
         if (type == (SaFile.TYPE())) {
             return true
@@ -58,7 +61,10 @@ class SaFile {
         if ((indexOf head "dataModel") >= 0) {
             return true
         }
-        return ((indexOf head "http://schemas.microsoft.com/office/2006/xmlPackage") >= 0)
+        if ((indexOf head "http://schemas.microsoft.com/office/2006/xmlPackage") >= 0) {
+            return true
+        }
+        return ((indexOf head "<svg") < 0)
     }
 
     ; the bytes as text: UTF-8, so a Finnish or Greek label is itself

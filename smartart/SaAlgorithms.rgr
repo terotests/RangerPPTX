@@ -21,6 +21,10 @@
 ;              nothing to place. tx is text in the node's own shape (SaText);
 ;              sp is room; a conn among a lin's children is placed by the lin
 ;              like any child, and drawn as an arrow pointing along it.
+;              With `wrap` (SaOptions.wrap, a host that is not PowerPoint), a
+;              row of shapes that keep their proportions is broken into rows
+;              when that makes them clearly larger: eight steps in a tall box
+;              are two rows of four, not one strip a tenth of its height.
 ;   snake      a grid that wraps (SaSnake)
 ;   cycle      a circle, or a radial with a shape in the middle (SaCycle)
 ;   hierRoot, hierChild
@@ -41,13 +45,20 @@ Import "SaPyra.rgr"
 class SaAlgorithms {
     def cons:SaConstraints (new SaConstraints())
     def warnings:[string]
+    ; break a lin row into rows when the box is tall enough (linRows)
+    def wrap:boolean false
 
     Constructor () {
     }
 
     sfn run:SaAlgorithms (c:SaConstraints) {
+        return (SaAlgorithms.runWith(c false))
+    }
+
+    sfn runWith:SaAlgorithms (c:SaConstraints wrap:boolean) {
         def a (new SaAlgorithms())
         a.cons = c
+        a.wrap = wrap
         def r:SaInst c.ptree.root
         r.x = 0.0
         r.y = 0.0
@@ -159,6 +170,11 @@ class SaAlgorithms {
         def room:double (? vertical p.h p.w)
         def roomAcross:double (? vertical p.w p.h)
         def total:double (SaAlgorithms.sum(along) + (sp * (to_double (n - 1))))
+        if (wrap && (dir == "fromL")) {
+            if (this.linRows(p along across tied sp)) {
+                return
+            }
+        }
         ; too long: shrink along the line, and what is tied to it
         if ((total > room) && (total > 0.0)) {
             def s:double (room / total)
@@ -229,6 +245,165 @@ class SaAlgorithms {
             at = ((at + a) + sp)
             i = (i + 1)
         }
+    }
+
+    ; The scale a lin row's shapes get in a box of room × roomAcross: as
+    ; large as fits along and across, never larger than they are.
+    sfn rowScale:double (len:double high:double room:double roomAcross:double) {
+        if ((len <= 0.0) || (high <= 0.0)) {
+            return 0.0
+        }
+        def s:double (room / len)
+        if ((roomAcross / high) < s) {
+            s = (roomAcross / high)
+        }
+        if (s > 1.0) {
+            s = 1.0
+        }
+        return s
+    }
+
+    ; Where row `r` of `rows` ends: the index after the last child it holds.
+    ; Each row takes `per` shapes and the connectors that follow them, so an
+    ; arrow at a row's end says the steps go on in the next.
+    sfn rowEnds:[int] (p:SaInst per:int) {
+        def ends:[int]
+        def n:int (array_length p.children)
+        def cells:int 0
+        def i:int 0
+        while (i < n) {
+            def c:SaInst (itemAt p.children i)
+            if (SaConn.isCell(c)) {
+                if (cells == per) {
+                    push ends i
+                    cells = 0
+                }
+                cells = (cells + 1)
+            }
+            i = (i + 1)
+        }
+        push ends n
+        return ends
+    }
+
+    ; A horizontal lin's children in rows of three or more, when rows make
+    ; its shapes at least a fifth larger than one row does; false leaves it
+    ; to the one row.
+    ; Only shapes whose height follows their width wrap: one as tall as the
+    ; box (a list's column) has no row to share.
+    fn linRows:boolean (p:SaInst along:[double] across:[double] tied:[boolean] sp:double) {
+        def n:int (array_length p.children)
+        def cellCount:int 0
+        def i:int 0
+        while (i < n) {
+            def c:SaInst (itemAt p.children i)
+            if (SaConn.isCell(c)) {
+                cellCount = (cellCount + 1)
+                if ((itemAt tied i) == false) {
+                    return false
+                }
+            }
+            i = (i + 1)
+        }
+        if (cellCount < 2) {
+            return false
+        }
+        def room:double p.w
+        def roomAcross:double p.h
+        def high:double (SaAlgorithms.max(across))
+        ; rows a quarter of a shape apart
+        def gap:double (high * 0.25)
+        def single:double (SaAlgorithms.rowScale((SaAlgorithms.sum(along) + (sp * (to_double (n - 1)))) high room roomAcross))
+        def best:double (single * 1.2)
+        def bestPer:int 0
+        def rows:int 2
+        while (rows <= cellCount) {
+            def per:int (to_int ((to_double (cellCount + rows - 1)) / (to_double rows)))
+            ; the same rows as one row fewer would give; and a row of fewer
+            ; than three steps no longer reads as a process
+            if (((per * (rows - 1)) < cellCount) && (per >= 3)) {
+                def ends:[int] (SaAlgorithms.rowEnds(p per))
+                def longest:double 0.0
+                def from:int 0
+                def r:int 0
+                while (r < (array_length ends)) {
+                    def to:int (itemAt ends r)
+                    def len:double 0.0
+                    def k:int from
+                    while (k < to) {
+                        len = (len + (itemAt along k))
+                        k = (k + 1)
+                    }
+                    len = (len + (sp * (to_double ((to - from) - 1))))
+                    if (len > longest) {
+                        longest = len
+                    }
+                    from = to
+                    r = (r + 1)
+                }
+                def tall:double (((to_double (array_length ends)) * high) + (gap * (to_double ((array_length ends) - 1))))
+                def s:double (SaAlgorithms.rowScale(longest tall room roomAcross))
+                if (s > best) {
+                    best = s
+                    bestPer = per
+                }
+            }
+            rows = (rows + 1)
+        }
+        if (bestPer == 0) {
+            return false
+        }
+        ; placed: every row starts where the longest does, the rows centred
+        ; in the box together
+        def ends2:[int] (SaAlgorithms.rowEnds(p bestPer))
+        def longest2:double 0.0
+        def from2:int 0
+        def r2:int 0
+        while (r2 < (array_length ends2)) {
+            def to2:int (itemAt ends2 r2)
+            def len2:double 0.0
+            def k2:int from2
+            while (k2 < to2) {
+                len2 = (len2 + ((itemAt along k2) * best))
+                k2 = (k2 + 1)
+            }
+            len2 = (len2 + ((sp * best) * (to_double ((to2 - from2) - 1))))
+            if (len2 > longest2) {
+                longest2 = len2
+            }
+            from2 = to2
+            r2 = (r2 + 1)
+        }
+        def rowH:double (high * best)
+        def rowGap:double (gap * best)
+        def count:int (array_length ends2)
+        def y:double (p.y + ((roomAcross - (((to_double count) * rowH) + (rowGap * (to_double (count - 1))))) / 2.0))
+        def x0:double (p.x + ((room - longest2) / 2.0))
+        def start:int 0
+        def row:int 0
+        while (row < count) {
+            def stop:int (itemAt ends2 row)
+            def at:double x0
+            def j:int start
+            while (j < stop) {
+                def c2:SaInst (itemAt p.children j)
+                def a:double ((itemAt along j) * best)
+                def b:double ((itemAt across j) * best)
+                c2.x = at
+                c2.y = (y + ((rowH - b) / 2.0))
+                c2.w = a
+                c2.h = b
+                if (c2.alg.type == "conn") {
+                    c2.put("connDir" 0.0 "")
+                }
+                at = ((at + a) + (sp * best))
+                j = (j + 1)
+            }
+            y = ((y + rowH) + rowGap)
+            start = stop
+            row = (row + 1)
+        }
+        return true
     }
 
     sfn dirCode:double (dir:string) {

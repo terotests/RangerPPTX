@@ -43,6 +43,9 @@ class SaOptions {
     def colorsXml:string ""
     def styleXml:string ""
     def measure:SaMeasure (new SaMeasure())
+    ; a row of steps may wrap into rows when the box is tall (a slide host);
+    ; PowerPoint never wraps them, so a deck editor leaves this off
+    def wrap:boolean false
 
     Constructor () {
     }
@@ -116,6 +119,10 @@ class SaEngine {
         return (SaEngine.layoutModel(read.model opts w h))
     }
 
+    sfn noItems:string () {
+        return "the diagram has no items: no point is connected under the document point"
+    }
+
     sfn fullId:string (s:string kind:string) {
         if ((indexOf s ":") >= 0) {
             return s
@@ -126,6 +133,14 @@ class SaEngine {
     sfn layoutModel:SaResult (model:SaModel opts:SaOptions w:double h:double) {
         def res (new SaResult())
         model.complete()
+        ; A diagram with no items is laid out as nothing (an editor can empty
+        ; one and fill it again), and says so: a host that draws nothing
+        ; shows this reason in its place.
+        def docPt:SaPoint (model.doc())
+        def items:[SaPoint] (model.children(docPt.id))
+        if ((array_length items) == 0) {
+            push res.warnings (SaEngine.noItems())
+        }
         ; which layout
         def lo (new SaLayoutDef())
         def loXml:string opts.layoutXml
@@ -176,7 +191,7 @@ class SaEngine {
         res.ptree = ptree
         res.measure = opts.measure
         def cons:SaConstraints (SaConstraints.resolve(ptree w h))
-        def algs:SaAlgorithms (SaAlgorithms.run(cons))
+        def algs:SaAlgorithms (SaAlgorithms.runWith(cons opts.wrap))
         def text:SaText (SaText.fit(cons opts.measure))
         def k:int 0
         while (k < (array_length algs.warnings)) {
