@@ -113,8 +113,8 @@ class SaLayoutTest {
     sfn testBuiltins:void (c:SaKit) {
         print "-- the built-in layouts --"
         def names:string (SaBuiltins.names())
-        c.eqStr("phase 1's four and phase 2's six" names "chevron1, cycle2, default, hList1, hierarchy1, orgChart1, process1, pyramid1, radial1, vList2")
-        def list:[string] ([] _:string ("chevron1" "cycle2" "default" "hList1" "hierarchy1" "orgChart1" "process1" "pyramid1" "radial1" "vList2"))
+        c.eqStr("the twenty of phases 1, 2 and 4" names "arrow2, bList2, chevron1, cycle2, cycle4, default, funnel1, gear1, hList1, hProcess9, hierarchy1, lProcess2, matrix1, orgChart1, process1, pyramid1, radial1, target1, vList2, venn1")
+        def list:[string] ([] _:string ("arrow2" "bList2" "chevron1" "cycle2" "cycle4" "default" "funnel1" "gear1" "hList1" "hProcess9" "hierarchy1" "lProcess2" "matrix1" "orgChart1" "process1" "pyramid1" "radial1" "target1" "vList2" "venn1"))
         def i:int 0
         while (i < (array_length list)) {
             def n:string (itemAt list i)
@@ -125,7 +125,7 @@ class SaLayoutTest {
             c.ok((n + " has a title") ((strlen r.layout.title) > 0))
             i = (i + 1)
         }
-        c.eqStr("a name it does not have" (SaBuiltins.layoutXml("gear1")) "")
+        c.eqStr("a name it does not have" (SaBuiltins.layoutXml("noSuchLayout9")) "")
     }
 
     sfn main:void () {

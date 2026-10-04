@@ -1,10 +1,11 @@
 # PLAN_SMARTART — a SmartArt layout engine
 
-Status (2026-10-04): phases 0–3 done: every algorithm the specification
-names, ten layouts, SmartArt PowerPoint can edit in the files written here,
-and the editor laying a diagram out again when its text changes. Phase 4
-not started. The engine lives in this repository
-under `smartart/`; terotests/RangerSmartArt is not used.
+Status (2026-10-04): phases 0–4 done: every algorithm the specification
+names, twenty layouts, 33 colour sets and five quick styles as data,
+SmartArt PowerPoint can edit in the files written here, the editor laying a
+diagram out again when its text changes, and a whole PowerPoint diagram
+taken as one file. What remains is checking against PowerPoint itself (the
+oracle decks) and widening further.
 
 ## Why
 
@@ -366,6 +367,27 @@ carried through a re-layout (ours are written, by the same ids); adding or
 removing nodes in the editor; text measured with the editor's fonts when it
 lays a diagram out again (the engine's estimate is used there; Sliqtly
 measures with its own fonts).
+
+## Phase 4, as built
+
+| Piece | File | Tests (each on JavaScript, C++ and Go) |
+| --- | --- | --- |
+| Colour sets as data: read from a `colorsDef`, built in, written back; repeat, cycle (there and back) and span (tints and shades of one colour blended, two colours split); a label a set lacks takes its family's entry | `smartart/SaColors.rgr` | `SaColorsTest` 87 |
+| Built-in sets: accent0_1 … accent0_3, accent1_1 … accent6_5 (outline, fill, gradient range, gradient loop, transparent range), colorful1 … colorful5 (colorful2 is accent2 and accent3, as PowerPoint names it); Venn circles see-through | `SaColors.builtin` | |
+| Quick styles as data: lnRef as line width, fillRef, effectRef as an outer shadow; simple1 … simple5; an unknown style warns and draws as simple1 | `SaQuickStyle.rgr`, `SaStyle` | |
+| Layout group 3: venn1, matrix1 (Titled Matrix), target1 (five rings at most), funnel1, gear1 (three gears), arrow2 (five points), bList2 (drawn without its pictures), hProcess9, lProcess2 (Grouped List), cycle4 (four quarters) | `builtin/*.xml`, written by `tools/make_group3.py` | `SaLayout3Test` 318 |
+| A whole PowerPoint SmartArt as one file: a Flat OPC package (`pkg:package`) of data, layout, quick style, colours and drawing; drawn as PowerPoint drew it when nothing is overridden, else laid out with the file's own definitions; written back with its own parts | `SaWhole.rgr`, `SaFile.isSmartArt`, `PptxShape.diagramStyleXml` / `diagramColorsXml` | `SaWholeTest` 49, `PptxSmartArtTest` |
+| Every SmartArt in a .pptx as one such file | `tools/extract_smartart.py` | run by hand on the written decks |
+
+Sliqtly takes a whole-diagram file like the data alone
+(`PresSmartArt` → `SaWhole.layout`); `TestSmartArtWholeFile` sends one
+through the MCP server, reported as a diagram and read back from storage.
+
+Not done in phase 4: the 3-D quick styles (polished, inset, cartoon, …);
+pictures in bList2; the oracle comparison. Several group 3 layouts are
+drawn from what PowerPoint shows rather than its definitions (the Venn
+labels sit in each circle's middle; Upward Arrow's points follow a fixed
+curve); the oracle will say how close they are.
 
 ## Phases
 

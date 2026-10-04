@@ -497,6 +497,18 @@ class SaColors {
             l.fill = (SaColors.nodeFill(kind acc))
             l.line = (SaColors.one((SaColors.nodeLine(kind acc))))
             l.text = (SaColors.one((SaColors.nodeText(kind))))
+            if ((indexOf name "vennNode") == 0) {
+                ; see-through, so where circles meet shows; the text dark
+                def vf:SaClrList (SaColors.nodeFill(kind acc))
+                def vi:int 0
+                while (vi < (array_length vf.colors)) {
+                    def vc:PptxColor (itemAt vf.colors vi)
+                    vc.alpha = 0.5
+                    vi = (vi + 1)
+                }
+                l.fill = vf
+                l.text = (SaColors.one((SaColors.sch("tx1"))))
+            }
             if (name == "node0") {
                 ; the one in the middle: the first colour, whatever the set
                 def f0:SaClrList (SaColors.nodeFill(kind acc))

@@ -1,0 +1,379 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaLayout3Test — phase 4's built-in layouts, end to end
+; ==============================================================================
+;
+; venn1, matrix1, target1, funnel1, gear1, arrow2, bList2, hProcess9,
+; lProcess2 and cycle4: drawn with the layout asked for, nothing to warn
+; about, every item's text (as many as the layout holds), inside the frame,
+; one type size — then what each layout is for. The exact boxes are the
+; oracle's to judge (smartart/oracle).
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+class SaLayout3Test {
+
+    sfn draw:SaResult (xml:string) {
+        return (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+    }
+
+    sfn allInside:boolean (r:SaResult) {
+        def e:double 0.01
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def s:PptxShape (itemAt r.shape.children i)
+            if ((((s.x < (0.0 - e)) || (s.y < (0.0 - e))) || ((s.x + s.width) > (480.0 + e))) || ((s.y + s.height) > (270.0 + e))) {
+                return false
+            }
+            i = (i + 1)
+        }
+        return true
+    }
+
+    ; the shapes with text, in drawing order
+    sfn texted:[PptxShape] (r:SaResult) {
+        def out:[PptxShape]
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def s:PptxShape (itemAt r.shape.children i)
+            if ((strlen (s.text.plainText())) > 0) {
+                push out s
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn texts:string (l:[PptxShape]) {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length l)) {
+            def s:PptxShape (itemAt l i)
+            if (i > 0) {
+                out = (out + "|")
+            }
+            out = (out + (s.text.plainText()))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn expected:string (n:int) {
+        def out:string ""
+        def i:int 1
+        while (i <= n) {
+            if (i > 1) {
+                out = (out + "|")
+            }
+            out = (out + "Item " + (to_string i))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; one size across the shapes whose names start with `prefix`
+    sfn oneSize:boolean (r:SaResult prefix:string) {
+        def l:[PptxShape] (SaLayout3Test.like(r prefix))
+        if ((array_length l) == 0) {
+            return true
+        }
+        def first:double (SaKit.sizeOf((itemAt l 0)))
+        def i:int 0
+        while (i < (array_length l)) {
+            if ((SaKit.sizeOf((itemAt l i))) != first) {
+                return false
+            }
+            i = (i + 1)
+        }
+        return (first > 0.0)
+    }
+
+    ; `lay` at 1, 2, 3, 5 and 8 items, holding `most`; `prefix` the shapes
+    ; that hold the items
+    sfn common:void (c:SaKit lay:string prefix:string most:int) {
+        def counts:[int] ([] _:int (1 2 3 5 8))
+        def i:int 0
+        while (i < (array_length counts)) {
+            def n:int (itemAt counts i)
+            def tag:string (lay + " × " + (to_string n))
+            def r:SaResult (SaLayout3Test.draw((SaKit.flat(lay n))))
+            c.ok((tag + ": drawn") r.ok)
+            c.eqStr((tag + ": with the layout asked for") r.layoutUsed lay)
+            c.eqInt((tag + ": nothing to warn about") (array_length r.warnings) 0)
+            def shown:int n
+            if (shown > most) {
+                shown = most
+            }
+            c.eqStr((tag + ": every item it holds") (SaLayout3Test.texts((SaLayout3Test.texted(r)))) (SaLayout3Test.expected(shown)))
+            c.ok((tag + ": inside the frame") (SaLayout3Test.allInside(r)))
+            c.ok((tag + ": one type size") (SaLayout3Test.oneSize(r prefix)))
+            i = (i + 1)
+        }
+    }
+
+    ; the shapes whose names start with `prefix`, in drawing order
+    sfn like:[PptxShape] (r:SaResult prefix:string) {
+        def out:[PptxShape]
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def s:PptxShape (itemAt r.shape.children i)
+            if ((indexOf s.name prefix) == 0) {
+                push out s
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn textColor:string (s:PptxShape) {
+        def para:PptxParagraph (itemAt s.text.paragraphs 0)
+        def run:PptxTextRun (itemAt para.runs 0)
+        return run.color.scheme
+    }
+
+    sfn cx:double (s:PptxShape) {
+        return (s.x + (s.width / 2.0))
+    }
+
+    sfn cy:double (s:PptxShape) {
+        return (s.y + (s.height / 2.0))
+    }
+
+    sfn testVenn:void (c:SaKit) {
+        print "-- venn1 --"
+        SaLayout3Test.common(c "venn1" "node" 100)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("venn1" 3))))
+        def l:[PptxShape] (SaLayout3Test.like(r "node"))
+        def a:PptxShape (itemAt l 0)
+        def b:PptxShape (itemAt l 1)
+        c.eqStr("circles" a.preset "ellipse")
+        def d:double (sqrt ((((SaLayout3Test.cx(a)) - (SaLayout3Test.cx(b))) * ((SaLayout3Test.cx(a)) - (SaLayout3Test.cx(b)))) + (((SaLayout3Test.cy(a)) - (SaLayout3Test.cy(b))) * ((SaLayout3Test.cy(a)) - (SaLayout3Test.cy(b))))))
+        c.ok(("that overlap (" + (to_string d) + " < " + (to_string a.width) + ")") (d < a.width))
+        c.near("see-through" a.fill.alpha 0.5)
+        c.eqStr("dark text over them" (SaLayout3Test.textColor(a)) "tx1")
+        def r2:SaResult (SaLayout3Test.draw((SaKit.flat("venn1" 2))))
+        def l2:[PptxShape] (SaLayout3Test.like(r2 "node"))
+        def p:PptxShape (itemAt l2 0)
+        def q:PptxShape (itemAt l2 1)
+        c.near("two: side by side" (SaLayout3Test.cy(p)) (SaLayout3Test.cy(q)))
+        c.ok("the first on the left" ((SaLayout3Test.cx(p)) < (SaLayout3Test.cx(q))))
+        ; the text boxes of neighbours do not meet
+        def ra:double (p.x + (p.width - p.text.insetR))
+        def lb:double (q.x + q.text.insetL)
+        c.ok("their text clear of each other" (ra <= (lb + 0.01)))
+    }
+
+    sfn matrix:string (k:int) {
+        def pts:string (SaKit.pt("t" "Strategy"))
+        def cs:string (SaKit.cx("0" "t"))
+        def i:int 1
+        while (i <= k) {
+            def id:string ("q" + (to_string i))
+            pts = (pts + (SaKit.pt(id ("Item " + (to_string i)))))
+            cs = (cs + (SaKit.cx("t" id)))
+            i = (i + 1)
+        }
+        return (SaKit.data("matrix1" pts cs))
+    }
+
+    sfn testMatrix:void (c:SaKit) {
+        print "-- matrix1 --"
+        def r:SaResult (SaLayout3Test.draw((SaLayout3Test.matrix(4))))
+        c.ok("drawn" r.ok)
+        c.eqInt("nothing to warn about" (array_length r.warnings) 0)
+        def quads:[PptxShape] (SaLayout3Test.like(r "quad"))
+        c.eqInt("four quadrants" (array_length quads) 4)
+        c.eqStr("in reading order" (SaLayout3Test.texts(quads)) "Item 1|Item 2|Item 3|Item 4")
+        def q0:PptxShape (itemAt quads 0)
+        def q3:PptxShape (itemAt quads 3)
+        c.near("the first at the top left" q0.x 0.0)
+        c.near("the last at the bottom right" (q3.x + q3.width) 480.0)
+        c.near("half the frame each" q0.width 240.0)
+        c.eqStr("the first's text toward its corner" q0.text.anchor "t")
+        c.eqStr("the last's to its own" q3.text.anchor "b")
+        def ts:[PptxShape] (SaLayout3Test.like(r "title"))
+        def t:PptxShape (itemAt ts 0)
+        c.eqStr("the title" (t.text.plainText()) "Strategy")
+        c.near("in the middle" (SaLayout3Test.cx(t)) 240.0)
+        c.near("both ways" (SaLayout3Test.cy(t)) 135.0)
+        def last:PptxShape (itemAt r.shape.children ((array_length r.shape.children) - 1))
+        c.eqStr("drawn over the quadrants" last.name "title 1")
+        c.ok("inside the frame" (SaLayout3Test.allInside(r)))
+        c.ok("one size for the quadrants" (SaLayout3Test.oneSize(r "quad")))
+        def six:SaResult (SaLayout3Test.draw((SaLayout3Test.matrix(6))))
+        c.eqInt("four quadrants at most" (array_length (SaLayout3Test.like(six "quad"))) 4)
+        def none:SaResult (SaLayout3Test.draw((SaLayout3Test.matrix(0))))
+        c.ok("only a title: drawn" none.ok)
+        c.eqInt("no quadrants" (array_length (SaLayout3Test.like(none "quad"))) 0)
+    }
+
+    sfn testTarget:void (c:SaKit) {
+        print "-- target1 --"
+        SaLayout3Test.common(c "target1" "ring" 5)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("target1" 3))))
+        def rings:[PptxShape] (SaLayout3Test.texted(r))
+        def a:PptxShape (itemAt rings 0)
+        def b:PptxShape (itemAt rings 1)
+        def d:PptxShape (itemAt rings 2)
+        c.near("one centre" (SaLayout3Test.cx(a)) (SaLayout3Test.cx(d)))
+        c.near("down too" (SaLayout3Test.cy(a)) (SaLayout3Test.cy(d)))
+        c.ok("each inside the one before" ((a.width > b.width) && (b.width > d.width)))
+        c.near("evenly" (a.width - b.width) (b.width - d.width))
+        c.eqStr("rings" a.preset "ellipse")
+        c.eqStr("the outer ones' text at their top" a.text.anchor "t")
+        c.ok("in the band above the next ring" ((a.text.insetB + 0.5) > b.height))
+        c.ok("the innermost's in its whole circle" (d.text.insetB < 1.0))
+    }
+
+    sfn testFunnel:void (c:SaKit) {
+        print "-- funnel1 --"
+        SaLayout3Test.common(c "funnel1" "item" 100)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("funnel1" 4))))
+        def f:PptxShape (itemAt (SaLayout3Test.like(r "shape")) 0)
+        c.eqStr("a funnel" f.preset "funnel")
+        c.ok("with no text" (f.hasText == false))
+        def items:[PptxShape] (SaLayout3Test.like(r "item"))
+        c.eqInt("all but the last poured in" (array_length items) 3)
+        def i0:PptxShape (itemAt items 0)
+        c.ok("inside the funnel's mouth" (((i0.x >= f.x) && ((i0.y + i0.height) <= (f.y + (f.height / 2.0)))) && (i0.y >= f.y)))
+        def res:PptxShape (itemAt (SaLayout3Test.like(r "result")) 0)
+        c.eqStr("the last comes out" (res.text.plainText()) "Item 4")
+        c.ok("below the funnel" (res.y > (f.y + f.height)))
+        def ar:PptxShape (itemAt (SaLayout3Test.like(r "arrow")) 0)
+        c.ok("an arrow down to it" (((ar.preset == "downArrow") && (ar.y > f.y)) && ((ar.y + ar.height) <= res.y)))
+        def one:SaResult (SaLayout3Test.draw((SaKit.flat("funnel1" 1))))
+        c.eqInt("one item: nothing poured" (array_length (SaLayout3Test.like(one "item"))) 0)
+        c.eqStr("it is what comes out" (SaLayout3Test.texts((SaLayout3Test.texted(one)))) "Item 1")
+    }
+
+    sfn testGear:void (c:SaKit) {
+        print "-- gear1 --"
+        SaLayout3Test.common(c "gear1" "gear" 3)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("gear1" 3))))
+        def gs:[PptxShape] (SaLayout3Test.texted(r))
+        def a:PptxShape (itemAt gs 0)
+        def b:PptxShape (itemAt gs 1)
+        def d:PptxShape (itemAt gs 2)
+        c.eqStr("the first a nine-tooth gear" a.preset "gear9")
+        c.eqStr("the others six-tooth" (b.preset + " " + d.preset) "gear6 gear6")
+        c.ok("the first the largest" ((a.width > b.width) && (b.width > d.width)))
+        def dab:double (sqrt ((((SaLayout3Test.cx(a)) - (SaLayout3Test.cx(b))) * ((SaLayout3Test.cx(a)) - (SaLayout3Test.cx(b)))) + (((SaLayout3Test.cy(a)) - (SaLayout3Test.cy(b))) * ((SaLayout3Test.cy(a)) - (SaLayout3Test.cy(b))))))
+        def reach:double ((a.width + b.width) / 2.0)
+        c.ok(("the first two mesh: closer than their radii, not on top (" + (to_string dab) + " of " + (to_string reach) + ")") ((dab < reach) && (dab > (reach * 0.7))))
+        def dad:double (sqrt ((((SaLayout3Test.cx(a)) - (SaLayout3Test.cx(d))) * ((SaLayout3Test.cx(a)) - (SaLayout3Test.cx(d)))) + (((SaLayout3Test.cy(a)) - (SaLayout3Test.cy(d))) * ((SaLayout3Test.cy(a)) - (SaLayout3Test.cy(d))))))
+        def reach2:double ((a.width + d.width) / 2.0)
+        c.ok("the first and third too" ((dad < reach2) && (dad > (reach2 * 0.7))))
+        c.near("square: round gears" a.width a.height)
+    }
+
+    sfn testArrow:void (c:SaKit) {
+        print "-- arrow2 --"
+        SaLayout3Test.common(c "arrow2" "label" 5)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("arrow2" 3))))
+        def sw:PptxShape (itemAt (SaLayout3Test.like(r "swoosh")) 0)
+        c.eqStr("the sweeping arrow" sw.preset "swooshArrow")
+        c.near("the whole frame" sw.width 480.0)
+        def first:PptxShape (itemAt r.shape.children 0)
+        c.eqStr("drawn first, under the rest" first.name "swoosh 1")
+        def dots:[PptxShape] (SaLayout3Test.like(r "dot"))
+        c.eqInt("a point per item" (array_length dots) 3)
+        def d0:PptxShape (itemAt dots 0)
+        def d2:PptxShape (itemAt dots 2)
+        c.ok("rising left to right" (((SaLayout3Test.cx(d2)) > (SaLayout3Test.cx(d0))) && ((SaLayout3Test.cy(d2)) < (SaLayout3Test.cy(d0)))))
+        def labels:[PptxShape] (SaLayout3Test.like(r "label"))
+        def l0:PptxShape (itemAt labels 0)
+        c.ok("each label beside its point, above it" ((l0.x > (SaLayout3Test.cx(d0))) && ((l0.y + l0.height) <= (d0.y + d0.height))))
+        c.ok("the labels are text on the page" l0.noFill)
+    }
+
+    sfn testBList:void (c:SaKit) {
+        print "-- bList2 --"
+        SaLayout3Test.common(c "bList2" "text" 100)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("bList2" 5))))
+        def texts:[PptxShape] (SaLayout3Test.like(r "text"))
+        def accents:[PptxShape] (SaLayout3Test.like(r "accent"))
+        c.eqInt("an accent with every block" (array_length accents) 5)
+        def t0:PptxShape (itemAt texts 0)
+        def a0:PptxShape (itemAt accents 0)
+        c.ok("at its top left, over its edge" (((a0.x >= t0.x) && (a0.y < t0.y)) && ((a0.y + a0.height) > t0.y)))
+        c.eqStr("round" a0.preset "ellipse")
+        def t3:PptxShape (itemAt texts 3)
+        c.ok("five: a second row" (t3.y > t0.y))
+    }
+
+    sfn testHProcess:void (c:SaKit) {
+        print "-- hProcess9 --"
+        SaLayout3Test.common(c "hProcess9" "node" 100)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("hProcess9" 4))))
+        def ar:PptxShape (itemAt r.shape.children 0)
+        c.eqStr("one wide arrow behind" ar.preset "rightArrow")
+        def nodes:[PptxShape] (SaLayout3Test.like(r "node"))
+        def n0:PptxShape (itemAt nodes 0)
+        def n3:PptxShape (itemAt nodes 3)
+        c.ok("the blocks along it" ((n0.x < n3.x) && ((n0.y >= ar.y) && ((n0.y + n0.height) <= (ar.y + ar.height)))))
+        c.near("level" n0.y n3.y)
+    }
+
+    sfn testGrouped:void (c:SaKit) {
+        print "-- lProcess2 --"
+        def r:SaResult (SaLayout3Test.draw((SaKit.twoLevels("lProcess2" 3 2))))
+        c.ok("drawn" r.ok)
+        c.eqInt("nothing to warn about" (array_length r.warnings) 0)
+        c.ok("inside the frame" (SaLayout3Test.allInside(r)))
+        def heads:[PptxShape] (SaLayout3Test.like(r "header"))
+        c.eqStr("a column per item, headed" (SaLayout3Test.texts(heads)) "Item 1|Item 2|Item 3")
+        def kids:[PptxShape] (SaLayout3Test.like(r "child"))
+        c.eqStr("the items under each, in it" (SaLayout3Test.texts(kids)) "Item 1.1|Item 1.2|Item 2.1|Item 2.2|Item 3.1|Item 3.2")
+        def bgs:[PptxShape] (SaLayout3Test.like(r "bg"))
+        def b0:PptxShape (itemAt bgs 0)
+        def k1:PptxShape (itemAt kids 1)
+        c.ok("inside their column" (((k1.x >= b0.x) && ((k1.x + k1.width) <= (b0.x + b0.width))) && ((k1.y + k1.height) <= (b0.y + b0.height))))
+        def h0:PptxShape (itemAt heads 0)
+        def k0:PptxShape (itemAt kids 0)
+        c.ok("under the heading" (k0.y >= (h0.y + h0.height)))
+        c.ok("one size for the headings" (SaLayout3Test.oneSize(r "header")))
+        c.ok("and for the items" (SaLayout3Test.oneSize(r "child")))
+        def flat:SaResult (SaLayout3Test.draw((SaKit.flat("lProcess2" 2))))
+        c.eqStr("no items under: the columns alone" (SaLayout3Test.texts((SaLayout3Test.like(flat "header")))) "Item 1|Item 2")
+    }
+
+    sfn testCycleMatrix:void (c:SaKit) {
+        print "-- cycle4 --"
+        SaLayout3Test.common(c "cycle4" "label" 4)
+        def r:SaResult (SaLayout3Test.draw((SaKit.flat("cycle4" 4))))
+        def ws:[PptxShape] (SaLayout3Test.like(r "wedge"))
+        c.eqInt("four quarters" (array_length ws) 4)
+        def rots:string ""
+        def i:int 0
+        while (i < 4) {
+            def w:PptxShape (itemAt ws i)
+            rots = (rots + (to_string (to_int w.rotation)) + " ")
+            i = (i + 1)
+        }
+        c.eqStr("each turned to its corner" rots "0 90 270 180 ")
+        def w0:PptxShape (itemAt ws 0)
+        c.eqStr("pie wedges" w0.preset "pieWedge")
+        c.ok("with no text of their own" (w0.hasText == false))
+        def labels:[PptxShape] (SaLayout3Test.like(r "label"))
+        def l0:PptxShape (itemAt labels 0)
+        c.ok("the text over its quarter, not turned" (((l0.rotation == 0.0) && (l0.x == w0.x)) && (l0.y == w0.y)))
+        c.ok("in a square" ((SaLayout3Test.cx(w0)) < 240.0))
+    }
+
+    sfn main:void () {
+        print "== SaLayout3Test =="
+        def c (new SaKit())
+        SaLayout3Test.testVenn(c)
+        SaLayout3Test.testMatrix(c)
+        SaLayout3Test.testTarget(c)
+        SaLayout3Test.testFunnel(c)
+        SaLayout3Test.testGear(c)
+        SaLayout3Test.testArrow(c)
+        SaLayout3Test.testBList(c)
+        SaLayout3Test.testHProcess(c)
+        SaLayout3Test.testGrouped(c)
+        SaLayout3Test.testCycleMatrix(c)
+        c.finish("SaLayout3Test")
+    }
+}

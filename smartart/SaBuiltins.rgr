@@ -11,24 +11,48 @@
 class SaBuiltins {
 
     sfn names:string () {
-        return "chevron1, cycle2, default, hList1, hierarchy1, orgChart1, process1, pyramid1, radial1, vList2"
+        return "arrow2, bList2, chevron1, cycle2, cycle4, default, funnel1, gear1, hList1, hProcess9, hierarchy1, lProcess2, matrix1, orgChart1, process1, pyramid1, radial1, target1, vList2, venn1"
     }
 
     sfn layoutXml:string (name:string) {
+        if (name == "arrow2") {
+            return (SaBuiltins.arrow2())
+        }
+        if (name == "bList2") {
+            return (SaBuiltins.bList2())
+        }
         if (name == "chevron1") {
             return (SaBuiltins.chevron1())
         }
         if (name == "cycle2") {
             return (SaBuiltins.cycle2())
         }
+        if (name == "cycle4") {
+            return (SaBuiltins.cycle4())
+        }
         if (name == "default") {
             return (SaBuiltins.default())
+        }
+        if (name == "funnel1") {
+            return (SaBuiltins.funnel1())
+        }
+        if (name == "gear1") {
+            return (SaBuiltins.gear1())
         }
         if (name == "hList1") {
             return (SaBuiltins.hList1())
         }
+        if (name == "hProcess9") {
+            return (SaBuiltins.hProcess9())
+        }
         if (name == "hierarchy1") {
             return (SaBuiltins.hierarchy1())
+        }
+        if (name == "lProcess2") {
+            return (SaBuiltins.lProcess2())
+        }
+        if (name == "matrix1") {
+            return (SaBuiltins.matrix1())
         }
         if (name == "orgChart1") {
             return (SaBuiltins.orgChart1())
@@ -42,10 +66,142 @@ class SaBuiltins {
         if (name == "radial1") {
             return (SaBuiltins.radial1())
         }
+        if (name == "target1") {
+            return (SaBuiltins.target1())
+        }
         if (name == "vList2") {
             return (SaBuiltins.vList2())
         }
+        if (name == "venn1") {
+            return (SaBuiltins.venn1())
+        }
         return ""
+    }
+
+    sfn arrow2:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/arrow2\">")
+        s = (s + "<dgm:title val=\"Upward Arrow\"/><dgm:layoutNode name=\"arrow\"><dgm:varLst><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:alg type=\"composite\"/><dgm:shape/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"swoosh\" refType=\"w\" fact=\"1\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"swoosh\" refType=\"h\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"swoosh\" refType=\"w\" fact=\"0\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"swoosh\" refType=\"h\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"ch\" op=\"equ\" val=\"65\"/></dgm:constrLst><dgm:choose name=\"count\">")
+        s = (s + "<dgm:if name=\"n1\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"1\"><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.47\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot1\" refType=\"h\" fact=\"0.575712\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.495\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.405712\"/></dgm:constrLst></dgm:if>")
+        s = (s + "<dgm:if name=\"n2\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"2\"><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.305\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot1\" refType=\"h\" fact=\"0.744543\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.33\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.574543\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.635\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot2\" refType=\"h\" fact=\"0.37841\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.66\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.20841\"/></dgm:constrLst></dgm:if>")
+        s = (s + "<dgm:if name=\"n3\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"3\"><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.25\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot1\" refType=\"h\" fact=\"0.791844\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.275\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.621844\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.47\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot2\" refType=\"h\" fact=\"0.575712\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.495\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.405712\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.69\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot3\" refType=\"h\" fact=\"0.307716\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label3\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label3\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label3\" refType=\"w\" fact=\"0.715\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label3\" refType=\"h\" fact=\"0.137716\"/></dgm:constrLst></dgm:if>")
+        s = (s + "<dgm:if name=\"n4\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"4\"><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.2225\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot1\" refType=\"h\" fact=\"0.81311\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.2475\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.64311\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.3875\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot2\" refType=\"h\" fact=\"0.664414\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.4125\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.494414\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.5525\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot3\" refType=\"h\" fact=\"0.480036\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label3\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label3\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label3\" refType=\"w\" fact=\"0.5775\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label3\" refType=\"h\" fact=\"0.310036\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"dot4\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"dot4\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot4\" refType=\"w\" fact=\"0.7175\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot4\" refType=\"h\" fact=\"0.271551\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"label4\" refType=\"w\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"label4\" refType=\"h\" fact=\"0.16\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"label4\" refType=\"w\" fact=\"0.7425\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"label4\" refType=\"h\" fact=\"0.101551\"/></dgm:constrLst></dgm:if><dgm:else name=\"n5\"><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot1\" refType=\"w\" fact=\"0.206\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot1\" refType=\"h\" fact=\"0.824917\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.2\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.16\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"label1\" refType=\"w\" fact=\"0.231\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"label1\" refType=\"h\" fact=\"0.654917\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot2\" refType=\"w\" fact=\"0.338\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot2\" refType=\"h\" fact=\"0.713662\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.2\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.16\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"label2\" refType=\"w\" fact=\"0.363\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"label2\" refType=\"h\" fact=\"0.543662\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot3\" refType=\"w\" fact=\"0.47\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot3\" refType=\"h\" fact=\"0.575712\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"label3\" refType=\"w\" fact=\"0.2\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"label3\" refType=\"h\" fact=\"0.16\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"label3\" refType=\"w\" fact=\"0.495\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"label3\" refType=\"h\" fact=\"0.405712\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"dot4\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"dot4\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot4\" refType=\"w\" fact=\"0.602\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot4\" refType=\"h\" fact=\"0.419724\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"label4\" refType=\"w\" fact=\"0.2\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"label4\" refType=\"h\" fact=\"0.16\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"label4\" refType=\"w\" fact=\"0.627\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"label4\" refType=\"h\" fact=\"0.249724\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"dot5\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"dot5\" refType=\"w\" fact=\"0.05\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"dot5\" refType=\"w\" fact=\"0.734\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"dot5\" refType=\"h\" fact=\"0.249602\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"label5\" refType=\"w\" fact=\"0.2\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"label5\" refType=\"h\" fact=\"0.16\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"label5\" refType=\"w\" fact=\"0.759\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"label5\" refType=\"h\" fact=\"0.0796017\"/>")
+        s = (s + "</dgm:constrLst></dgm:else></dgm:choose><dgm:layoutNode name=\"swoosh\" styleLbl=\"alignAcc1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"swooshArrow\"/></dgm:layoutNode>")
+        s = (s + "<dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\" cnt=\"5\"><dgm:choose name=\"position\"><dgm:if name=\"p1\" func=\"pos\" op=\"equ\" val=\"1\">")
+        s = (s + "<dgm:layoutNode name=\"dot1\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"ellipse\"/></dgm:layoutNode><dgm:layoutNode name=\"label1\" styleLbl=\"revTx\">")
+        s = (s + "<dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/><dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"none\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.1\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:if name=\"p2\" func=\"pos\" op=\"equ\" val=\"2\"><dgm:layoutNode name=\"dot2\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/>")
+        s = (s + "<dgm:shape type=\"ellipse\"/></dgm:layoutNode><dgm:layoutNode name=\"label2\" styleLbl=\"revTx\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/>")
+        s = (s + "<dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"none\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.1\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:if name=\"p3\" func=\"pos\" op=\"equ\" val=\"3\">")
+        s = (s + "<dgm:layoutNode name=\"dot3\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"ellipse\"/></dgm:layoutNode><dgm:layoutNode name=\"label3\" styleLbl=\"revTx\">")
+        s = (s + "<dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/><dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"none\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.1\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:if name=\"p4\" func=\"pos\" op=\"equ\" val=\"4\"><dgm:layoutNode name=\"dot4\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/>")
+        s = (s + "<dgm:shape type=\"ellipse\"/></dgm:layoutNode><dgm:layoutNode name=\"label4\" styleLbl=\"revTx\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/>")
+        s = (s + "<dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"none\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.1\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:else name=\"p5\">")
+        s = (s + "<dgm:layoutNode name=\"dot5\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"ellipse\"/></dgm:layoutNode><dgm:layoutNode name=\"label5\" styleLbl=\"revTx\">")
+        s = (s + "<dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/><dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"none\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.1\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:else></dgm:choose></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn bList2:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/bList2\">")
+        s = (s + "<dgm:title val=\"Bending Picture Accent List\"/><dgm:layoutNode name=\"list\"><dgm:varLst><dgm:dir/><dgm:resizeHandles val=\"exact\"/></dgm:varLst>")
+        s = (s + "<dgm:alg type=\"snake\"><dgm:param type=\"grDir\" val=\"tL\"/><dgm:param type=\"flowDir\" val=\"row\"/><dgm:param type=\"contDir\" val=\"sameDir\"/>")
+        s = (s + "<dgm:param type=\"off\" val=\"ctr\"/></dgm:alg><dgm:shape/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"cell\" refType=\"w\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"cell\" refType=\"w\" refFor=\"ch\" refForName=\"cell\" fact=\"0.62\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" refFor=\"ch\" refForName=\"cell\" fact=\"0.08\"/>")
+        s = (s + "<dgm:constr type=\"secSibSp\" refType=\"w\" refFor=\"ch\" refForName=\"cell\" fact=\"0.06\"/><dgm:constr type=\"primFontSz\" for=\"des\" forName=\"text\" op=\"equ\" val=\"65\"/>")
+        s = (s + "</dgm:constrLst><dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"cell\"><dgm:alg type=\"composite\"/><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"text\" refType=\"w\" fact=\"1\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"text\" refType=\"h\" fact=\"0.72\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"text\" refType=\"w\" fact=\"0\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"text\" refType=\"h\" fact=\"0.28\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"accent\" refType=\"h\" fact=\"0.42\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"accent\" refType=\"h\" fact=\"0.42\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"accent\" refType=\"w\" fact=\"0.03\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"accent\" refType=\"h\" fact=\"0\"/></dgm:constrLst>")
+        s = (s + "<dgm:layoutNode name=\"text\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg><dgm:shape type=\"roundRect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"h\" fact=\"0.22\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode><dgm:layoutNode name=\"accent\" styleLbl=\"fgAcc1\"><dgm:alg type=\"tx\"/>")
+        s = (s + "<dgm:shape type=\"ellipse\"/></dgm:layoutNode></dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
     }
 
     sfn chevron1:string () {
@@ -85,6 +241,49 @@ class SaBuiltins {
         return s
     }
 
+    sfn cycle4:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/cycle4\">")
+        s = (s + "<dgm:title val=\"Cycle Matrix\"/><dgm:layoutNode name=\"cycle\"><dgm:varLst><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:alg type=\"composite\"/><dgm:shape/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"core\" refType=\"h\" fact=\"1\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"core\" refType=\"h\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"core\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"core\" refType=\"h\" fact=\"0.5\"/></dgm:constrLst>")
+        s = (s + "<dgm:layoutNode name=\"core\"><dgm:alg type=\"composite\"/><dgm:shape/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"wedges\" refType=\"w\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"wedges\" refType=\"h\" fact=\"1\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"wedges\" refType=\"w\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"wedges\" refType=\"h\" fact=\"0\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"labels\" refType=\"w\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"labels\" refType=\"h\" fact=\"1\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"labels\" refType=\"w\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"labels\" refType=\"h\" fact=\"0\"/><dgm:constr type=\"primFontSz\" for=\"des\" forName=\"label\" op=\"equ\" val=\"65\"/></dgm:constrLst>")
+        s = (s + "<dgm:layoutNode name=\"wedges\"><dgm:alg type=\"snake\"><dgm:param type=\"bkpt\" val=\"fixed\"/><dgm:param type=\"bkPtFixedVal\" val=\"2\"/></dgm:alg><dgm:shape/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"wedge\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"wedge\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" fact=\"0.02\"/></dgm:constrLst><dgm:forEach name=\"shapes\" axis=\"ch\" ptType=\"node\" cnt=\"4\"><dgm:choose name=\"position\">")
+        s = (s + "<dgm:if name=\"p1\" func=\"pos\" op=\"equ\" val=\"1\"><dgm:layoutNode name=\"wedge\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"pieWedge\"/></dgm:layoutNode>")
+        s = (s + "</dgm:if><dgm:if name=\"p2\" func=\"pos\" op=\"equ\" val=\"2\"><dgm:layoutNode name=\"wedge\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"pieWedge\" rot=\"90\"/>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:if name=\"p3\" func=\"pos\" op=\"equ\" val=\"3\"><dgm:layoutNode name=\"wedge\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/>")
+        s = (s + "<dgm:shape type=\"pieWedge\" rot=\"270\"/></dgm:layoutNode></dgm:if><dgm:else name=\"p4\"><dgm:layoutNode name=\"wedge\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/>")
+        s = (s + "<dgm:shape type=\"pieWedge\" rot=\"180\"/></dgm:layoutNode></dgm:else></dgm:choose></dgm:forEach></dgm:layoutNode><dgm:layoutNode name=\"labels\">")
+        s = (s + "<dgm:alg type=\"snake\"><dgm:param type=\"bkpt\" val=\"fixed\"/><dgm:param type=\"bkPtFixedVal\" val=\"2\"/></dgm:alg><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"label\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"label\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" fact=\"0.02\"/></dgm:constrLst><dgm:forEach name=\"texts\" axis=\"ch\" ptType=\"node\" cnt=\"4\"><dgm:choose name=\"position\">")
+        s = (s + "<dgm:if name=\"p1\" func=\"pos\" op=\"equ\" val=\"1\"><dgm:layoutNode name=\"label\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/>")
+        s = (s + "<dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"none\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.12\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.12\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:if name=\"p2\" func=\"pos\" op=\"equ\" val=\"2\"><dgm:layoutNode name=\"label\" styleLbl=\"node1\"><dgm:alg type=\"tx\">")
+        s = (s + "<dgm:param type=\"txAnchorVert\" val=\"t\"/><dgm:param type=\"parTxLTRAlign\" val=\"r\"/></dgm:alg><dgm:shape type=\"none\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.12\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.12\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:if name=\"p3\" func=\"pos\" op=\"equ\" val=\"3\">")
+        s = (s + "<dgm:layoutNode name=\"label\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/><dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg>")
+        s = (s + "<dgm:shape type=\"none\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.12\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.12\"/>")
+        s = (s + "</dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:else name=\"p4\">")
+        s = (s + "<dgm:layoutNode name=\"label\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/><dgm:param type=\"parTxLTRAlign\" val=\"r\"/></dgm:alg>")
+        s = (s + "<dgm:shape type=\"none\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.12\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.12\"/>")
+        s = (s + "</dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:else></dgm:choose></dgm:forEach>")
+        s = (s + "</dgm:layoutNode></dgm:layoutNode></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
     sfn default:string () {
         def s:string ""
         s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/default\">")
@@ -101,6 +300,66 @@ class SaBuiltins {
         s = (s + "<dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
         s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
         s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn funnel1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/funnel1\">")
+        s = (s + "<dgm:title val=\"Funnel\"/><dgm:layoutNode name=\"funnel\"><dgm:varLst><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:alg type=\"composite\"/><dgm:shape/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"shape\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"shape\" refType=\"h\" fact=\"0.62\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"shape\" refType=\"h\" fact=\"0\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"shape\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"mouth\" refType=\"w\" fact=\"0.38\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"mouth\" refType=\"h\" fact=\"0.22\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"mouth\" refType=\"h\" fact=\"0.06\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"mouth\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"arrow\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"arrow\" refType=\"h\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"arrow\" refType=\"h\" fact=\"0.65\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"arrow\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"result\" refType=\"w\" fact=\"0.36\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"result\" refType=\"h\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"result\" refType=\"h\" fact=\"0.78\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"result\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"des\" forName=\"item\" op=\"equ\" val=\"65\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"result\" op=\"equ\" val=\"65\"/>")
+        s = (s + "</dgm:constrLst><dgm:layoutNode name=\"shape\" styleLbl=\"alignAcc1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"funnel\"/></dgm:layoutNode><dgm:layoutNode name=\"mouth\">")
+        s = (s + "<dgm:alg type=\"snake\"><dgm:param type=\"off\" val=\"ctr\"/></dgm:alg><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"item\" refType=\"h\" fact=\"0.9\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"item\" refType=\"h\" fact=\"0.9\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" fact=\"0.02\"/></dgm:constrLst><dgm:forEach name=\"poured\" axis=\"ch\" ptType=\"node\"><dgm:choose name=\"notLast\">")
+        s = (s + "<dgm:if name=\"poured\" func=\"revPos\" op=\"gt\" val=\"1\"><dgm:layoutNode name=\"item\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg><dgm:shape type=\"ellipse\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.12\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.12\"/><dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.12\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:else name=\"last\"/></dgm:choose></dgm:forEach>")
+        s = (s + "</dgm:layoutNode><dgm:layoutNode name=\"arrow\" styleLbl=\"sibTrans2D1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"downArrow\"/></dgm:layoutNode>")
+        s = (s + "<dgm:forEach name=\"out\" axis=\"ch\" ptType=\"node\"><dgm:choose name=\"isLast\"><dgm:if name=\"last\" func=\"revPos\" op=\"equ\" val=\"1\">")
+        s = (s + "<dgm:layoutNode name=\"result\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg><dgm:shape type=\"roundRect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:else name=\"others\"/></dgm:choose></dgm:forEach>")
+        s = (s + "</dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn gear1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/gear1\">")
+        s = (s + "<dgm:title val=\"Gear\"/><dgm:layoutNode name=\"gear\"><dgm:varLst><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:alg type=\"composite\"/><dgm:shape/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"gears\" refType=\"h\" fact=\"1\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"gears\" refType=\"h\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"gears\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"gears\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "</dgm:constrLst><dgm:layoutNode name=\"gears\"><dgm:alg type=\"composite\"/><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"gear1\" refType=\"w\" fact=\"0.56\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"gear1\" refType=\"h\" fact=\"0.56\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"gear1\" refType=\"w\" fact=\"0.32\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"gear1\" refType=\"h\" fact=\"0.56\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"gear2\" refType=\"w\" fact=\"0.4\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"gear2\" refType=\"h\" fact=\"0.4\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"gear2\" refType=\"w\" fact=\"0.61\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"gear2\" refType=\"h\" fact=\"0.27\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"gear3\" refType=\"w\" fact=\"0.32\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"gear3\" refType=\"h\" fact=\"0.32\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"gear3\" refType=\"w\" fact=\"0.66\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"gear3\" refType=\"h\" fact=\"0.72\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"ch\" op=\"equ\" val=\"65\"/></dgm:constrLst><dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\" cnt=\"3\"><dgm:choose name=\"position\">")
+        s = (s + "<dgm:if name=\"p1\" func=\"pos\" op=\"equ\" val=\"1\"><dgm:layoutNode name=\"gear1\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg><dgm:shape type=\"gear9\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.24\"/><dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.24\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.24\"/><dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.24\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:if name=\"p2\" func=\"pos\" op=\"equ\" val=\"2\">")
+        s = (s + "<dgm:layoutNode name=\"gear2\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg><dgm:shape type=\"gear6\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.24\"/><dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.24\"/><dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.24\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.24\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:else name=\"p3\"><dgm:layoutNode name=\"gear3\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg><dgm:shape type=\"gear6\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.24\"/><dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.24\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.24\"/><dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.24\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:else></dgm:choose></dgm:forEach></dgm:layoutNode>")
+        s = (s + "</dgm:layoutNode></dgm:layoutDef>")
         return s
     }
 
@@ -132,6 +391,26 @@ class SaBuiltins {
         return s
     }
 
+    sfn hProcess9:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/hProcess9\">")
+        s = (s + "<dgm:title val=\"Continuous Block Process\"/><dgm:layoutNode name=\"process\"><dgm:varLst><dgm:dir/><dgm:resizeHandles val=\"exact\"/></dgm:varLst>")
+        s = (s + "<dgm:alg type=\"composite\"/><dgm:shape/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"arrow\" refType=\"w\" fact=\"0.9\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"arrow\" refType=\"h\" fact=\"0.84\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"arrow\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"arrow\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"row\" refType=\"w\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"row\" refType=\"h\" fact=\"0.38\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"row\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"row\" refType=\"h\" fact=\"0.5\"/></dgm:constrLst><dgm:layoutNode name=\"arrow\" styleLbl=\"bgShp\"><dgm:alg type=\"tx\"/>")
+        s = (s + "<dgm:shape type=\"rightArrow\"/></dgm:layoutNode><dgm:layoutNode name=\"row\"><dgm:alg type=\"lin\"/><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" refType=\"w\" fact=\"0.3\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"node\" refType=\"h\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.12\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"node\" op=\"equ\" val=\"65\"/>")
+        s = (s + "</dgm:constrLst><dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg>")
+        s = (s + "<dgm:shape type=\"roundRect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
     sfn hierarchy1:string () {
         def s:string ""
         s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/hierarchy1\">")
@@ -151,6 +430,75 @@ class SaBuiltins {
         s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
         s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode><dgm:layoutNode name=\"hierChild2\"><dgm:alg type=\"hierChild\"/>")
         s = (s + "<dgm:shape/><dgm:forEach name=\"under\" ref=\"branches\"/></dgm:layoutNode></dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn lProcess2:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/lProcess2\">")
+        s = (s + "<dgm:title val=\"Grouped List\"/><dgm:layoutNode name=\"lists\"><dgm:varLst><dgm:dir/><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:alg type=\"lin\"/><dgm:shape/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"group\" refType=\"w\" fact=\"0.32\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"group\" refType=\"h\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" refFor=\"ch\" refForName=\"group\" fact=\"0.08\"/><dgm:constr type=\"primFontSz\" for=\"des\" forName=\"header\" op=\"equ\" val=\"65\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"des\" forName=\"child\" op=\"equ\" val=\"65\"/></dgm:constrLst><dgm:forEach name=\"groups\" axis=\"ch\" ptType=\"node\">")
+        s = (s + "<dgm:layoutNode name=\"group\"><dgm:alg type=\"composite\"/><dgm:shape/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"bg\" refType=\"w\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"bg\" refType=\"h\" fact=\"1\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"bg\" refType=\"w\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"bg\" refType=\"h\" fact=\"0\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"header\" refType=\"w\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"header\" refType=\"h\" fact=\"0.18\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"header\" refType=\"w\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"t\" for=\"ch\" forName=\"header\" refType=\"h\" fact=\"0\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"kids\" refType=\"w\" fact=\"0.86\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"kids\" refType=\"h\" fact=\"0.78\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"kids\" refType=\"h\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"kids\" refType=\"w\" fact=\"0.5\"/></dgm:constrLst><dgm:layoutNode name=\"bg\" styleLbl=\"bgShp\"><dgm:alg type=\"tx\"/>")
+        s = (s + "<dgm:shape type=\"roundRect\"/></dgm:layoutNode><dgm:layoutNode name=\"header\" styleLbl=\"revTx\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"mid\"/>")
+        s = (s + "</dgm:alg><dgm:shape type=\"none\"/><dgm:presOf axis=\"self\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode><dgm:layoutNode name=\"kids\"><dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/><dgm:param type=\"nodeVertAlign\" val=\"t\"/></dgm:alg>")
+        s = (s + "<dgm:shape/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"child\" refType=\"w\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"child\" refType=\"w\" refFor=\"ch\" refForName=\"child\" fact=\"0.42\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" refFor=\"ch\" refForName=\"child\" fact=\"0.06\"/></dgm:constrLst><dgm:forEach name=\"under\" axis=\"ch\" ptType=\"node\">")
+        s = (s + "<dgm:layoutNode name=\"child\" styleLbl=\"node1\"><dgm:alg type=\"tx\"></dgm:alg><dgm:shape type=\"roundRect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutNode></dgm:forEach>")
+        s = (s + "</dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn matrix1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/matrix1\">")
+        s = (s + "<dgm:title val=\"Titled Matrix\"/><dgm:layoutNode name=\"matrix\"><dgm:varLst><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:alg type=\"composite\"/><dgm:shape/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"grid\" refType=\"w\" fact=\"1\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"grid\" refType=\"h\" fact=\"1\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"grid\" refType=\"w\" fact=\"0\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"grid\" refType=\"h\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"title\" refType=\"w\" fact=\"0.36\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"title\" refType=\"h\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"title\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"title\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"des\" forName=\"quad\" op=\"equ\" val=\"65\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"title\" op=\"equ\" val=\"65\"/>")
+        s = (s + "</dgm:constrLst><dgm:forEach name=\"theTitle\" axis=\"ch\" ptType=\"node\" cnt=\"1\"><dgm:layoutNode name=\"grid\"><dgm:alg type=\"snake\">")
+        s = (s + "<dgm:param type=\"bkpt\" val=\"fixed\"/><dgm:param type=\"bkPtFixedVal\" val=\"2\"/><dgm:param type=\"off\" val=\"off\"/></dgm:alg><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"quad\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"quad\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" fact=\"0\"/></dgm:constrLst><dgm:forEach name=\"quadrants\" axis=\"ch\" ptType=\"node\" cnt=\"4\"><dgm:choose name=\"position\">")
+        s = (s + "<dgm:if name=\"p1\" func=\"pos\" op=\"equ\" val=\"1\"><dgm:layoutNode name=\"quad\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/>")
+        s = (s + "<dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"rect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:if name=\"p2\" func=\"pos\" op=\"equ\" val=\"2\">")
+        s = (s + "<dgm:layoutNode name=\"quad\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/><dgm:param type=\"parTxLTRAlign\" val=\"r\"/></dgm:alg>")
+        s = (s + "<dgm:shape type=\"rect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:if name=\"p3\" func=\"pos\" op=\"equ\" val=\"3\"><dgm:layoutNode name=\"quad\" styleLbl=\"node1\"><dgm:alg type=\"tx\">")
+        s = (s + "<dgm:param type=\"txAnchorVert\" val=\"b\"/><dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"rect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:else name=\"p4\">")
+        s = (s + "<dgm:layoutNode name=\"quad\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"b\"/><dgm:param type=\"parTxLTRAlign\" val=\"r\"/></dgm:alg>")
+        s = (s + "<dgm:shape type=\"rect\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:else></dgm:choose></dgm:forEach></dgm:layoutNode><dgm:layoutNode name=\"title\" styleLbl=\"fgAcc1\"><dgm:alg type=\"tx\"></dgm:alg>")
+        s = (s + "<dgm:shape type=\"roundRect\"/><dgm:presOf axis=\"self\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
         return s
     }
 
@@ -248,6 +596,92 @@ class SaBuiltins {
         return s
     }
 
+    sfn target1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/target1\">")
+        s = (s + "<dgm:title val=\"Basic Target\"/><dgm:layoutNode name=\"target\"><dgm:varLst><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:alg type=\"composite\"/><dgm:shape/>")
+        s = (s + "<dgm:choose name=\"count\"><dgm:if name=\"n1\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"1\"><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring1\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.0588\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.147\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.147\"/>")
+        s = (s + "</dgm:constrLst></dgm:if><dgm:if name=\"n2\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"2\"><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring1\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.0294\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.735\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.294\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.294\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.49\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.49\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring2\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.0294\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.0735\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.0735\"/>")
+        s = (s + "</dgm:constrLst></dgm:if><dgm:if name=\"n3\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"3\"><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring1\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.0196\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.816667\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.196\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.196\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.653333\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.653333\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring2\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.0196\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.49\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.196\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.196\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.326667\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.326667\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring3\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.0196\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.049\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.049\"/>")
+        s = (s + "</dgm:constrLst></dgm:if><dgm:if name=\"n4\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"4\"><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring1\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.0147\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.8575\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.147\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.147\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.735\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.735\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring2\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.0147\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.6125\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.147\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.147\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.49\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.49\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring3\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.0147\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.3675\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.147\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.147\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.245\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.245\"/>")
+        s = (s + "<dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring4\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.0147\"/><dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.03675\"/><dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.03675\"/>")
+        s = (s + "</dgm:constrLst></dgm:if><dgm:else name=\"n5\"><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.98\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring1\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.01176\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.882\"/><dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.1176\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring1\" refType=\"h\" fact=\"0.1176\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.784\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.784\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring2\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.01176\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.686\"/><dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.1176\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring2\" refType=\"h\" fact=\"0.1176\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.588\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.588\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring3\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.01176\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.49\"/><dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.1176\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring3\" refType=\"h\" fact=\"0.1176\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.392\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.392\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring4\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.01176\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.294\"/><dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.1176\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring4\" refType=\"h\" fact=\"0.1176\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"ring5\" refType=\"h\" fact=\"0.196\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"ring5\" refType=\"h\" fact=\"0.196\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"ring5\" refType=\"w\" fact=\"0.5\"/>")
+        s = (s + "<dgm:constr type=\"ctrY\" for=\"ch\" forName=\"ring5\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"tMarg\" for=\"ch\" forName=\"ring5\" refType=\"h\" fact=\"0.01176\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" for=\"ch\" forName=\"ring5\" refType=\"h\" fact=\"0\"/><dgm:constr type=\"lMarg\" for=\"ch\" forName=\"ring5\" refType=\"h\" fact=\"0.0294\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" for=\"ch\" forName=\"ring5\" refType=\"h\" fact=\"0.0294\"/></dgm:constrLst></dgm:else></dgm:choose><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"ch\" op=\"equ\" val=\"65\"/></dgm:constrLst><dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\" cnt=\"5\"><dgm:choose name=\"position\">")
+        s = (s + "<dgm:if name=\"p1\" func=\"pos\" op=\"equ\" val=\"1\"><dgm:layoutNode name=\"ring1\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/>")
+        s = (s + "</dgm:alg><dgm:shape type=\"ellipse\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:if name=\"p2\" func=\"pos\" op=\"equ\" val=\"2\">")
+        s = (s + "<dgm:layoutNode name=\"ring2\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/></dgm:alg><dgm:shape type=\"ellipse\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:if name=\"p3\" func=\"pos\" op=\"equ\" val=\"3\"><dgm:layoutNode name=\"ring3\" styleLbl=\"node1\"><dgm:alg type=\"tx\">")
+        s = (s + "<dgm:param type=\"txAnchorVert\" val=\"t\"/></dgm:alg><dgm:shape type=\"ellipse\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst></dgm:constrLst>")
+        s = (s + "<dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:if name=\"p4\" func=\"pos\" op=\"equ\" val=\"4\">")
+        s = (s + "<dgm:layoutNode name=\"ring4\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/></dgm:alg><dgm:shape type=\"ellipse\"/>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:if><dgm:else name=\"p5\"><dgm:layoutNode name=\"ring5\" styleLbl=\"node1\"><dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/>")
+        s = (s + "</dgm:alg><dgm:shape type=\"ellipse\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:else></dgm:choose></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
     sfn vList2:string () {
         def s:string ""
         s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/vList2\">")
@@ -269,6 +703,23 @@ class SaBuiltins {
         s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
         s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:else name=\"none\"/></dgm:choose></dgm:forEach>")
         s = (s + "</dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn venn1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/venn1\">")
+        s = (s + "<dgm:title val=\"Basic Venn\"/><dgm:layoutNode name=\"venn\"><dgm:varLst><dgm:dir/><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:choose name=\"two\">")
+        s = (s + "<dgm:if name=\"side\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"equ\" val=\"2\"><dgm:alg type=\"cycle\"><dgm:param type=\"stAng\" val=\"270\"/>")
+        s = (s + "<dgm:param type=\"spanAng\" val=\"360\"/></dgm:alg></dgm:if><dgm:else name=\"round\"><dgm:alg type=\"cycle\"><dgm:param type=\"stAng\" val=\"0\"/>")
+        s = (s + "<dgm:param type=\"spanAng\" val=\"360\"/></dgm:alg></dgm:else></dgm:choose><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" refType=\"w\" fact=\"0.34\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"node\" refType=\"w\" refFor=\"ch\" refForName=\"node\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"-0.3\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"node\" op=\"equ\" val=\"65\"/>")
+        s = (s + "</dgm:constrLst><dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\" styleLbl=\"vennNode1\"><dgm:alg type=\"tx\"></dgm:alg>")
+        s = (s + "<dgm:shape type=\"ellipse\"/><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"w\" fact=\"0.25\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"w\" fact=\"0.25\"/><dgm:constr type=\"lMarg\" refType=\"w\" fact=\"0.25\"/><dgm:constr type=\"rMarg\" refType=\"w\" fact=\"0.25\"/>")
+        s = (s + "</dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:forEach></dgm:layoutNode>")
+        s = (s + "</dgm:layoutDef>")
         return s
     }
 }
