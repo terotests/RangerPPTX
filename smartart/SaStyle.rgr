@@ -1,23 +1,22 @@
 ; SPDX-License-Identifier: AGPL-3.0-or-later
 ; ==============================================================================
-; SaStyle — the colours a shape is drawn in
+; SaStyle — the colours and line a shape is drawn with
 ; ==============================================================================
 ;
-; A layout node names a style label (`styleLbl="node1"`); the diagram's colour
-; set says what each label's fill, line and text are, as theme colours; the
-; theme says what those are. So a diagram is in the deck's colours without
-; any colour in the file, and changes with the theme.
+; A layout node names a style label (`styleLbl="node1"`). The diagram's
+; colour set (SaColors) says that label's fill, line and text colours, as
+; theme colours, and how the shapes carrying it take them from its lists;
+; the quick style (SaQuickStyle) says whether the line and fill are drawn,
+; how wide the line is, and whether there is a shadow. The theme says what
+; the colours are, so a diagram is in the deck's colours without any colour
+; in the file, and changes with the theme.
 ;
-; The colour sets here, by the last segment of their id:
-;
-;   accent1_2 … accent6_2   "Colored Fill": every node in one accent (default)
-;   colorful1               "Colorful": the nodes cycle accent2 … accent6
-;   colorful2               the nodes cycle accent1 … accent6
-;
-; An unknown colour set is accent1_2, and the engine says so. Labels fall into
-; a few families; one this table does not know is drawn as a node.
+; A colour set or quick style this engine does not have is drawn as
+; accent1_2 / simple1, and the engine says so (SaEngine).
 ; ==============================================================================
 
+Import "SaColors.rgr"
+Import "SaQuickStyle.rgr"
 Import "../src/PptxModel.rgr"
 
 class SaPaint {
@@ -27,6 +26,11 @@ class SaPaint {
     def noLine:boolean false
     def lineWidthPt:double 1.0
     def text:PptxColor (new PptxColor())
+    ; an outer shadow, from the quick style's effect: how far it falls and
+    ; how soft it is, in points
+    def shadow:boolean false
+    def shadowDistPt:double 0.0
+    def shadowBlurPt:double 0.0
 
     Constructor () {
     }
@@ -35,51 +39,19 @@ class SaPaint {
 class SaStyle {
 
     sfn knownColors:boolean (id:string) {
-        def s:string (SaStyle.short(id))
-        if ((strlen s) == 0) {
-            return true
-        }
-        if ((s == "colorful1") || (s == "colorful2")) {
-            return true
-        }
-        def d:int 1
-        while (d <= 6) {
-            if (s == ("accent" + (to_string d) + "_2")) {
-                return true
-            }
-            d = (d + 1)
-        }
-        return false
+        return (SaColors.known(id))
+    }
+
+    sfn knownStyle:boolean (id:string) {
+        return (SaQuickStyle.known(id))
     }
 
     sfn short:string (id:string) {
-        def at:int (lastIndexOf id "/")
-        if (at < 0) {
-            return id
-        }
-        return (substring id (at + 1) (strlen id))
+        return (SaColors.short(id))
     }
 
-    ; the accent a node at `idx` is drawn in
-    sfn accentFor:string (colorsId:string idx:int) {
-        def s:string (SaStyle.short(colorsId))
-        if (s == "colorful1") {
-            return ("accent" + (to_string ((idx % 5) + 2)))
-        }
-        if (s == "colorful2") {
-            return ("accent" + (to_string ((idx % 6) + 1)))
-        }
-        if (((indexOf s "accent") == 0) && ((strlen s) >= 7)) {
-            def d:string (substring s 6 7)
-            def n@(optional):int (str2int d)
-            if (!null? n) {
-                def v:int (unwrap n)
-                if ((v >= 1) && (v <= 6)) {
-                    return ("accent" + d)
-                }
-            }
-        }
-        return "accent1"
+    sfn family:string (lbl:string) {
+        return (SaColors.family(lbl))
     }
 
     sfn scheme:PptxColor (name:string tint:double) {
@@ -88,63 +60,75 @@ class SaStyle {
         return c
     }
 
-    ; The family a style label belongs to.
-    sfn family:string (lbl:string) {
-        if ((lbl == "revTx") || (lbl == "")) {
-            return "text"
+    ; the colour set with this id, accent1_2 when it is none this engine has
+    sfn colorsDef:SaColorsDef (id:string) {
+        def d:SaColorsDef (SaColors.builtin((SaColors.short(id))))
+        if ((array_length d.labels) == 0) {
+            return (SaColors.builtin("accent1_2"))
         }
-        if ((indexOf lbl "sibTrans2D") == 0) {
-            return "arrow"
-        }
-        if (((indexOf lbl "sibTrans1D") == 0) || ((indexOf lbl "parChTrans1D") == 0)) {
-            return "line"
-        }
-        if (((indexOf lbl "alignAcc") == 0) || ((indexOf lbl "bgAcc") == 0)) {
-            return "light"
-        }
-        if (((indexOf lbl "fgAcc") == 0) || ((indexOf lbl "trAlignAcc") == 0)) {
-            return "outlined"
-        }
-        if ((indexOf lbl "bgShp") == 0) {
-            return "light"
-        }
-        return "node"
+        return d
     }
 
-    sfn paintFor:SaPaint (lbl:string colorsId:string idx:int) {
+    ; the quick style with this id, simple1 when it is none this engine has
+    sfn styleDef:SaQuickStyleDef (id:string) {
+        def d:SaQuickStyleDef (SaQuickStyle.builtin((SaColors.short(id))))
+        if ((array_length d.labels) == 0) {
+            return (SaQuickStyle.builtin("simple1"))
+        }
+        return d
+    }
+
+    ; The label's colours in a set: its own entry, else one of its family's,
+    ; else accent1_2's for it.
+    sfn colorsLbl:SaColorsLbl (cd:SaColorsDef lbl:string) {
+        def own@(optional):SaColorsLbl (cd.label(lbl))
+        if (!null? own) {
+            return (unwrap own)
+        }
+        def fam:string (SaColors.family(lbl))
+        def i:int 0
+        while (i < (array_length cd.labels)) {
+            def l:SaColorsLbl (itemAt cd.labels i)
+            if ((SaColors.family(l.name)) == fam) {
+                return l
+            }
+            i = (i + 1)
+        }
+        return (SaColors.lblFor(lbl "accent_2" "accent1"))
+    }
+
+    ; How the idx-th of cnt shapes carrying `lbl` is drawn.
+    sfn paint:SaPaint (lbl:string cd:SaColorsDef qs:SaQuickStyleDef idx:int cnt:int) {
         def p (new SaPaint())
-        def acc:string (SaStyle.accentFor(colorsId idx))
-        def fam:string (SaStyle.family(lbl))
-        if (fam == "node") {
-            p.fill = (PptxColor.schemeOf(acc))
-            p.line = (PptxColor.schemeOf("lt1"))
-            p.text = (PptxColor.schemeOf("lt1"))
-        }
-        if (fam == "arrow") {
-            p.fill = (SaStyle.scheme(acc 0.6))
-            p.noLine = true
-            p.text = (PptxColor.schemeOf("lt1"))
-        }
-        if (fam == "line") {
+        def cl:SaColorsLbl (SaStyle.colorsLbl(cd lbl))
+        def ql:SaQsLbl (qs.label(lbl))
+        if ((ql.fill > 0) && ((cl.fill.isEmpty()) == false)) {
+            p.fill = (cl.fill.pick(idx cnt))
+        } {
             p.noFill = true
-            p.line = (SaStyle.scheme(acc 0.6))
-            p.text = (PptxColor.schemeOf("tx1"))
         }
-        if (fam == "light") {
-            p.fill = (SaStyle.scheme(acc 0.4))
-            p.line = (SaStyle.scheme(acc 0.4))
-            p.text = (PptxColor.schemeOf("tx1"))
-        }
-        if (fam == "outlined") {
-            p.fill = (PptxColor.schemeOf("lt1"))
-            p.line = (PptxColor.schemeOf(acc))
-            p.text = (PptxColor.schemeOf("tx1"))
-        }
-        if (fam == "text") {
-            p.noFill = true
+        if ((ql.ln > 0) && ((cl.line.isEmpty()) == false)) {
+            p.line = (cl.line.pick(idx cnt))
+            p.lineWidthPt = (SaQuickStyle.lineWidth(ql.ln))
+        } {
             p.noLine = true
+        }
+        if (cl.text.isEmpty()) {
             p.text = (PptxColor.schemeOf("tx1"))
+        } {
+            p.text = (cl.text.pick(idx cnt))
+        }
+        if ((ql.effect > 0) && (p.noFill == false)) {
+            p.shadow = true
+            p.shadowDistPt = ((to_double ql.effect) * 1.5)
+            p.shadowBlurPt = ((to_double ql.effect) * 3.0)
         }
         return p
+    }
+
+    ; the idx-th shape of a label, in a set named by id, simple1 (one of
+    ; several, the count unknown: what a span needs is guessed)
+    sfn paintFor:SaPaint (lbl:string colorsId:string idx:int) {
+        return (SaStyle.paint(lbl (SaStyle.colorsDef(colorsId)) (SaStyle.styleDef("")) idx (idx + 1)))
     }
 }

@@ -1,0 +1,610 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaColors — colour sets (`dgm:colorsDef`), read, built in, and written
+; ==============================================================================
+;
+; A colour set says, for each style label, the colours of a shape's fill,
+; its line and its text: each a list (`fillClrLst`, `linClrLst`,
+; `txFillClrLst`) with a method saying how the shapes that carry the label
+; take colours from it:
+;
+;   repeat  the n-th shape the n-th colour, round again past the end
+;   cycle   there and back: 0 1 2 1 0 1 2 …
+;   span    from the first colour to the last across all of them; two
+;           tints or shades of one theme colour are blended, two different
+;           theme colours are split half and half
+;
+; The colours are theme colours (accent1, lt1, …) with DrawingML's
+; modifiers (tint, shade, alpha, lumMod, lumOff, satMod), resolved later
+; against the deck's theme or a host's palette.
+;
+; Built in, by the last segment of their ids (SaColors.builtin):
+;
+;   accent0_1 … accent0_3     dark 1 outline, dark 2 outline, dark 2 fill
+;   accentN_1                 coloured outline, N = 1 … 6
+;   accentN_2                 coloured fill (the default, accent1_2)
+;   accentN_3                 gradient range: a shade to a tint of accent N
+;   accentN_4                 gradient loop: the same, there and back
+;   accentN_5                 transparent gradient range
+;   colorful1                 the nodes in accent2 … accent6
+;   colorful2 … colorful5     accent2 and 3, 3 and 4, 4 and 5, 5 and 6
+;
+; They are written from the specification and from what PowerPoint draws;
+; the oracle decks check them. A file's own colour set (a whole diagram as
+; one file, SaFile) is read with `read` and used as it is.
+; ==============================================================================
+
+Import "../../xml/XmlCore.rgr"
+Import "../src/PptxModel.rgr"
+
+class SaClrList {
+    def meth:string "repeat"
+    def colors:[PptxColor]
+
+    Constructor () {
+    }
+
+    fn isEmpty:boolean () {
+        return ((array_length colors) == 0)
+    }
+
+    ; the colour for the idx-th of cnt shapes
+    fn pick:PptxColor (idx:int cnt:int) {
+        def n:int (array_length colors)
+        if (n == 0) {
+            return (new PptxColor())
+        }
+        if (n == 1) {
+            return (SaClrList.copy((itemAt colors 0)))
+        }
+        if (meth == "span") {
+            def t:double 0.0
+            if (cnt > 1) {
+                t = ((to_double idx) / (to_double (cnt - 1)))
+            }
+            if (t > 1.0) {
+                t = 1.0
+            }
+            ; along the list: between which two, how far
+            def pos:double (t * (to_double (n - 1)))
+            def a:int (to_int pos)
+            if (a >= (n - 1)) {
+                a = (n - 2)
+            }
+            def f:double (pos - (to_double a))
+            return (SaClrList.blend((itemAt colors a) (itemAt colors (a + 1)) f))
+        }
+        if (meth == "cycle") {
+            def period:int ((2 * n) - 2)
+            def k:int (idx % period)
+            if (k >= n) {
+                k = (period - k)
+            }
+            return (SaClrList.copy((itemAt colors k)))
+        }
+        return (SaClrList.copy((itemAt colors (idx % n))))
+    }
+
+    sfn copy:PptxColor (c:PptxColor) {
+        def o (new PptxColor())
+        o.isSet = c.isSet
+        o.isScheme = c.isScheme
+        o.scheme = c.scheme
+        o.srgb = c.srgb
+        o.alpha = c.alpha
+        o.lumMod = c.lumMod
+        o.lumOff = c.lumOff
+        o.tint = c.tint
+        o.shade = c.shade
+        o.satMod = c.satMod
+        return o
+    }
+
+    ; how far a colour is from its base: -1 black … 0 itself … +1 white
+    sfn lightness:double (c:PptxColor) {
+        if (c.tint > 0.0) {
+            return (1.0 - c.tint)
+        }
+        if (c.shade > 0.0) {
+            return (0.0 - (1.0 - c.shade))
+        }
+        return 0.0
+    }
+
+    ; between a and b, f of the way: one theme colour's tints and shades
+    ; blended, its alpha too; two theme colours split at the middle
+    sfn blend:PptxColor (a:PptxColor b:PptxColor f:double) {
+        if ((a.scheme != b.scheme) || (a.srgb != b.srgb)) {
+            if (f < 0.5) {
+                return (SaClrList.copy(a))
+            }
+            return (SaClrList.copy(b))
+        }
+        def o:PptxColor (SaClrList.copy(a))
+        def l:double ((SaClrList.lightness(a)) + (((SaClrList.lightness(b)) - (SaClrList.lightness(a))) * f))
+        o.tint = 0.0
+        o.shade = 0.0
+        if (l > 0.0005) {
+            o.tint = (1.0 - l)
+        }
+        if (l < -0.0005) {
+            o.shade = (1.0 + l)
+        }
+        o.alpha = (a.alpha + ((b.alpha - a.alpha) * f))
+        return o
+    }
+}
+
+class SaColorsLbl {
+    def name:string ""
+    def fill:SaClrList (new SaClrList())
+    def line:SaClrList (new SaClrList())
+    def text:SaClrList (new SaClrList())
+
+    Constructor () {
+    }
+}
+
+class SaColorsDef {
+    def uniqueId:string ""
+    def category:string ""
+    def labels:[SaColorsLbl]
+
+    Constructor () {
+    }
+
+    fn label@(optional):SaColorsLbl (name:string) {
+        def i:int 0
+        while (i < (array_length labels)) {
+            def l:SaColorsLbl (itemAt labels i)
+            if (l.name == name) {
+                def hit@(optional):SaColorsLbl l
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaColorsLbl
+        return none
+    }
+}
+
+class SaColorsRead {
+    def ok:boolean false
+    def error:string ""
+    def def:SaColorsDef (new SaColorsDef())
+
+    Constructor () {
+    }
+}
+
+class SaColors {
+
+    sfn short:string (id:string) {
+        def at:int (lastIndexOf id "/")
+        if (at < 0) {
+            return id
+        }
+        return (substring id (at + 1) (strlen id))
+    }
+
+    sfn fullId:string (s:string) {
+        if ((indexOf s ":") >= 0) {
+            return s
+        }
+        return ("urn:microsoft.com/office/officeart/2005/8/colors/" + s)
+    }
+
+    ; --- the families of style labels ----------------------------------------
+
+    ; The family a style label belongs to; what a built-in set says about it.
+    sfn family:string (lbl:string) {
+        if ((lbl == "revTx") || (lbl == "")) {
+            return "text"
+        }
+        if ((indexOf lbl "sibTrans2D") == 0) {
+            return "arrow"
+        }
+        if ((indexOf lbl "parChTrans2D") == 0) {
+            return "arrow"
+        }
+        if (((indexOf lbl "sibTrans1D") == 0) || ((indexOf lbl "parChTrans1D") == 0)) {
+            return "line"
+        }
+        if (((indexOf lbl "alignAcc") == 0) || ((indexOf lbl "bgAcc") == 0)) {
+            return "light"
+        }
+        if (((indexOf lbl "fgAcc") == 0) || ((indexOf lbl "trAlignAcc") == 0)) {
+            return "outlined"
+        }
+        if (((indexOf lbl "bgShp") == 0) || ((indexOf lbl "trBgShp") == 0)) {
+            return "light"
+        }
+        if ((indexOf lbl "dkBgShp") == 0) {
+            return "dark"
+        }
+        return "node"
+    }
+
+    ; the labels a built-in set describes: every label the built-in layouts
+    ; use, and the ones PowerPoint's own layouts commonly name
+    sfn labels:[string] () {
+        return ([] _:string ("node0" "node1" "node2" "node3" "node4" "lnNode1" "vennNode1" "alignNode1" "trAlignAcc1" "alignAcc1" "bgAcc1" "fgAcc1" "solidFgAcc1" "bgShp" "dkBgShp" "trBgShp" "fgShp" "revTx" "sibTrans2D1" "sibTrans1D1" "callout" "asst0" "asst1" "parChTrans1D1" "parChTrans1D2" "parChTrans2D1" "fgAccFollowNode1" "bgAccFollowNode1"))
+    }
+
+    ; --- reading a file's own set ---------------------------------------------
+
+    sfn read:SaColorsRead (xml:string) {
+        def res (new SaColorsRead())
+        def parser (new XmlParser())
+        def rootOpt@(optional):XmlNode (parser.parse(xml))
+        if (null? rootOpt) {
+            res.error = "not XML: no element could be read"
+            return res
+        }
+        def root:XmlNode (unwrap rootOpt)
+        if (root.name != "colorsDef") {
+            res.error = ("the root element is <" + root.name + ">, not <dgm:colorsDef>")
+            return res
+        }
+        res.def.uniqueId = (root.attr("uniqueId"))
+        def i:int 0
+        while (i < (root.childCount())) {
+            def c:XmlNode (root.childAt(i))
+            if ((c.isText == false) && (c.name == "styleLbl")) {
+                def l (new SaColorsLbl())
+                l.name = (c.attr("name"))
+                l.fill = (SaColors.listOf(c "fillClrLst"))
+                l.line = (SaColors.listOf(c "linClrLst"))
+                l.text = (SaColors.listOf(c "txFillClrLst"))
+                push res.def.labels l
+            }
+            if ((c.isText == false) && (c.name == "catLst")) {
+                def cat@(optional):XmlNode (c.firstChild("cat"))
+                if (!null? cat) {
+                    res.def.category = ((unwrap cat).attr("type"))
+                }
+            }
+            i = (i + 1)
+        }
+        res.ok = true
+        return res
+    }
+
+    sfn listOf:SaClrList (lbl:XmlNode name:string) {
+        def out (new SaClrList())
+        def hit@(optional):XmlNode (lbl.firstChild(name))
+        if (null? hit) {
+            return out
+        }
+        def node:XmlNode (unwrap hit)
+        def m:string (node.attr("meth"))
+        if ((strlen m) > 0) {
+            out.meth = m
+        }
+        def i:int 0
+        while (i < (node.childCount())) {
+            def c:XmlNode (node.childAt(i))
+            if (c.isText == false) {
+                def col@(optional):PptxColor (SaColors.colorOf(c))
+                if (!null? col) {
+                    push out.colors (unwrap col)
+                }
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn colorOf@(optional):PptxColor (c:XmlNode) {
+        def none@(optional):PptxColor
+        def col (new PptxColor())
+        if (c.name == "schemeClr") {
+            col = (PptxColor.schemeOf((c.attr("val"))))
+        } {
+            if (c.name == "srgbClr") {
+                col = (PptxColor.srgbOf((c.attr("val"))))
+            } {
+                if (c.name == "prstClr") {
+                    def v:string (c.attr("val"))
+                    def hex:string "000000"
+                    if (v == "white") {
+                        hex = "FFFFFF"
+                    }
+                    col = (PptxColor.srgbOf(hex))
+                } {
+                    return none
+                }
+            }
+        }
+        col.tint = (SaColors.pct(c "tint" 0.0))
+        col.shade = (SaColors.pct(c "shade" 0.0))
+        col.lumMod = (SaColors.pct(c "lumMod" 1.0))
+        col.lumOff = (SaColors.pct(c "lumOff" 0.0))
+        col.satMod = (SaColors.pct(c "satMod" 1.0))
+        col.alpha = (SaColors.pct(c "alpha" 1.0))
+        def hit@(optional):PptxColor col
+        return hit
+    }
+
+    sfn pct:double (node:XmlNode name:string fallback:double) {
+        def hit@(optional):XmlNode (node.firstChild(name))
+        if (null? hit) {
+            return fallback
+        }
+        def v@(optional):double (str2double ((unwrap hit).attr("val")))
+        if (null? v) {
+            return fallback
+        }
+        return ((unwrap v) / 100000.0)
+    }
+
+    ; --- the built-in sets ----------------------------------------------------
+
+    sfn known:boolean (id:string) {
+        def s:string (SaColors.short(id))
+        if ((strlen s) == 0) {
+            return true
+        }
+        def d:SaColorsDef (SaColors.builtin(s))
+        return ((array_length d.labels) > 0)
+    }
+
+    sfn names:string () {
+        return "accent0_1 … accent0_3, accent1_1 … accent6_5, colorful1 … colorful5"
+    }
+
+    sfn sch:PptxColor (name:string) {
+        return (PptxColor.schemeOf(name))
+    }
+
+    sfn tinted:PptxColor (name:string t:double) {
+        def c:PptxColor (PptxColor.schemeOf(name))
+        c.tint = t
+        return c
+    }
+
+    sfn shaded:PptxColor (name:string s:double) {
+        def c:PptxColor (PptxColor.schemeOf(name))
+        c.shade = s
+        return c
+    }
+
+    sfn alphaOf:PptxColor (name:string a:double) {
+        def c:PptxColor (PptxColor.schemeOf(name))
+        c.alpha = a
+        return c
+    }
+
+    sfn one:SaClrList (c:PptxColor) {
+        def l (new SaClrList())
+        push l.colors c
+        return l
+    }
+
+    sfn two:SaClrList (meth:string a:PptxColor b:PptxColor) {
+        def l (new SaClrList())
+        l.meth = meth
+        push l.colors a
+        push l.colors b
+        return l
+    }
+
+    ; The set called `short` (accent1_2, colorful1 …); one with no labels for
+    ; a name that is not built in.
+    sfn builtin:SaColorsDef (short:string) {
+        def d (new SaColorsDef())
+        def kind:string ""
+        def acc:string "accent1"
+        if ((indexOf short "colorful") == 0) {
+            kind = short
+        }
+        if ((((indexOf short "accent") == 0) && ((strlen short) == 9)) && ((substring short 7 8) == "_")) {
+            def digit:string (substring short 6 7)
+            def variant:string (substring short 8 9)
+            def ok:boolean ((indexOf "0123456" digit) >= 0)
+            if (digit == "0") {
+                ok = ((indexOf "123" variant) >= 0)
+            } {
+                ok = (ok && ((indexOf "12345" variant) >= 0))
+            }
+            if ok {
+                kind = ("accent_" + variant)
+                acc = ("accent" + digit)
+                if (digit == "0") {
+                    kind = ("dark_" + variant)
+                }
+            }
+        }
+        def knownKind:string " colorful1 colorful2 colorful3 colorful4 colorful5 accent_1 accent_2 accent_3 accent_4 accent_5 dark_1 dark_2 dark_3 "
+        if ((indexOf knownKind (" " + kind + " ")) < 0) {
+            return d
+        }
+        d.uniqueId = (SaColors.fullId(short))
+        d.category = (substring short 0 7)
+        if ((indexOf short "colorful") == 0) {
+            d.category = "colorful"
+        }
+        def ls:[string] (SaColors.labels())
+        def i:int 0
+        while (i < (array_length ls)) {
+            def name:string (itemAt ls i)
+            def l:SaColorsLbl (SaColors.lblFor(name kind acc))
+            push d.labels l
+            i = (i + 1)
+        }
+        return d
+    }
+
+    ; the main colour of a node in each kind of set
+    sfn nodeFill:SaClrList (kind:string acc:string) {
+        if (kind == "colorful1") {
+            def l (new SaClrList())
+            push l.colors (SaColors.sch("accent2"))
+            push l.colors (SaColors.sch("accent3"))
+            push l.colors (SaColors.sch("accent4"))
+            push l.colors (SaColors.sch("accent5"))
+            push l.colors (SaColors.sch("accent6"))
+            return l
+        }
+        if (kind == "colorful2") { return (SaColors.two("repeat" (SaColors.sch("accent2")) (SaColors.sch("accent3")))) }
+        if (kind == "colorful3") { return (SaColors.two("repeat" (SaColors.sch("accent3")) (SaColors.sch("accent4")))) }
+        if (kind == "colorful4") { return (SaColors.two("repeat" (SaColors.sch("accent4")) (SaColors.sch("accent5")))) }
+        if (kind == "colorful5") { return (SaColors.two("repeat" (SaColors.sch("accent5")) (SaColors.sch("accent6")))) }
+        if (kind == "accent_1") { return (SaColors.one((SaColors.sch("lt1")))) }
+        if (kind == "accent_3") { return (SaColors.two("span" (SaColors.shaded(acc 0.8)) (SaColors.tinted(acc 0.7)))) }
+        if (kind == "accent_4") { return (SaColors.two("cycle" (SaColors.shaded(acc 0.5)) (SaColors.tinted(acc 0.55)))) }
+        if (kind == "accent_5") { return (SaColors.two("span" (SaColors.alphaOf(acc 0.9)) (SaColors.alphaOf(acc 0.5)))) }
+        if ((kind == "dark_1") || (kind == "dark_2")) { return (SaColors.one((SaColors.sch("lt1")))) }
+        if (kind == "dark_3") { return (SaColors.one((SaColors.sch("dk2")))) }
+        return (SaColors.one((SaColors.sch(acc))))
+    }
+
+    ; the colour that outlines a node, and that a node's text is, in each kind
+    sfn nodeLine:PptxColor (kind:string acc:string) {
+        if (kind == "accent_1") { return (SaColors.sch(acc)) }
+        if (kind == "dark_1") { return (SaColors.sch("dk1")) }
+        if (kind == "dark_2") { return (SaColors.sch("dk2")) }
+        return (SaColors.sch("lt1"))
+    }
+
+    sfn nodeText:PptxColor (kind:string) {
+        if ((kind == "accent_1") || ((kind == "accent_5") || (kind == "dark_1"))) {
+            return (SaColors.sch("dk1"))
+        }
+        if (kind == "dark_2") {
+            return (SaColors.sch("dk2"))
+        }
+        return (SaColors.sch("lt1"))
+    }
+
+    ; the accent the lighter things (arrows, lines, backgrounds) are in
+    sfn quiet:string (kind:string acc:string) {
+        if ((indexOf kind "colorful") == 0) {
+            return "accent2"
+        }
+        if ((indexOf kind "dark") == 0) {
+            return "dk2"
+        }
+        return acc
+    }
+
+    sfn lblFor:SaColorsLbl (name:string kind:string acc:string) {
+        def l (new SaColorsLbl())
+        l.name = name
+        def fam:string (SaColors.family(name))
+        def q:string (SaColors.quiet(kind acc))
+        if (fam == "node") {
+            l.fill = (SaColors.nodeFill(kind acc))
+            l.line = (SaColors.one((SaColors.nodeLine(kind acc))))
+            l.text = (SaColors.one((SaColors.nodeText(kind))))
+            if (name == "node0") {
+                ; the one in the middle: the first colour, whatever the set
+                def f0:SaClrList (SaColors.nodeFill(kind acc))
+                l.fill = (SaColors.one((itemAt f0.colors 0)))
+            }
+        }
+        if (fam == "arrow") {
+            l.fill = (SaColors.one((SaColors.tinted(q 0.6))))
+            l.text = (SaColors.one((SaColors.sch("lt1"))))
+        }
+        if (fam == "line") {
+            l.line = (SaColors.one((SaColors.tinted(q 0.6))))
+            if (name == "parChTrans1D2") {
+                l.line = (SaColors.one((SaColors.shaded(q 0.6))))
+            }
+            l.text = (SaColors.one((SaColors.sch("tx1"))))
+        }
+        if (fam == "light") {
+            l.fill = (SaColors.one((SaColors.tinted(q 0.4))))
+            l.line = (SaColors.one((SaColors.tinted(q 0.4))))
+            l.text = (SaColors.one((SaColors.sch("tx1"))))
+        }
+        if (fam == "dark") {
+            l.fill = (SaColors.one((SaColors.shaded(q 0.8))))
+            l.line = (SaColors.one((SaColors.shaded(q 0.8))))
+            l.text = (SaColors.one((SaColors.sch("lt1"))))
+        }
+        if (fam == "outlined") {
+            l.fill = (SaColors.one((SaColors.sch("lt1"))))
+            l.line = (SaColors.one((SaColors.sch(q))))
+            l.text = (SaColors.one((SaColors.sch("tx1"))))
+        }
+        if (fam == "text") {
+            l.text = (SaColors.one((SaColors.sch("tx1"))))
+        }
+        return l
+    }
+
+    ; --- writing ---------------------------------------------------------------
+
+    sfn xml:string (d:SaColorsDef) {
+        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+        out = (out + "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"" + (SaColors.esc(d.uniqueId)) + "\">")
+        def cat:string d.category
+        if ((strlen cat) == 0) {
+            cat = "accent1"
+        }
+        out = (out + "<dgm:title val=\"\"/><dgm:desc val=\"\"/><dgm:catLst><dgm:cat type=\"" + (SaColors.esc(cat)) + "\" pri=\"11200\"/></dgm:catLst>")
+        def i:int 0
+        while (i < (array_length d.labels)) {
+            def l:SaColorsLbl (itemAt d.labels i)
+            out = (out + "<dgm:styleLbl name=\"" + (SaColors.esc(l.name)) + "\">" + (SaColors.listXml("fillClrLst" l.fill)) + (SaColors.listXml("linClrLst" l.line)) + "<dgm:effectClrLst/><dgm:txLinClrLst/>" + (SaColors.listXml("txFillClrLst" l.text)) + "<dgm:txEffectClrLst/></dgm:styleLbl>")
+            i = (i + 1)
+        }
+        return (out + "</dgm:colorsDef>")
+    }
+
+    sfn listXml:string (tag:string l:SaClrList) {
+        if (l.isEmpty()) {
+            return ("<dgm:" + tag + "/>")
+        }
+        def out:string ("<dgm:" + tag + " meth=\"" + l.meth + "\">")
+        def i:int 0
+        while (i < (array_length l.colors)) {
+            out = (out + (SaColors.clrXml((itemAt l.colors i))))
+            i = (i + 1)
+        }
+        return (out + "</dgm:" + tag + ">")
+    }
+
+    sfn clrXml:string (c:PptxColor) {
+        def mods:string ""
+        if (c.tint > 0.0) { mods = (mods + "<a:tint val=\"" + (SaColors.k(c.tint)) + "\"/>") }
+        if (c.shade > 0.0) { mods = (mods + "<a:shade val=\"" + (SaColors.k(c.shade)) + "\"/>") }
+        if (c.alpha < 1.0) { mods = (mods + "<a:alpha val=\"" + (SaColors.k(c.alpha)) + "\"/>") }
+        if (c.lumMod != 1.0) { mods = (mods + "<a:lumMod val=\"" + (SaColors.k(c.lumMod)) + "\"/>") }
+        if (c.lumOff != 0.0) { mods = (mods + "<a:lumOff val=\"" + (SaColors.k(c.lumOff)) + "\"/>") }
+        if (c.satMod != 1.0) { mods = (mods + "<a:satMod val=\"" + (SaColors.k(c.satMod)) + "\"/>") }
+        def open:string ""
+        def tag:string ""
+        if (c.isScheme) {
+            tag = "a:schemeClr"
+            open = ("<a:schemeClr val=\"" + c.scheme + "\"")
+        } {
+            tag = "a:srgbClr"
+            open = ("<a:srgbClr val=\"" + c.srgb + "\"")
+        }
+        if ((strlen mods) == 0) {
+            return (open + "/>")
+        }
+        return (open + ">" + mods + "</" + tag + ">")
+    }
+
+    sfn k:string (v:double) {
+        return (to_string (to_int ((v * 100000.0) + 0.5)))
+    }
+
+    sfn esc:string (s:string) {
+        def out:string ""
+        def i:int 0
+        while (i < (strlen s)) {
+            def ch:string (substring s i (i + 1))
+            if (ch == "&") { ch = "&amp;" }
+            if (ch == "<") { ch = "&lt;" }
+            if (ch == "\"") { ch = "&quot;" }
+            out = (out + ch)
+            i = (i + 1)
+        }
+        return out
+    }
+}

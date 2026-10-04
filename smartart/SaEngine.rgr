@@ -38,6 +38,10 @@ class SaOptions {
     def style:string ""
     ; a whole layout definition, used instead of any id
     def layoutXml:string ""
+    ; a whole colour set or quick style (a diagram's own, from its file),
+    ; used instead of the id's built-in one
+    def colorsXml:string ""
+    def styleXml:string ""
     def measure:SaMeasure (new SaMeasure())
 
     Constructor () {
@@ -57,6 +61,46 @@ class SaResult {
     def measure:SaMeasure (new SaMeasure())
 
     Constructor () {
+    }
+}
+
+; How a diagram's shapes are coloured: its colour set and quick style, and
+; how many shapes carry each style label (what a colour span runs over).
+class SaLook {
+    def cd:SaColorsDef (new SaColorsDef())
+    def qs:SaQuickStyleDef (new SaQuickStyleDef())
+    def names:[string]
+    def counts:[int]
+
+    Constructor () {
+    }
+
+    fn count:void (name:string) {
+        def i:int 0
+        while (i < (array_length names)) {
+            if ((itemAt names i) == name) {
+                set counts i ((itemAt counts i) + 1)
+                return
+            }
+            i = (i + 1)
+        }
+        push names name
+        push counts 1
+    }
+
+    fn countOf:int (name:string) {
+        def i:int 0
+        while (i < (array_length names)) {
+            if ((itemAt names i) == name) {
+                return (itemAt counts i)
+            }
+            i = (i + 1)
+        }
+        return 1
+    }
+
+    fn paint:SaPaint (s:SaInst) {
+        return (SaStyle.paint(s.styleLbl cd qs s.nameIdx (this.countOf(s.name))))
     }
 }
 
@@ -118,8 +162,8 @@ class SaEngine {
         if ((strlen opts.colors) > 0) {
             colors = (SaEngine.fullId(opts.colors "colors"))
         }
-        if ((SaStyle.knownColors(colors)) == false) {
-            push res.warnings ("the colour set \"" + (SaStyle.short(colors)) + "\" is not one this engine has; drawn as accent1_2")
+        if (((strlen opts.colorsXml) == 0) && ((SaStyle.knownColors(colors)) == false)) {
+            push res.warnings ("the colour set \"" + (SaStyle.short(colors)) + "\" is not one this engine has; drawn as accent1_2 (it has: " + (SaColors.names()) + ")")
             colors = ""
         }
         ; run it
@@ -167,12 +211,38 @@ class SaEngine {
         if ((strlen opts.style) > 0) {
             style = (SaEngine.fullId(opts.style "quickstyle"))
         }
+        def look (new SaLook())
+        look.qs = (SaStyle.styleDef(style))
+        if ((strlen opts.styleXml) > 0) {
+            def sr:SaQuickStyleRead (SaQuickStyle.read(opts.styleXml))
+            if sr.ok {
+                look.qs = sr.def
+                if ((strlen sr.def.uniqueId) > 0) {
+                    style = sr.def.uniqueId
+                }
+            }
+        } {
+            if ((SaStyle.knownStyle(style)) == false) {
+                push res.warnings ("the quick style \"" + (SaStyle.short(style)) + "\" is not one this engine has; drawn as simple1 (it has: " + (SaQuickStyle.names()) + ")")
+                style = ""
+            }
+        }
         if ((strlen style) == 0) {
             style = (SaEngine.fullId("simple1" "quickstyle"))
         }
         def colorsUsed:string colors
         if ((strlen colorsUsed) == 0) {
             colorsUsed = (SaEngine.fullId("accent1_2" "colors"))
+        }
+        look.cd = (SaStyle.colorsDef(colorsUsed))
+        if ((strlen opts.colorsXml) > 0) {
+            def cr:SaColorsRead (SaColors.read(opts.colorsXml))
+            if cr.ok {
+                look.cd = cr.def
+                if ((strlen cr.def.uniqueId) > 0) {
+                    colorsUsed = cr.def.uniqueId
+                }
+            }
         }
         def d:SaPoint (model.doc())
         d.layoutId = lo.uniqueId
@@ -184,13 +254,19 @@ class SaEngine {
         g.diagramStyleId = style
         g.diagramColorsId = colorsUsed
         def every:[SaInst] (ptree.all())
+        def ci:int 0
+        while (ci < (array_length every)) {
+            def cs:SaInst (itemAt every ci)
+            look.count(cs.name)
+            ci = (ci + 1)
+        }
         def i:int 0
         while (i < (array_length every)) {
             def s:SaInst (itemAt every i)
             if ((array_length s.segs) >= 4) {
-                SaEngine.linesOf(s colors g.children)
+                SaEngine.linesOf(s look g.children)
             } {
-                def made@(optional):PptxShape (SaEngine.shapeOf(s text colors))
+                def made@(optional):PptxShape (SaEngine.shapeOf(s text look))
                 if (!null? made) {
                     push g.children (unwrap made)
                 }
@@ -208,8 +284,8 @@ class SaEngine {
     ; A connector line: one `line` shape per segment, its box the segment's
     ; bounds, flipped when the segment runs up or left; an arrowhead at the
     ; end of the last when the connector has one.
-    sfn linesOf:void (s:SaInst colors:string out:[PptxShape]) {
-        def paint:SaPaint (SaStyle.paintFor(s.styleLbl colors s.nameIdx))
+    sfn linesOf:void (s:SaInst look:SaLook out:[PptxShape]) {
+        def paint:SaPaint (look.paint(s))
         def col:PptxColor paint.line
         if paint.noLine {
             col = paint.fill
@@ -284,7 +360,7 @@ class SaEngine {
         return ("adj" + (to_string idx))
     }
 
-    sfn shapeOf@(optional):PptxShape (s:SaInst text:SaText colors:string) {
+    sfn shapeOf@(optional):PptxShape (s:SaInst text:SaText look:SaLook) {
         def none@(optional):PptxShape
         def lines:[SaLine] (text.linesOf(s))
         def geometry:boolean ((s.hasShape && (s.shape.type != "none")) && (s.shape.hideGeom == false))
@@ -340,7 +416,7 @@ class SaEngine {
             }
             a = (a + 1)
         }
-        def paint:SaPaint (SaStyle.paintFor(s.styleLbl colors s.nameIdx))
+        def paint:SaPaint (look.paint(s))
         if (geometry == false) {
             paint.noFill = true
             paint.noLine = true
@@ -355,6 +431,14 @@ class SaEngine {
         } {
             sh.line = paint.line
             sh.lineWidthPt = paint.lineWidthPt
+        }
+        if paint.shadow {
+            sh.shadow.isSet = true
+            sh.shadow.offsetXPt = 0.0
+            sh.shadow.offsetYPt = paint.shadowDistPt
+            sh.shadow.blurPt = paint.shadowBlurPt
+            sh.shadow.color = (PptxColor.srgbOf("000000"))
+            sh.shadow.alpha = 0.35
         }
         if ((array_length lines) > 0) {
             sh.hasText = true

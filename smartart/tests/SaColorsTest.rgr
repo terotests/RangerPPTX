@@ -1,0 +1,277 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaColorsTest — colour sets and quick styles: read, built in, picked, drawn
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+Import "../SaPackage.rgr"
+
+class SaColorsTest {
+
+    sfn list:SaClrList (meth:string names:[string]) {
+        def l (new SaClrList())
+        l.meth = meth
+        def i:int 0
+        while (i < (array_length names)) {
+            push l.colors (PptxColor.schemeOf((itemAt names i)))
+            i = (i + 1)
+        }
+        return l
+    }
+
+    sfn picks:string (l:SaClrList n:int) {
+        def out:string ""
+        def i:int 0
+        while (i < n) {
+            def c:PptxColor (l.pick(i n))
+            if (i > 0) {
+                out = (out + " ")
+            }
+            out = (out + c.scheme)
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testPick:void (c:SaKit) {
+        print "-- picking from a list --"
+        def abc:[string] ([] _:string ("accent1" "accent2" "accent3"))
+        c.eqStr("repeat: round again" (SaColorsTest.picks((SaColorsTest.list("repeat" abc)) 5)) "accent1 accent2 accent3 accent1 accent2")
+        c.eqStr("cycle: there and back" (SaColorsTest.picks((SaColorsTest.list("cycle" abc)) 6)) "accent1 accent2 accent3 accent2 accent1 accent2")
+        c.eqStr("span, two theme colours: split in half" (SaColorsTest.picks((SaColorsTest.list("span" ([] _:string ("accent1" "accent2")))) 4)) "accent1 accent1 accent2 accent2")
+        def one:[string] ([] _:string ("accent4"))
+        c.eqStr("one colour: every one" (SaColorsTest.picks((SaColorsTest.list("repeat" one)) 3)) "accent4 accent4 accent4")
+        def none (new SaClrList())
+        def np0:PptxColor (none.pick(0 1))
+        c.ok("an empty list: an unset colour" (np0.isSet == false))
+        ; a shade to a tint of one colour, blended
+        def g (new SaClrList())
+        g.meth = "span"
+        def dark:PptxColor (PptxColor.schemeOf("accent1"))
+        dark.shade = 0.8
+        def light:PptxColor (PptxColor.schemeOf("accent1"))
+        light.tint = 0.7
+        push g.colors dark
+        push g.colors light
+        def f:PptxColor (g.pick(0 5))
+        c.near("span: the first the first colour" f.shade 0.8)
+        def l:PptxColor (g.pick(4 5))
+        c.near("the last the last" l.tint 0.7)
+        def m:PptxColor (g.pick(2 5))
+        ; half way from -0.2 to +0.3: +0.05, a tint of 0.95
+        c.near("the middle between them" m.tint 0.95)
+        c.near("and no shade" m.shade 0.0)
+        def q:PptxColor (g.pick(1 5))
+        ; a quarter: -0.075, a shade of 0.925
+        c.near("a quarter of the way" q.shade 0.925)
+        c.eqStr("still accent1" q.scheme "accent1")
+        def a (new SaClrList())
+        a.meth = "span"
+        def a1:PptxColor (PptxColor.schemeOf("accent1"))
+        a1.alpha = 0.9
+        def a2:PptxColor (PptxColor.schemeOf("accent1"))
+        a2.alpha = 0.5
+        push a.colors a1
+        push a.colors a2
+        def am:PptxColor (a.pick(1 3))
+        c.near("alpha blended" am.alpha 0.7)
+        def g1:PptxColor (g.pick(0 1))
+        c.near("a span of one shape: the first" g1.shade 0.8)
+    }
+
+    sfn testBuiltins:void (c:SaKit) {
+        print "-- the built-in colour sets --"
+        def names:[string] ([] _:string ("accent0_1" "accent0_2" "accent0_3" "accent1_1" "accent2_2" "accent3_3" "accent4_4" "accent5_5" "accent6_1" "colorful1" "colorful2" "colorful3" "colorful4" "colorful5"))
+        def i:int 0
+        def all:boolean true
+        while (i < (array_length names)) {
+            def nm:string (itemAt names i)
+            def d:SaColorsDef (SaColors.builtin(nm))
+            if ((array_length d.labels) != (array_length (SaColors.labels()))) {
+                all = false
+                print ("    missing: " + nm)
+            }
+            i = (i + 1)
+        }
+        c.ok("every built-in set describes every label" all)
+        c.ok("not built in: accent7_2" ((SaColors.known("accent7_2")) == false))
+        c.ok("not built in: accent0_4" ((SaColors.known("accent0_4")) == false))
+        c.ok("not built in: colorful6" ((SaColors.known("colorful6")) == false))
+        c.ok("not built in: accent1_6" ((SaColors.known("accent1_6")) == false))
+        c.ok("known by id" (SaColors.known("urn:microsoft.com/office/officeart/2005/8/colors/accent3_4")))
+        def a34:SaColorsDef (SaColors.builtin("accent3_4"))
+        c.eqStr("its id" a34.uniqueId "urn:microsoft.com/office/officeart/2005/8/colors/accent3_4")
+        ; what each kind does to a node
+        def outline:SaPaint (SaStyle.paintFor("node1" "accent2_1" 0))
+        c.ok("accent2_1: an outline in accent2" (((outline.fill.scheme == "lt1") && (outline.line.scheme == "accent2")) && (outline.text.scheme == "dk1")))
+        def fill:SaPaint (SaStyle.paintFor("node1" "accent3_2" 0))
+        c.ok("accent3_2: filled in accent3, light text" ((fill.fill.scheme == "accent3") && (fill.text.scheme == "lt1")))
+        def cd3:SaColorsDef (SaColors.builtin("accent1_3"))
+        def qs:SaQuickStyleDef (SaQuickStyle.builtin("simple1"))
+        def g0:SaPaint (SaStyle.paint("node1" cd3 qs 0 3))
+        def g2:SaPaint (SaStyle.paint("node1" cd3 qs 2 3))
+        c.ok("accent1_3: dark to light" ((g0.fill.shade > 0.0) && (g2.fill.tint > 0.0)))
+        def cd4:SaColorsDef (SaColors.builtin("accent1_4"))
+        def l0:SaPaint (SaStyle.paint("node1" cd4 qs 0 4))
+        def l2:SaPaint (SaStyle.paint("node1" cd4 qs 2 4))
+        c.ok("accent1_4: a loop, back to where it began" (l0.fill.shade == l2.fill.shade))
+        def cd5:SaColorsDef (SaColors.builtin("accent1_5"))
+        def t0:SaPaint (SaStyle.paint("node1" cd5 qs 0 3))
+        def t2:SaPaint (SaStyle.paint("node1" cd5 qs 2 3))
+        c.ok("accent1_5: more transparent along" (t2.fill.alpha < t0.fill.alpha))
+        def d3:SaPaint (SaStyle.paintFor("node1" "accent0_3" 0))
+        c.eqStr("accent0_3: dark fill" d3.fill.scheme "dk2")
+        def d1:SaPaint (SaStyle.paintFor("node1" "accent0_1" 0))
+        c.ok("accent0_1: a dark outline" ((d1.line.scheme == "dk1") && (d1.fill.scheme == "lt1")))
+        def c1:SaPaint (SaStyle.paintFor("node1" "colorful1" 4))
+        c.eqStr("colorful1: the fifth node accent6" c1.fill.scheme "accent6")
+        def c5:SaPaint (SaStyle.paintFor("node1" "colorful5" 1))
+        c.eqStr("colorful5: accent5 then accent6" c5.fill.scheme "accent6")
+        def n0:SaPaint (SaStyle.paintFor("node0" "colorful1" 3))
+        c.eqStr("the node in the middle: the set's first colour" n0.fill.scheme "accent2")
+        def ar:SaPaint (SaStyle.paintFor("sibTrans2D1" "colorful1" 0))
+        c.ok("colorful arrows: a tint of accent2" ((ar.fill.scheme == "accent2") && (ar.fill.tint == 0.6)))
+        def ln:SaPaint (SaStyle.paintFor("parChTrans1D2" "accent4_2" 0))
+        c.ok("a connector line: a shade of the accent, no fill" ((ln.line.scheme == "accent4") && (ln.noFill && (ln.line.shade == 0.6))))
+        def dk:SaPaint (SaStyle.paintFor("dkBgShp" "accent1_2" 0))
+        c.ok("a dark background: a shade, light text" ((dk.fill.shade > 0.0) && (dk.text.scheme == "lt1")))
+    }
+
+    sfn testRead:void (c:SaKit) {
+        print "-- a file's own colour set --"
+        def xml:string "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/mine\"><dgm:title val=\"\"/><dgm:catLst><dgm:cat type=\"accent2\" pri=\"1\"/></dgm:catLst><dgm:styleLbl name=\"node1\"><dgm:fillClrLst meth=\"cycle\"><a:schemeClr val=\"accent2\"><a:lumMod val=\"75000\"/></a:schemeClr><a:srgbClr val=\"FF8800\"><a:alpha val=\"50000\"/></a:srgbClr><a:prstClr val=\"white\"/></dgm:fillClrLst><dgm:linClrLst/><dgm:txFillClrLst><a:schemeClr val=\"dk2\"/></dgm:txFillClrLst></dgm:styleLbl></dgm:colorsDef>"
+        def r:SaColorsRead (SaColors.read(xml))
+        c.ok("read" r.ok)
+        c.eqStr("its id" r.def.uniqueId "urn:example/mine")
+        c.eqStr("its category" r.def.category "accent2")
+        c.eqInt("one label" (array_length r.def.labels) 1)
+        def l:SaColorsLbl (itemAt r.def.labels 0)
+        c.eqStr("the method" l.fill.meth "cycle")
+        c.eqInt("three colours" (array_length l.fill.colors) 3)
+        def f0:PptxColor (itemAt l.fill.colors 0)
+        c.near("a modifier kept" f0.lumMod 0.75)
+        def f1:PptxColor (itemAt l.fill.colors 1)
+        c.ok("an RGB colour with its alpha" (((f1.isScheme == false) && (f1.srgb == "FF8800")) && (f1.alpha == 0.5)))
+        def f2:PptxColor (itemAt l.fill.colors 2)
+        c.eqStr("a preset colour" f2.srgb "FFFFFF")
+        c.ok("no line" (l.line.isEmpty()))
+        def qs:SaQuickStyleDef (SaQuickStyle.builtin("simple1"))
+        def p:SaPaint (SaStyle.paint("node1" r.def qs 1 3))
+        c.eqStr("drawn from it" p.fill.srgb "FF8800")
+        c.ok("an empty line list: no line" p.noLine)
+        c.eqStr("its text colour" p.text.scheme "dk2")
+        def sib:SaPaint (SaStyle.paint("sibTrans2D1" r.def qs 0 1))
+        c.ok("a label it does not have: accent1_2's" ((sib.fill.scheme == "accent1") && (sib.fill.tint == 0.6)))
+        def n2:SaPaint (SaStyle.paint("node2" r.def qs 0 1))
+        c.eqStr("a node label it does not have: its own node's" n2.fill.scheme "accent2")
+        def ns:SaColorsRead (SaColors.read("<dgm:styleDef/>"))
+        c.ok("not a colour set" (ns.ok == false))
+        def nx:SaColorsRead (SaColors.read("nope"))
+        c.ok("not XML" (nx.ok == false))
+        ; written and read back
+        def back:SaColorsRead (SaColors.read((SaColors.xml((SaColors.builtin("accent3_3"))))))
+        c.ok("a built-in set written reads back" back.ok)
+        c.eqInt("with every label" (array_length back.def.labels) (array_length (SaColors.labels())))
+        def bl:SaColorsLbl (SaStyle.colorsLbl(back.def "node1"))
+        c.eqStr("its span" bl.fill.meth "span")
+        def b0:PptxColor (itemAt bl.fill.colors 0)
+        c.near("its shade" b0.shade 0.8)
+        def b1:PptxColor (itemAt bl.fill.colors 1)
+        c.near("its tint" b1.tint 0.7)
+    }
+
+    sfn testQuickStyles:void (c:SaKit) {
+        print "-- quick styles --"
+        def names:[string] ([] _:string ("simple1" "simple2" "simple3" "simple4" "simple5"))
+        def i:int 0
+        def all:boolean true
+        while (i < (array_length names)) {
+            if ((SaQuickStyle.known((itemAt names i))) == false) {
+                all = false
+            }
+            i = (i + 1)
+        }
+        c.ok("simple1 … simple5 built in" all)
+        c.ok("polished is not" ((SaQuickStyle.known("polished1")) == false))
+        def cd:SaColorsDef (SaColors.builtin("accent1_2"))
+        def s1:SaPaint (SaStyle.paint("node1" cd (SaQuickStyle.builtin("simple1")) 0 1))
+        c.ok("simple1: filled, a 1 pt line, no shadow" (((s1.noFill == false) && (s1.lineWidthPt == 1.0)) && (s1.shadow == false)))
+        def s2:SaPaint (SaStyle.paint("node1" cd (SaQuickStyle.builtin("simple2")) 0 1))
+        c.near("simple2: a wide white outline" s2.lineWidthPt 2.25)
+        def s3:SaPaint (SaStyle.paint("node1" cd (SaQuickStyle.builtin("simple3")) 0 1))
+        def s5:SaPaint (SaStyle.paint("node1" cd (SaQuickStyle.builtin("simple5")) 0 1))
+        c.ok("simple3: a shadow" s3.shadow)
+        c.ok("simple5: a deeper one" (s5.shadowDistPt > s3.shadowDistPt))
+        def t5:SaPaint (SaStyle.paint("revTx" cd (SaQuickStyle.builtin("simple5")) 0 1))
+        c.ok("text on the page: no shadow, nothing drawn" ((t5.shadow == false) && (t5.noFill && t5.noLine)))
+        def a5:SaPaint (SaStyle.paint("sibTrans2D1" cd (SaQuickStyle.builtin("simple5")) 0 1))
+        c.ok("an arrow: no line" a5.noLine)
+        ; a file's own
+        def xml:string "<dgm:styleDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/style\"><dgm:styleLbl name=\"node1\"><dgm:style><a:lnRef idx=\"0\"/><a:fillRef idx=\"1\"/><a:effectRef idx=\"3\"/><a:fontRef idx=\"major\"/></dgm:style></dgm:styleLbl></dgm:styleDef>"
+        def r:SaQuickStyleRead (SaQuickStyle.read(xml))
+        c.ok("read" r.ok)
+        def q:SaQsLbl (r.def.label("node1"))
+        c.ok("its references" (((q.ln == 0) && (q.fill == 1)) && ((q.effect == 3) && (q.font == "major"))))
+        def node2:SaQsLbl (r.def.label("node2"))
+        c.eqInt("a node label it does not have: its node's" node2.effect 3)
+        def tx:SaQsLbl (r.def.label("revTx"))
+        c.eqInt("another family: the defaults" tx.fill 0)
+        def p:SaPaint (SaStyle.paint("node1" cd r.def 0 1))
+        c.ok("drawn: no line, a deep shadow" (p.noLine && (p.shadowDistPt == 4.5)))
+        def back:SaQuickStyleRead (SaQuickStyle.read((SaQuickStyle.xml((SaQuickStyle.builtin("simple4"))))))
+        c.ok("a built-in style written reads back" back.ok)
+        def bl1:SaQsLbl (back.def.label("node1"))
+        c.eqInt("its effect" bl1.effect 2)
+        def nq:SaQuickStyleRead (SaQuickStyle.read("<dgm:colorsDef/>"))
+        c.ok("not a style" (nq.ok == false))
+    }
+
+    sfn testEngine:void (c:SaKit) {
+        print "-- in a diagram --"
+        def o (new SaOptions())
+        o.colors = "accent2_3"
+        o.style = "simple4"
+        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 4)) o 480.0 270.0))
+        c.eqInt("no warnings" (array_length r.warnings) 0)
+        def nodes:[PptxShape] (SaKit.shapes(r "node"))
+        def n0:PptxShape (itemAt nodes 0)
+        def n3:PptxShape (itemAt nodes 3)
+        c.ok("the gradient runs over the four steps" ((n0.fill.shade > 0.0) && (n3.fill.tint > 0.0)))
+        c.eqStr("in accent2" n0.fill.scheme "accent2")
+        c.ok("with a shadow" n0.shadow.isSet)
+        c.near("falling down" n0.shadow.offsetYPt 3.0)
+        def arrows:[PptxShape] (SaKit.shapes(r "sibTrans"))
+        def a0:PptxShape (itemAt arrows 0)
+        c.ok("the arrows' shadow too: they are filled" a0.shadow.isSet)
+        c.eqStr("the style it was drawn with" r.shape.diagramStyleId "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple4")
+        c.eqStr("the colours" r.shape.diagramColorsId "urn:microsoft.com/office/officeart/2005/8/colors/accent2_3")
+        def o2 (new SaOptions())
+        o2.style = "polished1"
+        def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o2 480.0 270.0))
+        c.eqInt("a style it does not have: one warning" (array_length r2.warnings) 1)
+        c.ok("naming it" ((indexOf (itemAt r2.warnings 0) "polished1") >= 0))
+        c.eqStr("drawn as simple1" r2.shape.diagramStyleId "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1")
+        ; a file's own set and style
+        def o3 (new SaOptions())
+        o3.colorsXml = "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/mine\"><dgm:styleLbl name=\"node1\"><dgm:fillClrLst><a:srgbClr val=\"123456\"/></dgm:fillClrLst><dgm:linClrLst/><dgm:txFillClrLst><a:schemeClr val=\"lt1\"/></dgm:txFillClrLst></dgm:styleLbl></dgm:colorsDef>"
+        o3.colors = "unknownSet9"
+        def r3:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o3 480.0 270.0))
+        c.eqInt("a file's own colours: no warning for their id" (array_length r3.warnings) 0)
+        def m0:PptxShape (itemAt (SaKit.shapes(r3 "node")) 0)
+        c.eqStr("drawn in them" m0.fill.srgb "123456")
+        c.eqStr("its id kept" r3.shape.diagramColorsId "urn:example/mine")
+        c.ok("the package writes the built-in set by id" ((indexOf (SaPackage.colorsDefXml("accent2_3")) "uniqueId=\"urn:microsoft.com/office/officeart/2005/8/colors/accent2_3\"") >= 0))
+        c.ok("and the style" ((indexOf (SaPackage.styleDefXml("simple4")) "<a:effectRef idx=\"2\">") >= 0))
+    }
+
+    sfn main:void () {
+        print "== SaColorsTest =="
+        def c (new SaKit())
+        SaColorsTest.testPick(c)
+        SaColorsTest.testBuiltins(c)
+        SaColorsTest.testRead(c)
+        SaColorsTest.testQuickStyles(c)
+        SaColorsTest.testEngine(c)
+        c.finish("SaColorsTest")
+    }
+}

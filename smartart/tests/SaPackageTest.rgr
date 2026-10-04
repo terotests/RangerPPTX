@@ -77,7 +77,7 @@ class SaPackageTest {
         c.ok("colorful1: its category" ((indexOf f "<dgm:cat type=\"colorful\"") >= 0))
         c.ok("the nodes through accent2 … accent6" ((indexOf f "<dgm:styleLbl name=\"node1\"><dgm:fillClrLst meth=\"repeat\"><a:schemeClr val=\"accent2\"/><a:schemeClr val=\"accent3\"/><a:schemeClr val=\"accent4\"/><a:schemeClr val=\"accent5\"/><a:schemeClr val=\"accent6\"/></dgm:fillClrLst>") >= 0))
         def g:string (SaPackage.colorsDefXml("urn:microsoft.com/office/officeart/2005/8/colors/colorful2"))
-        c.ok("colorful2: accent1 … accent6" ((indexOf g "<a:schemeClr val=\"accent1\"/><a:schemeClr val=\"accent2\"/><a:schemeClr val=\"accent3\"/><a:schemeClr val=\"accent4\"/><a:schemeClr val=\"accent5\"/><a:schemeClr val=\"accent6\"/></dgm:fillClrLst>") >= 0))
+        c.ok("colorful2: accent2 and accent3" ((indexOf g "<dgm:styleLbl name=\"node1\"><dgm:fillClrLst meth=\"repeat\"><a:schemeClr val=\"accent2\"/><a:schemeClr val=\"accent3\"/></dgm:fillClrLst>") >= 0))
         c.eqInt("a label for each" (SaPackageTest.count(a "<dgm:styleLbl ")) (array_length (SaPackage.labels())))
         c.ok("every label the built-in layouts use is described" (((((indexOf a "name=\"node0\"") >= 0) && ((indexOf a "name=\"revTx\"") >= 0)) && ((indexOf a "name=\"sibTrans2D1\"") >= 0)) && ((indexOf a "name=\"parChTrans1D2\"") >= 0)))
     }

@@ -1,0 +1,254 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaQuickStyle — quick styles (`dgm:styleDef`), read, built in, and written
+; ==============================================================================
+;
+; A quick style says, for each style label, which of the theme's line, fill
+; and effect styles a shape takes (`lnRef`, `fillRef`, `effectRef`, by index:
+; 0 none, 1 subtle, 2 moderate, 3 intense) and which font (`fontRef`). The
+; colour set says the colours; this says how they are applied. 3-D (the
+; `scene3d`, `sp3d` a style may hold) is not drawn here.
+;
+; Drawn as:
+;
+;   lnRef     0 no line, 1 ½ pt, 2 1 pt, 3 2¼ pt
+;   fillRef   0 no fill, 1 … 3 filled
+;   effectRef 0 none; 1 … 3 an outer shadow, a little to a lot
+;
+; Built in, by the last segment of their ids:
+;
+;   simple1   Simple Fill: filled, a 1 pt line (the default)
+;   simple2   White Outline: filled, a 2¼ pt line
+;   simple3   Subtle Effect: simple1 with a small shadow
+;   simple4   Moderate Effect: with a larger one
+;   simple5   Intense Effect: with the largest
+;
+; A file's own quick style (a whole diagram as one file) is read with `read`.
+; ==============================================================================
+
+Import "../../xml/XmlCore.rgr"
+Import "SaColors.rgr"
+
+class SaQsLbl {
+    def name:string ""
+    def ln:int 2
+    def fill:int 1
+    def effect:int 0
+    def font:string "minor"
+
+    Constructor () {
+    }
+}
+
+class SaQuickStyleDef {
+    def uniqueId:string ""
+    def labels:[SaQsLbl]
+
+    Constructor () {
+    }
+
+    ; the label's entry, or one of its family, or the defaults
+    fn label:SaQsLbl (name:string) {
+        def i:int 0
+        while (i < (array_length labels)) {
+            def l:SaQsLbl (itemAt labels i)
+            if (l.name == name) {
+                return l
+            }
+            i = (i + 1)
+        }
+        def fam:string (SaColors.family(name))
+        i = 0
+        while (i < (array_length labels)) {
+            def l2:SaQsLbl (itemAt labels i)
+            if ((SaColors.family(l2.name)) == fam) {
+                return l2
+            }
+            i = (i + 1)
+        }
+        return (SaQuickStyle.familyDefault(name 0))
+    }
+}
+
+class SaQuickStyleRead {
+    def ok:boolean false
+    def error:string ""
+    def def:SaQuickStyleDef (new SaQuickStyleDef())
+
+    Constructor () {
+    }
+}
+
+class SaQuickStyle {
+
+    sfn fullId:string (s:string) {
+        if ((indexOf s ":") >= 0) {
+            return s
+        }
+        return ("urn:microsoft.com/office/officeart/2005/8/quickstyle/" + s)
+    }
+
+    sfn names:string () {
+        return "simple1 … simple5"
+    }
+
+    ; line widths by lnRef, in points
+    sfn lineWidth:double (idx:int) {
+        if (idx <= 0) { return 0.0 }
+        if (idx == 1) { return 0.5 }
+        if (idx == 2) { return 1.0 }
+        return 2.25
+    }
+
+    ; the defaults for a label of this family, with `effect` as the style's
+    sfn familyDefault:SaQsLbl (name:string effect:int) {
+        def l (new SaQsLbl())
+        l.name = name
+        def fam:string (SaColors.family(name))
+        l.effect = effect
+        if (fam == "node") {
+            l.ln = 2
+            l.fill = 1
+        }
+        if (fam == "arrow") {
+            l.ln = 0
+            l.fill = 1
+        }
+        if (fam == "line") {
+            l.ln = 2
+            l.fill = 0
+            l.effect = 0
+            l.font = "minor"
+        }
+        if ((fam == "light") || ((fam == "outlined") || (fam == "dark"))) {
+            l.ln = 2
+            l.fill = 1
+            l.effect = 0
+        }
+        if (fam == "text") {
+            l.ln = 0
+            l.fill = 0
+            l.effect = 0
+        }
+        return l
+    }
+
+    sfn known:boolean (id:string) {
+        def s:string (SaColors.short(id))
+        if ((strlen s) == 0) {
+            return true
+        }
+        def d:SaQuickStyleDef (SaQuickStyle.builtin(s))
+        return ((array_length d.labels) > 0)
+    }
+
+    ; the quick style called `short`; one with no labels for a name that is
+    ; not built in
+    sfn builtin:SaQuickStyleDef (short:string) {
+        def d (new SaQuickStyleDef())
+        def ok:boolean ((((short == "simple1") || (short == "simple2")) || ((short == "simple3") || (short == "simple4"))) || (short == "simple5"))
+        if (ok == false) {
+            return d
+        }
+        d.uniqueId = (SaQuickStyle.fullId(short))
+        def effect:int 0
+        if (short == "simple3") { effect = 1 }
+        if (short == "simple4") { effect = 2 }
+        if (short == "simple5") { effect = 3 }
+        def ls:[string] (SaColors.labels())
+        def i:int 0
+        while (i < (array_length ls)) {
+            def l:SaQsLbl (SaQuickStyle.familyDefault((itemAt ls i) effect))
+            if ((short == "simple2") && (l.ln == 2)) {
+                l.ln = 3
+            }
+            push d.labels l
+            i = (i + 1)
+        }
+        return d
+    }
+
+    ; --- reading a file's own style -------------------------------------------
+
+    sfn read:SaQuickStyleRead (xml:string) {
+        def res (new SaQuickStyleRead())
+        def parser (new XmlParser())
+        def rootOpt@(optional):XmlNode (parser.parse(xml))
+        if (null? rootOpt) {
+            res.error = "not XML: no element could be read"
+            return res
+        }
+        def root:XmlNode (unwrap rootOpt)
+        if (root.name != "styleDef") {
+            res.error = ("the root element is <" + root.name + ">, not <dgm:styleDef>")
+            return res
+        }
+        res.def.uniqueId = (root.attr("uniqueId"))
+        def i:int 0
+        while (i < (root.childCount())) {
+            def c:XmlNode (root.childAt(i))
+            if ((c.isText == false) && (c.name == "styleLbl")) {
+                def l (new SaQsLbl())
+                l.name = (c.attr("name"))
+                def st@(optional):XmlNode (c.firstChild("style"))
+                if (!null? st) {
+                    def s:XmlNode (unwrap st)
+                    l.ln = (SaQuickStyle.idxOf(s "lnRef" 2))
+                    l.fill = (SaQuickStyle.idxOf(s "fillRef" 1))
+                    l.effect = (SaQuickStyle.idxOf(s "effectRef" 0))
+                    def fr@(optional):XmlNode (s.firstChild("fontRef"))
+                    if (!null? fr) {
+                        l.font = ((unwrap fr).attr("idx"))
+                    }
+                }
+                push res.def.labels l
+            }
+            i = (i + 1)
+        }
+        res.ok = true
+        return res
+    }
+
+    sfn idxOf:int (s:XmlNode name:string fallback:int) {
+        def hit@(optional):XmlNode (s.firstChild(name))
+        if (null? hit) {
+            return fallback
+        }
+        def v@(optional):int (str2int ((unwrap hit).attr("idx")))
+        return (?? v fallback)
+    }
+
+    ; --- writing ---------------------------------------------------------------
+
+    sfn xml:string (d:SaQuickStyleDef) {
+        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+        out = (out + "<dgm:styleDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"" + (SaColors.esc(d.uniqueId)) + "\">")
+        out = (out + "<dgm:title val=\"\"/><dgm:desc val=\"\"/><dgm:catLst><dgm:cat type=\"simple\" pri=\"10100\"/></dgm:catLst>")
+        out = (out + (SaQuickStyle.scene()))
+        def i:int 0
+        while (i < (array_length d.labels)) {
+            def l:SaQsLbl (itemAt d.labels i)
+            def font:string "lt1"
+            def fam:string (SaColors.family(l.name))
+            if ((((fam == "line") || (fam == "text")) || (fam == "light")) || (fam == "outlined")) {
+                font = "tx1"
+            }
+            out = (out + "<dgm:styleLbl name=\"" + (SaColors.esc(l.name)) + "\">" + (SaQuickStyle.scene()) + "<dgm:sp3d/><dgm:txPr/>" + (SaQuickStyle.refs(l font)) + "</dgm:styleLbl>")
+            i = (i + 1)
+        }
+        return (out + "</dgm:styleDef>")
+    }
+
+    sfn scene:string () {
+        return "<dgm:scene3d><a:camera prst=\"orthographicFront\"/><a:lightRig rig=\"threePt\" dir=\"t\"/></dgm:scene3d>"
+    }
+
+    sfn refs:string (l:SaQsLbl font:string) {
+        def zero:string "<a:scrgbClr r=\"0\" g=\"0\" b=\"0\"/>"
+        def fontIdx:string l.font
+        if ((strlen fontIdx) == 0) {
+            fontIdx = "minor"
+        }
+        return ("<dgm:style><a:lnRef idx=\"" + (to_string l.ln) + "\">" + zero + "</a:lnRef><a:fillRef idx=\"" + (to_string l.fill) + "\">" + zero + "</a:fillRef><a:effectRef idx=\"" + (to_string l.effect) + "\">" + zero + "</a:effectRef><a:fontRef idx=\"" + fontIdx + "\"><a:schemeClr val=\"" + font + "\"/></a:fontRef></dgm:style>")
+    }
+}
