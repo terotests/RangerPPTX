@@ -305,6 +305,8 @@ class PptxClone {
         s.diagramLayoutId = src.diagramLayoutId
         s.diagramStyleId = src.diagramStyleId
         s.diagramColorsId = src.diagramColorsId
+        s.diagramStyleXml = src.diagramStyleXml
+        s.diagramColorsXml = src.diagramColorsXml
         s.diagramHadDrawing = src.diagramHadDrawing
         def dppi:int 0
         while (dppi < (array_length src.diagramParaPts)) {

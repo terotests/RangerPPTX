@@ -2055,8 +2055,16 @@ class PptxWriter {
         def bodies:[string]
         push bodies data
         push bodies shape.diagramLayoutXml
-        push bodies (SaPackage.styleDefXml(shape.diagramStyleId))
-        push bodies (SaPackage.colorsDefXml(shape.diagramColorsId))
+        def styleBody:string shape.diagramStyleXml
+        if ((strlen styleBody) == 0) {
+            styleBody = (SaPackage.styleDefXml(shape.diagramStyleId))
+        }
+        def colorsBody:string shape.diagramColorsXml
+        if ((strlen colorsBody) == 0) {
+            colorsBody = (SaPackage.colorsDefXml(shape.diagramColorsId))
+        }
+        push bodies styleBody
+        push bodies colorsBody
         push bodies (PptxWriter.diagramDrawingXml(shape nb))
         k = 0
         while (k < 5) {

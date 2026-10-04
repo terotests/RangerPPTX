@@ -1,0 +1,158 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaWholeTest — a whole PowerPoint SmartArt as one file
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+Import "../SaWhole.rgr"
+Import "../SaFile.rgr"
+Import "../SaEdit.rgr"
+
+class SaWholeTest {
+
+    sfn part:string (ct:string body:string) {
+        return ("<pkg:part pkg:name=\"/ppt/diagrams/x.xml\" pkg:contentType=\"" + ct + "\"><pkg:xmlData>" + body + "</pkg:xmlData></pkg:part>")
+    }
+
+    sfn pkg:string (parts:string) {
+        return ("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><pkg:package xmlns:pkg=\"http://schemas.microsoft.com/office/2006/xmlPackage\">" + parts + "</pkg:package>")
+    }
+
+    sfn ct:string (kind:string) {
+        if (kind == "drawing") {
+            return "application/vnd.ms-office.drawingml.diagramDrawing+xml"
+        }
+        return ("application/vnd.openxmlformats-officedocument.drawingml." + kind + "+xml")
+    }
+
+    ; chevron1's definition under an id of its own: a file's layout that is
+    ; not the one its data names
+    sfn myLayout:string () {
+        def xml:string (SaBuiltins.layoutXml("chevron1"))
+        def at:int (indexOf xml "uniqueId=\"")
+        def end:int (indexOfFrom xml "\"" (at + 10))
+        return ((substring xml 0 (at + 10)) + "urn:example/myChevrons" + (substring xml end (strlen xml)))
+    }
+
+    sfn myColors:string () {
+        return "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/myColors\"><dgm:styleLbl name=\"node1\"><dgm:fillClrLst meth=\"repeat\"><a:srgbClr val=\"AA3300\"/></dgm:fillClrLst><dgm:linClrLst/><dgm:txFillClrLst><a:schemeClr val=\"lt1\"/></dgm:txFillClrLst></dgm:styleLbl></dgm:colorsDef>"
+    }
+
+    ; the style part as a package often holds it: its namespaces declared
+    ; on the package, not on itself
+    sfn myStyle:string () {
+        return "<dgm:styleDef uniqueId=\"urn:example/myStyle\"><dgm:styleLbl name=\"node1\"><dgm:style><a:lnRef idx=\"0\"/><a:fillRef idx=\"1\"/><a:effectRef idx=\"3\"/><a:fontRef idx=\"minor\"/></dgm:style></dgm:styleLbl></dgm:styleDef>"
+    }
+
+    ; two steps as PowerPoint might have drawn them, named by data point
+    sfn myDrawing:string () {
+        def sp1:string "<dsp:sp modelId=\"n1\"><dsp:nvSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x=\"1270000\" y=\"635000\"/><a:ext cx=\"2540000\" cy=\"1270000\"/></a:xfrm><a:prstGeom prst=\"roundRect\"><a:avLst/></a:prstGeom><a:solidFill><a:schemeClr val=\"accent2\"/></a:solidFill></dsp:spPr><dsp:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang=\"en-US\" sz=\"2400\"/><a:t>Item 1</a:t></a:r></a:p></dsp:txBody></dsp:sp>"
+        def sp2:string "<dsp:sp modelId=\"n2\"><dsp:nvSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x=\"5080000\" y=\"635000\"/><a:ext cx=\"2540000\" cy=\"1270000\"/></a:xfrm><a:prstGeom prst=\"roundRect\"><a:avLst/></a:prstGeom><a:solidFill><a:schemeClr val=\"accent2\"/></a:solidFill></dsp:spPr><dsp:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang=\"en-US\" sz=\"2400\"/><a:t>Item 2</a:t></a:r></a:p></dsp:txBody></dsp:sp>"
+        return ("<dsp:drawing xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:dsp=\"http://schemas.microsoft.com/office/drawing/2008/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>" + sp1 + sp2 + "</dsp:spTree></dsp:drawing>")
+    }
+
+    sfn whole:string (withDrawing:boolean) {
+        def data:string (SaKit.flat("process1" 2))
+        def at:int (indexOf data "<dgm:dataModel")
+        data = (substring data at (strlen data))
+        def parts:string ((SaWholeTest.part((SaWholeTest.ct("diagramData")) data)) + (SaWholeTest.part((SaWholeTest.ct("diagramLayout")) (SaWholeTest.myLayout()))) + (SaWholeTest.part((SaWholeTest.ct("diagramColors")) (SaWholeTest.myColors()))) + (SaWholeTest.part((SaWholeTest.ct("diagramStyle")) (SaWholeTest.myStyle()))))
+        if withDrawing {
+            parts = (parts + (SaWholeTest.part((SaWholeTest.ct("drawing")) (SaWholeTest.myDrawing()))))
+        }
+        return (SaWholeTest.pkg(parts))
+    }
+
+    sfn testRead:void (c:SaKit) {
+        print "-- reading the package --"
+        def f:SaWholeFile (SaWhole.read((SaWholeTest.whole(true))))
+        c.ok("read" f.ok)
+        c.ok("its data" ((indexOf f.dataXml "<dgm:dataModel") == 0))
+        c.ok("its layout" ((indexOf f.layoutXml "urn:example/myChevrons") >= 0))
+        c.ok("its colours" ((indexOf f.colorsXml "AA3300") >= 0))
+        c.ok("its style, given the namespaces it leaned on" (((indexOf f.styleXml "uniqueId=\"urn:example/myStyle\" xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\"") > 0) && ((indexOf f.styleXml "xmlns:a=") >= 0)))
+        c.ok("its drawing" ((indexOf f.drawingXml "<dsp:drawing") == 0))
+        c.ok("a part's own namespaces are left alone" ((indexOf f.colorsXml "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=") == 0))
+        def noData:SaWholeFile (SaWhole.read((SaWholeTest.pkg((SaWholeTest.part((SaWholeTest.ct("diagramColors")) (SaWholeTest.myColors())))))))
+        c.ok("no data part: refused" (noData.ok == false))
+        c.ok("saying so" ((indexOf noData.error "no diagram data part") >= 0))
+        def notPkg:SaWholeFile (SaWhole.read("<dgm:dataModel/>"))
+        c.ok("not a package: refused" (notPkg.ok == false))
+        c.eqStr("withNs on a self-closing root" (SaWhole.withNs("<dgm:x/>")) "<dgm:x xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"/>")
+        c.ok("a package is a SmartArt file" (SaFile.isSmartArt("whole.xml" "" (SaWholeTest.whole(true)))))
+        c.ok("and is whole" (SaWhole.isWhole((SaWholeTest.whole(false)))))
+        c.ok("the data alone is not whole" ((SaWhole.isWhole((SaKit.flat("process1" 2)))) == false))
+    }
+
+    sfn testDrawn:void (c:SaKit) {
+        print "-- drawn as PowerPoint drew it --"
+        def r:SaResult (SaWhole.layout((SaWholeTest.whole(true)) (new SaOptions()) 480.0 270.0))
+        c.ok("drawn" r.ok)
+        def g:PptxShape r.shape
+        c.ok("a diagram" g.isDiagram)
+        c.eqInt("its two shapes, as drawn" (array_length g.children) 2)
+        def s0:PptxShape (itemAt g.children 0)
+        c.eqStr("their text" (s0.text.plainText()) "Item 1")
+        c.eqStr("their geometry" s0.preset "roundRect")
+        c.eqStr("their colours" s0.fill.scheme "accent2")
+        ; the shapes span 100 × 100 … 600 × 200 points (in EMU, 1270000 = 100
+        ; pt); widened to 16:9 around their middle
+        c.near("in the box" g.width 480.0)
+        c.near("whole" g.height 270.0)
+        c.near("the shapes' bounds, widened to the box's proportions" (g.chW / g.chH) (480.0 / 270.0))
+        c.near("centred across" (g.chX + (g.chW / 2.0)) 350.0)
+        c.near("and down" (g.chY + (g.chH / 2.0)) 100.0)
+        c.eqStr("each shape knows its point" (itemAt s0.diagramParaPts 0) "n1")
+        c.ok("it carries its parts" (((strlen g.diagramModelXml) > 0) && ((strlen g.diagramColorsXml) > 0)))
+        c.ok("its own layout" ((indexOf g.diagramLayoutXml "urn:example/myChevrons") >= 0))
+        c.ok("its shapes as read" (g.diagramSig == (g.diagramSignature())))
+        c.ok("and can be laid out again" (SaEdit.canRelayout(g)))
+    }
+
+    sfn testEngine:void (c:SaKit) {
+        print "-- laid out with the file's own definitions --"
+        def r:SaResult (SaWhole.layout((SaWholeTest.whole(false)) (new SaOptions()) 480.0 270.0))
+        c.ok("no drawing: laid out" r.ok)
+        c.eqStr("with the file's layout, not the id its data names" r.layoutUsed "myChevrons")
+        def n0:PptxShape (itemAt (SaKit.shapes(r "node")) 0)
+        c.eqStr("chevrons" n0.preset "chevron")
+        c.eqStr("in the file's colours" n0.fill.srgb "AA3300")
+        c.ok("with the file's style: no line, a deep shadow" (n0.noLine && n0.shadow.isSet))
+        c.eqInt("nothing to warn about" (array_length r.warnings) 0)
+        c.ok("it carries the file's parts to write back" (((indexOf r.shape.diagramColorsXml "AA3300") >= 0) && ((indexOf r.shape.diagramLayoutXml "myChevrons") >= 0)))
+        ; the Markdown names another layout: the engine, that layout
+        def o (new SaOptions())
+        o.layout = "process1"
+        def r2:SaResult (SaWhole.layout((SaWholeTest.whole(true)) o 480.0 270.0))
+        c.eqStr("an override: laid out, not drawn" r2.layoutUsed "process1")
+        def m0:PptxShape (itemAt (SaKit.shapes(r2 "node")) 0)
+        c.eqStr("as the override says" m0.preset "roundRect")
+        c.eqStr("still in the file's colours" m0.fill.srgb "AA3300")
+        c.ok("the file's layout not carried: the override's is" ((indexOf r2.shape.diagramLayoutXml "myChevrons") < 0))
+        def o2 (new SaOptions())
+        o2.colors = "colorful1"
+        def r3:SaResult (SaWhole.layout((SaWholeTest.whole(true)) o2 480.0 270.0))
+        def k0:PptxShape (itemAt (SaKit.shapes(r3 "node")) 0)
+        c.eqStr("colours overridden: the set named" k0.fill.scheme "accent2")
+        c.eqStr("the file's layout kept" r3.layoutUsed "myChevrons")
+        c.eqStr("the file's colours not carried" r3.shape.diagramColorsXml "")
+        ; a layout part the engine refuses: its own for the id, said
+        def bad:string (SaWholeTest.pkg(((SaWholeTest.part((SaWholeTest.ct("diagramData")) (SaKit.flat("process1" 2)))) + (SaWholeTest.part((SaWholeTest.ct("diagramLayout")) "<dgm:layoutDef uniqueId=\"urn:x\"><dgm:layoutNode name=\"a\"><dgm:alg type=\"nope\"/></dgm:layoutNode></dgm:layoutDef>")))))
+        def r4:SaResult (SaWhole.layout(bad (new SaOptions()) 480.0 270.0))
+        c.ok("a layout it refuses: still drawn" r4.ok)
+        c.eqStr("with the engine's own" r4.layoutUsed "process1")
+        c.ok("and it says so" (((array_length r4.warnings) == 1) && ((indexOf (itemAt r4.warnings 0) "could not be used") >= 0)))
+        def r5:SaResult (SaWhole.layout((SaWholeTest.pkg("")) (new SaOptions()) 480.0 270.0))
+        c.ok("an empty package: refused, with the reason" ((r5.ok == false) && ((strlen r5.error) > 0)))
+        def r6:SaResult (SaWhole.layout((SaKit.flat("process1" 2)) (new SaOptions()) 480.0 270.0))
+        c.eqStr("the data alone: the engine, as before" r6.layoutUsed "process1")
+    }
+
+    sfn main:void () {
+        print "== SaWholeTest =="
+        def c (new SaKit())
+        SaWholeTest.testRead(c)
+        SaWholeTest.testDrawn(c)
+        SaWholeTest.testEngine(c)
+        c.finish("SaWholeTest")
+    }
+}

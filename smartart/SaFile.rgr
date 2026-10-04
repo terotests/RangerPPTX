@@ -40,7 +40,8 @@ class SaFile {
     }
 
     ; A diagram: stored under its own type, or an .xml file whose first
-    ; element is a dgm:dataModel. A file of another kind is never one, however
+    ; element is a dgm:dataModel or a Flat OPC package (a whole diagram,
+    ; SaWhole). A file of another kind is never one, however
     ; it is named.
     sfn isSmartArt:boolean (name:string type:string head:string) {
         if (type == (SaFile.TYPE())) {
@@ -53,7 +54,11 @@ class SaFile {
         if (((strlen type) > 0) && (((type != "application/xml") && (type != "text/xml")) && (type != "application/octet-stream"))) {
             return false
         }
-        return ((indexOf head "dataModel") >= 0)
+        ; the data alone, or a whole diagram as a Flat OPC package (SaWhole)
+        if ((indexOf head "dataModel") >= 0) {
+            return true
+        }
+        return ((indexOf head "http://schemas.microsoft.com/office/2006/xmlPackage") >= 0)
     }
 
     ; the bytes as text: UTF-8, so a Finnish or Greek label is itself

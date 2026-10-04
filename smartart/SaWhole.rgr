@@ -1,0 +1,355 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaWhole — a whole PowerPoint SmartArt as one file
+; ==============================================================================
+;
+; A diagram in a .pptx is five parts: its data, its layout definition, its
+; quick style, its colour set, and the drawing PowerPoint made of it. One
+; file holds them all as a Flat OPC package — Microsoft's single-XML form of
+; a package (`pkg:package`, namespace
+; http://schemas.microsoft.com/office/2006/xmlPackage), each part a
+; `pkg:part` with its `pkg:contentType` and its XML in `pkg:xmlData`:
+;
+;   <pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">
+;     <pkg:part pkg:name="/ppt/diagrams/data1.xml"
+;               pkg:contentType="application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml">
+;       <pkg:xmlData><dgm:dataModel …>…</dgm:dataModel></pkg:xmlData>
+;     </pkg:part>
+;     … diagramLayout+xml, diagramStyle+xml, diagramColors+xml,
+;       application/vnd.ms-office.drawingml.diagramDrawing+xml
+;   </pkg:package>
+;
+; Parts are found by content type; names do not matter. Only the data part
+; is required.
+;
+; How it is drawn (`layout`):
+;
+;   nothing overridden, a drawing there
+;           as PowerPoint drew it: the drawing's shapes, fitted to the box
+;           with their proportions kept and centred
+;   otherwise
+;           laid out by the engine from the data, with the file's own layout
+;           definition, colour set and quick style — each unless the
+;           Markdown names another (`layout=`, `colors=`, `style=`); a
+;           layout definition the engine refuses gives way to the engine's
+;           own for that id, then to `default`, and the result says so
+;
+; Either way the result carries the file's parts, so a PowerPoint export
+; writes the diagram back with its own layout, style and colours.
+;
+; A file whose root is a `dgm:dataModel` (the data alone) goes straight to
+; the engine, as before.
+; ==============================================================================
+
+Import "SaEngine.rgr"
+Import "../src/PptxParser.rgr"
+
+class SaWholeFile {
+    def ok:boolean false
+    def error:string ""
+    def dataXml:string ""
+    def layoutXml:string ""
+    def styleXml:string ""
+    def colorsXml:string ""
+    def drawingXml:string ""
+
+    Constructor () {
+    }
+}
+
+class SaWhole {
+
+    sfn pkgNs:string () {
+        return "http://schemas.microsoft.com/office/2006/xmlPackage"
+    }
+
+    ; Whether this text is a Flat OPC package (from its first bytes).
+    sfn isWhole:boolean (head:string) {
+        return ((indexOf head (SaWhole.pkgNs())) >= 0)
+    }
+
+    sfn read:SaWholeFile (xml:string) {
+        def res (new SaWholeFile())
+        def parser (new XmlParser())
+        def rootOpt@(optional):XmlNode (parser.parse(xml))
+        if (null? rootOpt) {
+            res.error = "not XML: no element could be read"
+            return res
+        }
+        def root:XmlNode (unwrap rootOpt)
+        if (root.name != "package") {
+            res.error = ("the root element is <" + root.name + ">, not <pkg:package>")
+            return res
+        }
+        def i:int 0
+        while (i < (root.childCount())) {
+            def part:XmlNode (root.childAt(i))
+            if ((part.isText == false) && (part.name == "part")) {
+                def ct:string (part.attr("pkg:contentType"))
+                if ((strlen ct) == 0) {
+                    ct = (part.attr("contentType"))
+                }
+                def dataOpt@(optional):XmlNode (part.firstChild("xmlData"))
+                if (!null? dataOpt) {
+                    def body:string (SaWhole.innerXml(xml (unwrap dataOpt)))
+                    if ((indexOf ct "drawingml.diagramData") >= 0) {
+                        res.dataXml = body
+                    }
+                    if ((indexOf ct "drawingml.diagramLayout") >= 0) {
+                        res.layoutXml = (SaWhole.withNs(body))
+                    }
+                    if ((indexOf ct "drawingml.diagramStyle") >= 0) {
+                        res.styleXml = (SaWhole.withNs(body))
+                    }
+                    if ((indexOf ct "drawingml.diagramColors") >= 0) {
+                        res.colorsXml = (SaWhole.withNs(body))
+                    }
+                    if ((indexOf ct "drawingml.diagramDrawing") >= 0) {
+                        res.drawingXml = body
+                    }
+                }
+            }
+            i = (i + 1)
+        }
+        if ((strlen res.dataXml) == 0) {
+            res.error = "the package has no diagram data part (content type …drawingml.diagramData+xml)"
+            return res
+        }
+        res.ok = true
+        return res
+    }
+
+    ; the first element inside `n`, as it is in the source
+    sfn innerXml:string (src:string n:XmlNode) {
+        def i:int 0
+        while (i < (n.childCount())) {
+            def c:XmlNode (n.childAt(i))
+            if (c.isText == false) {
+                return (substring src c.srcStart c.srcEnd)
+            }
+            i = (i + 1)
+        }
+        return ""
+    }
+
+    ; A part lifted out of the package may lean on namespaces the package
+    ; declared: its root gets the two a diagram part uses, when it has not.
+    sfn withNs:string (xml:string) {
+        def lt:int (indexOf xml "<")
+        if (lt < 0) {
+            return xml
+        }
+        def gt:int (indexOfFrom xml ">" lt)
+        if (gt < 0) {
+            return xml
+        }
+        def tag:string (substring xml lt gt)
+        def add:string ""
+        if ((indexOf tag "xmlns:dgm=") < 0) {
+            add = (add + " xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\"")
+        }
+        if ((indexOf tag "xmlns:a=") < 0) {
+            add = (add + " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"")
+        }
+        if ((strlen add) == 0) {
+            return xml
+        }
+        def at:int gt
+        if ((charAt xml (gt - 1)) == 47) {
+            at = (gt - 1)
+        }
+        return ((substring xml 0 at) + add + (substring xml at (strlen xml)))
+    }
+
+    ; --- drawing it ------------------------------------------------------------
+
+    ; A SmartArt file — the data alone or a whole diagram — drawn into a box
+    ; of w × h.
+    sfn layout:SaResult (text:string opts:SaOptions w:double h:double) {
+        if ((SaWhole.isWhole((substring text 0 (SaWhole.headLen(text))))) == false) {
+            return (SaEngine.layout(text opts w h))
+        }
+        def f:SaWholeFile (SaWhole.read(text))
+        if (f.ok == false) {
+            def bad (new SaResult())
+            bad.error = f.error
+            return bad
+        }
+        def overridden:boolean (((strlen opts.layout) > 0) || (((strlen opts.colors) > 0) || ((strlen opts.style) > 0)))
+        if (((strlen f.drawingXml) > 0) && (overridden == false)) {
+            def drawn:SaResult (SaWhole.fromDrawing(f opts w h))
+            if drawn.ok {
+                return drawn
+            }
+        }
+        return (SaWhole.engine(f opts w h))
+    }
+
+    sfn headLen:int (text:string) {
+        if ((strlen text) > 2048) {
+            return 2048
+        }
+        return (strlen text)
+    }
+
+    ; laid out by the engine with the file's own definitions
+    sfn engine:SaResult (f:SaWholeFile opts:SaOptions w:double h:double) {
+        def o (new SaOptions())
+        o.layout = opts.layout
+        o.colors = opts.colors
+        o.style = opts.style
+        o.measure = opts.measure
+        def lostLayout:string ""
+        if ((strlen opts.layout) == 0) {
+            if ((strlen f.layoutXml) > 0) {
+                def lr:SaLayoutReadResult (SaLayoutReader.read(f.layoutXml))
+                if lr.ok {
+                    o.layoutXml = f.layoutXml
+                } {
+                    lostLayout = lr.error
+                }
+            }
+        }
+        if ((strlen opts.colors) == 0) {
+            o.colorsXml = f.colorsXml
+        }
+        if ((strlen opts.style) == 0) {
+            o.styleXml = f.styleXml
+        }
+        def r:SaResult (SaEngine.layout(f.dataXml o w h))
+        if ((strlen lostLayout) > 0) {
+            push r.warnings ("the file's own layout definition could not be used (" + lostLayout + "); the engine's own was used instead")
+        }
+        if r.ok {
+            SaWhole.keepParts(r.shape f opts)
+        }
+        return r
+    }
+
+    ; what the file holds, so a PowerPoint export writes its own parts back
+    sfn keepParts:void (g:PptxShape f:SaWholeFile opts:SaOptions) {
+        if (((strlen opts.layout) == 0) && ((strlen f.layoutXml) > 0)) {
+            def lr:SaLayoutReadResult (SaLayoutReader.read(f.layoutXml))
+            if lr.ok {
+                g.diagramLayoutXml = f.layoutXml
+                if ((strlen lr.layout.uniqueId) > 0) {
+                    g.diagramLayoutId = lr.layout.uniqueId
+                }
+            }
+        }
+        if ((strlen opts.colors) == 0) {
+            g.diagramColorsXml = f.colorsXml
+        }
+        if ((strlen opts.style) == 0) {
+            g.diagramStyleXml = f.styleXml
+        }
+    }
+
+    ; PowerPoint's own drawing, fitted to the box
+    sfn fromDrawing:SaResult (f:SaWholeFile opts:SaOptions w:double h:double) {
+        def res (new SaResult())
+        def parser (new PptxParser())
+        def rootOpt@(optional):XmlNode (parser.xmlParser.parse(f.drawingXml))
+        if (null? rootOpt) {
+            res.error = "the drawing part does not read"
+            return res
+        }
+        def treeOpt@(optional):XmlNode ((unwrap rootOpt).firstChild("spTree"))
+        if (null? treeOpt) {
+            res.error = "the drawing part has no shape tree"
+            return res
+        }
+        def read:SaReadResult (SaDataReader.read(f.dataXml))
+        if (read.ok == false) {
+            res.error = read.error
+            return res
+        }
+        def model:SaModel read.model
+        def tree:XmlNode (unwrap treeOpt)
+        def g (new PptxShape())
+        g.kind = (PptxShapeKind.group())
+        g.isDiagram = true
+        g.name = "Diagram"
+        def i:int 0
+        while (i < (tree.childCount())) {
+            def child:XmlNode (tree.childAt(i))
+            if (child.isText == false) {
+                if ((child.name != "nvGrpSpPr") && (child.name != "grpSpPr")) {
+                    def parsed@(optional):PptxShape (parser.parseTreeChild(child ""))
+                    if (!null? parsed) {
+                        def ps:PptxShape (unwrap parsed)
+                        ps.diagramParaPts = (PptxParser.paraPtsOf(model (child.attr("modelId")) (array_length ps.text.paragraphs)))
+                        push g.children ps
+                    }
+                }
+            }
+            i = (i + 1)
+        }
+        if ((array_length g.children) == 0) {
+            res.error = "the drawing part has no shapes"
+            return res
+        }
+        ; the shapes' bounds, widened to the box's proportions, centred
+        def c0:PptxShape (itemAt g.children 0)
+        def minX:double c0.x
+        def minY:double c0.y
+        def maxX:double (c0.x + c0.width)
+        def maxY:double (c0.y + c0.height)
+        i = 1
+        while (i < (array_length g.children)) {
+            def c:PptxShape (itemAt g.children i)
+            if (c.x < minX) { minX = c.x }
+            if (c.y < minY) { minY = c.y }
+            if ((c.x + c.width) > maxX) { maxX = (c.x + c.width) }
+            if ((c.y + c.height) > maxY) { maxY = (c.y + c.height) }
+            i = (i + 1)
+        }
+        def bw:double (maxX - minX)
+        def bh:double (maxY - minY)
+        if ((bw <= 0.0) || ((bh <= 0.0) || ((w <= 0.0) || (h <= 0.0)))) {
+            res.error = "the drawing has no size"
+            return res
+        }
+        def cw:double bw
+        def chh:double bh
+        if ((w / h) > (bw / bh)) {
+            cw = (bh * (w / h))
+        } {
+            chh = (bw * (h / w))
+        }
+        g.chX = (minX - ((cw - bw) / 2.0))
+        g.chY = (minY - ((chh - bh) / 2.0))
+        g.chW = cw
+        g.chH = chh
+        g.x = 0.0
+        g.y = 0.0
+        g.width = w
+        g.height = h
+        g.hasXfrm = true
+        g.hasOff = true
+        g.hasExt = true
+        ; what it was made from
+        g.diagramText = (model.outline())
+        g.diagramModelXml = f.dataXml
+        def d0:SaPoint (model.doc())
+        g.diagramLayoutId = d0.layoutId
+        g.diagramLayoutXml = f.layoutXml
+        if ((strlen f.layoutXml) > 0) {
+            def lr:SaLayoutReadResult (SaLayoutReader.read(f.layoutXml))
+            if (lr.ok == false) {
+                g.diagramLayoutXml = (SaBuiltins.layoutXml((SaLayoutDef.shortOf(d0.layoutId))))
+            }
+        } {
+            g.diagramLayoutXml = (SaBuiltins.layoutXml((SaLayoutDef.shortOf(d0.layoutId))))
+        }
+        g.diagramStyleId = d0.styleId
+        g.diagramColorsId = d0.colorsId
+        g.diagramStyleXml = f.styleXml
+        g.diagramColorsXml = f.colorsXml
+        g.diagramSig = (g.diagramSignature())
+        res.shape = g
+        res.layoutUsed = (SaLayoutDef.shortOf(d0.layoutId))
+        res.ok = true
+        return res
+    }
+}

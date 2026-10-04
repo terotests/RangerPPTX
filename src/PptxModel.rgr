@@ -992,6 +992,11 @@ class PptxShape {
     def diagramLayoutId:string ""
     def diagramStyleId:string ""
     def diagramColorsId:string ""
+    ; a diagram's own quick style and colour set, as its file held them (a
+    ; whole diagram as one file): written back as they are; empty, the
+    ; built-in ones the ids name are written
+    def diagramStyleXml:string ""
+    def diagramColorsXml:string ""
     ; On a shape INSIDE such a diagram: for each of its paragraphs, the data
     ; point that paragraph's text came from, so an edit to the text can be
     ; written back to the data and the diagram laid out again.

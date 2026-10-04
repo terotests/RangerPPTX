@@ -22,6 +22,7 @@ Import "../src/PptxParser.rgr"
 Import "../src/PptxResolver.rgr"
 Import "../src/PptxEdit.rgr"
 Import "../src/PptxWriter.rgr"
+Import "../smartart/SaWhole.rgr"
 Import "../src/PptxToEvg.rgr"
 Import "../../ooxml/OpcPackage.rgr"
 Import "pkg:evg/EVGDisplayList.rgr"
@@ -577,6 +578,63 @@ class PptxSmartArtTest {
         c.ok("a drawing that names no point: not laid out again" ((ed2.relayoutDiagramOf(pc.editId)) == false))
     }
 
+    sfn wholePart:string (ct:string body:string) {
+        return ("<pkg:part pkg:name=\"/x.xml\" pkg:contentType=\"application/vnd." + ct + "+xml\"><pkg:xmlData>" + body + "</pkg:xmlData></pkg:part>")
+    }
+
+    sfn testWholeFile:void (c:SmartArtCheck) {
+        print "-- a whole diagram as one file, saved --"
+        ; a diagram as PowerPoint keeps it: its parts, with a colour set and a
+        ; quick style of its own
+        def texts:[string] ([] _:string ("Alpha" "Beta" "Gamma"))
+        def r0:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (new SaOptions()) 300.0 200.0))
+        def nb:SaNumbering (SaPackage.number(r0.shape.diagramModelXml))
+        def colors:string "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/houseColours\"><dgm:styleLbl name=\"node1\"><dgm:fillClrLst><a:srgbClr val=\"336699\"/></dgm:fillClrLst><dgm:linClrLst/><dgm:txFillClrLst><a:schemeClr val=\"lt1\"/></dgm:txFillClrLst></dgm:styleLbl></dgm:colorsDef>"
+        def style:string "<dgm:styleDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/houseStyle\"><dgm:styleLbl name=\"node1\"><dgm:style><a:lnRef idx=\"0\"/><a:fillRef idx=\"1\"/><a:effectRef idx=\"0\"/><a:fontRef idx=\"minor\"/></dgm:style></dgm:styleLbl></dgm:styleDef>"
+        def parts:string ((PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramData" (nb.dataXml("")))) + (PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramLayout" r0.shape.diagramLayoutXml)) + (PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramColors" colors)) + (PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramStyle" style)) + (PptxSmartArtTest.wholePart("ms-office.drawingml.diagramDrawing" (PptxWriter.diagramDrawingXml(r0.shape nb)))))
+        def file:string ("<pkg:package xmlns:pkg=\"http://schemas.microsoft.com/office/2006/xmlPackage\">" + parts + "</pkg:package>")
+        def r:SaResult (SaWhole.layout(file (new SaOptions()) 400.0 225.0))
+        c.ok("read and drawn from its drawing" r.ok)
+        def g:PptxShape r.shape
+        c.eqInt("its six shapes" (array_length g.children) 6)
+        g.name = "House"
+        g.x = 100.0
+        g.y = 100.0
+        def parser:PptxParser (PptxSmartArtTest.open())
+        def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
+        def slide:PptxSlide (itemAt pres.slides 0)
+        push slide.shapes g
+        def w (new PptxWriter())
+        w.save(pres "gallery/pptx/bin" "smartart-whole.pptx")
+        def out (new OpcPackage())
+        out.openParts("gallery/pptx/bin" "smartart-whole.pptx")
+        def found:string ""
+        def ps:[string] (out.listParts())
+        def i:int 0
+        while (i < (array_length ps)) {
+            def part:string (itemAt ps i)
+            if ((indexOf part "ppt/diagrams/colors") == 0) {
+                if ((indexOf (out.readXml(part)) "urn:example/houseColours") >= 0) {
+                    found = (found + "colours ")
+                }
+            }
+            if ((indexOf part "ppt/diagrams/quickStyle") == 0) {
+                if ((indexOf (out.readXml(part)) "urn:example/houseStyle") >= 0) {
+                    found = (found + "style ")
+                }
+            }
+            i = (i + 1)
+        }
+        c.ok(("saved with its own colour set and quick style (" + found + ")") (((indexOf found "colours") >= 0) && ((indexOf found "style") >= 0)))
+        def again (new PptxParser())
+        again.openParts("gallery/pptx/bin" "smartart-whole.pptx")
+        def raw:PptxPresentation (again.parsePresentation())
+        def s0:PptxSlide (itemAt raw.slides 0)
+        def back:PptxShape (PptxSmartArtTest.byName(s0.shapes "House"))
+        c.ok("read back, a diagram" back.isDiagram)
+        c.eqStr("its text" (PptxSmartArtTest.texts(back)) "Alpha|Beta|Gamma")
+    }
+
     sfn testNativeEdited:void (c:SmartArtCheck) {
         print "-- a diagram laid out here, its shapes moved by hand --"
         def parser:PptxParser (PptxSmartArtTest.open())
@@ -615,6 +673,7 @@ class PptxSmartArtTest {
         PptxSmartArtTest.testNativeEdited(c)
         PptxSmartArtTest.testRelayout(c)
         PptxSmartArtTest.testRelayoutReopened(c)
+        PptxSmartArtTest.testWholeFile(c)
         print ""
         print ("passed = " + (to_string c.passed) + "  failed = " + (to_string c.failed))
         if (c.failed == 0) {

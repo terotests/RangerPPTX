@@ -89,6 +89,8 @@ class SaEdit {
         opts.layoutXml = d.diagramLayoutXml
         opts.colors = d.diagramColorsId
         opts.style = d.diagramStyleId
+        opts.colorsXml = d.diagramColorsXml
+        opts.styleXml = d.diagramStyleXml
         return (SaEngine.layoutModel(model opts d.width d.height))
     }
 

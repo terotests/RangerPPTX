@@ -276,6 +276,8 @@ class SaEngine {
         ; what the shapes say now: a diagram whose shapes were changed by
         ; hand no longer matches it, and is saved as those shapes
         g.diagramSig = (g.diagramSignature())
+        g.diagramStyleXml = opts.styleXml
+        g.diagramColorsXml = opts.colorsXml
         res.shape = g
         res.ok = true
         return res
