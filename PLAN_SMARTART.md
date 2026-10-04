@@ -246,7 +246,7 @@ fills it and saves); the files then live in `smartart/oracle/`.
 0. **Data model and drawing reader.** `SaModel`, `SaDataReader`/`Writer`,
    `SaDrawing` read, `SaShape`, `SaToEvg`. RangerPPTX recognises the diagram
    frame and draws a PowerPoint-saved SmartArt from its drawing part. Oracle
-   harness and corpus. Three-target test runner.
+   harness and the corpus macro. Three-target test runner.
 1. **Engine core and Sliqtly.** `SaLayoutDef`/`Reader`, `SaPresTree`,
    `SaConstraints`, `SaRules`, `lin`, `sp`, `composite`, `tx`, `SaText`,
    `SaStyle`, `SaEngine`, `SaToPptx`; layout group 1; Sliqtly steps 1–6.
@@ -259,9 +259,15 @@ fills it and saves); the files then live in `smartart/oracle/`.
 4. **Breadth.** Layout group 3, more styles and colour sets, a whole
    PowerPoint diagram as one referenced file.
 
-## Open questions
+## Decisions (2026-10-04)
 
-1. Who can run PowerPoint once for the oracle corpus (needed in phase 0).
-2. Whether PowerPoint opens a file that names a built-in layout without its
-   definition, or phase 3 must write the full definition.
-3. Whether SmartArt is a PRO feature like `process`/`swot`/`timeline`.
+1. **Oracle corpus.** `smartart/oracle/make_corpus.bas` is a PowerPoint
+   macro that inserts each built-in layout with the node counts and depths of
+   the Layouts suite and saves one deck per layout. It is run once in
+   PowerPoint; the owner checks the decks before they become fixtures. Until
+   then the Layouts suite has no expected boxes and is not counted.
+2. **A built-in layout named without its definition** (does PowerPoint open
+   it?) is deferred to phase 3. Until then the PPTX export writes shapes, not
+   SmartArt, so the question does not arise.
+3. **Not PRO.** SmartArt is drawn for every user, signed in or not, like the
+   list layouts (`process`, `swot`, `timeline`, free since Sliqtly #122).
