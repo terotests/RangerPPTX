@@ -1,0 +1,162 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaTextTest — which text a shape shows, and at what size
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+; every character exactly `size` wide: arithmetic a test can check by hand
+class SaFixedMeasure extends SaMeasure {
+    Constructor () {
+    }
+
+    fn widthOf@(override):double (text:string sizePt:double bold:boolean) {
+        return ((to_double (EVGCodepoint.charCount(text))) * sizePt)
+    }
+}
+
+class SaTextTest {
+
+    ; one shape over the whole frame presenting `presOf`, with these
+    ; constraints and rules on it
+    sfn fitOne:SaText (data:string w:double h:double presOf:string constrs:string rules:string m:SaMeasure) {
+        def body:string ("<dgm:alg type=\"lin\"/><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"s\"><dgm:alg type=\"tx\"/><dgm:shape type=\"rect\"/>" + presOf + "<dgm:constrLst>" + constrs + "</dgm:constrLst><dgm:ruleLst>" + rules + "</dgm:ruleLst></dgm:layoutNode></dgm:forEach>")
+        def t:SaPresTree (SaKit.ptree(data body))
+        def c:SaConstraints (SaConstraints.resolve(t w h))
+        SaAlgorithms.run(c)
+        return (SaText.fit(c m))
+    }
+
+    sfn one:string (text:string) {
+        return (SaKit.data("" (SaKit.pt("a" text)) (SaKit.cx("0" "a"))))
+    }
+
+    sfn shape:SaInst (t:SaText i:int) {
+        def l:[SaInst] (SaKit.byName(t.ptree "s"))
+        return (itemAt l i)
+    }
+
+    sfn size:double (t:SaText i:int) {
+        def s:SaInst (SaTextTest.shape(t i))
+        return s.fontPt
+    }
+
+    ; no margins: everything is the box
+    sfn noMarg:string () {
+        return "<dgm:constr type=\"lMarg\" val=\"0\"/><dgm:constr type=\"rMarg\" val=\"0\"/><dgm:constr type=\"tMarg\" val=\"0\"/><dgm:constr type=\"bMarg\" val=\"0\"/>"
+    }
+
+    sfn testMeasure:void (c:SaKit) {
+        print "-- measuring --"
+        def m (new SaMeasure())
+        c.near("characters times size times 0.52" (m.widthOf("abcd" 10.0 false)) 20.8)
+        c.near("characters, not bytes: Häme is four" (m.widthOf("Häme" 10.0 false)) 20.8)
+        c.near("bold is wider" (m.widthOf("ab" 10.0 true)) (2.0 * 10.0 * 0.52 * 1.08))
+        c.near("nothing is nothing" (m.widthOf("" 10.0 false)) 0.0)
+        def f (new SaFixedMeasure())
+        c.near("a host's measurer is used" (f.widthOf("abc" 10.0 false)) 30.0)
+        c.eqInt("words" (array_length (SaText.words("  a bb\nccc  "))) 3)
+    }
+
+    sfn testWrap:void (c:SaKit) {
+        print "-- wrapping (each character as wide as the size) --"
+        def t (new SaText())
+        t.measure = (new SaFixedMeasure())
+        c.eqInt("one line when it fits" (t.wrapOne("ab cd" 10.0 50.0 false)) 1)
+        c.eqInt("two when it does not" (t.wrapOne("ab cd" 10.0 49.0 false)) 2)
+        c.eqInt("three words, two lines" (t.wrapOne("ab cd ef" 10.0 50.0 false)) 2)
+        c.eqInt("a word wider than the box: -1" (t.wrapOne("abcdefg" 10.0 50.0 false)) -1)
+        c.eqInt("an empty line is one line" (t.wrapOne("" 10.0 50.0 false)) 1)
+    }
+
+    sfn testFit:void (c:SaKit) {
+        print "-- fitting --"
+        def f:SaMeasure (new SaFixedMeasure())
+        ; "abcd" in 100 × 100 with no margins: 4 × size ≤ 100 and 1.08 × size ≤ 100
+        def t:SaText (SaTextTest.fitOne((SaTextTest.one("abcd")) 100.0 100.0 "<dgm:presOf axis=\"self\"/>" (SaTextTest.noMarg()) "<dgm:rule type=\"primFontSz\" val=\"5\"/>" f))
+        c.near("the largest half point that fits" (SaTextTest.size(t 0)) 25.0)
+        ; two words: one per line once a line cannot hold both
+        def t2:SaText (SaTextTest.fitOne((SaTextTest.one("ab cd")) 100.0 100.0 "<dgm:presOf axis=\"self\"/>" (SaTextTest.noMarg()) "<dgm:rule type=\"primFontSz\" val=\"5\"/>" f))
+        c.near("two lines of two characters" (SaTextTest.size(t2 0)) 46.0)
+        ; no rule: the size does not come down
+        def t3:SaText (SaTextTest.fitOne((SaTextTest.one("abcd")) 100.0 100.0 "<dgm:presOf axis=\"self\"/>" ((SaTextTest.noMarg()) + "<dgm:constr type=\"primFontSz\" val=\"40\"/>") "" f))
+        c.near("with no rule the size stays" (SaTextTest.size(t3 0)) 40.0)
+        c.eqInt("and it says the text does not fit" (array_length t3.warnings) 1)
+        ; the rule's floor
+        def t4:SaText (SaTextTest.fitOne((SaTextTest.one("abcdefghij")) 20.0 100.0 "<dgm:presOf axis=\"self\"/>" (SaTextTest.noMarg()) "<dgm:rule type=\"primFontSz\" val=\"5\"/>" f))
+        c.near("no lower than the rule's floor" (SaTextTest.size(t4 0)) 5.0)
+        c.eqInt("and says so" (array_length t4.warnings) 1)
+        ; a start from a constraint, and an lte bound under it
+        def t5:SaText (SaTextTest.fitOne((SaTextTest.one("a")) 400.0 400.0 "<dgm:presOf axis=\"self\"/>" ((SaTextTest.noMarg()) + "<dgm:constr type=\"primFontSz\" val=\"30\"/><dgm:constr type=\"primFontSz\" op=\"lte\" val=\"20.3\"/>") "<dgm:rule type=\"primFontSz\" val=\"5\"/>" f))
+        c.near("a bound starts it lower, on the half-point grid" (SaTextTest.size(t5 0)) 20.0)
+        ; margins: from the font size, they follow it
+        def t6:SaText (SaTextTest.fitOne((SaTextTest.one("ab")) 100.0 100.0 "<dgm:presOf axis=\"self\"/>" "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.5\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.5\"/><dgm:constr type=\"tMarg\" val=\"0\"/><dgm:constr type=\"bMarg\" val=\"0\"/>" "<dgm:rule type=\"primFontSz\" val=\"5\"/>" f))
+        ; 2 × size + 2 × 0.5 × size ≤ 100 → size ≤ 33.3
+        c.near("margins that grow with the size" (SaTextTest.size(t6 0)) 33.0)
+        def s6:SaInst (SaTextTest.shape(t6 0))
+        c.near("a margin at the size it ended at" (t6.margin(s6 "lMarg" 33.0)) 16.5)
+        c.near("a margin not given is a tenth of the size" (t6.margin(s6 "zzz" 30.0)) 3.0)
+    }
+
+    sfn testGroups:void (c:SaKit) {
+        print "-- one size for a group --"
+        def f:SaMeasure (new SaFixedMeasure())
+        def pts:string ((SaKit.pt("a" "ab")) + (SaKit.pt("b" "abcdefgh")))
+        def data:string (SaKit.data("" pts ((SaKit.cx("0" "a")) + (SaKit.cx("0" "b")))))
+        def body:string ("<dgm:alg type=\"lin\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" val=\"100\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"s\" op=\"equ\" val=\"65\"/></dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"s\"><dgm:shape type=\"rect\"/><dgm:presOf axis=\"self\"/><dgm:constrLst>" + (SaTextTest.noMarg()) + "</dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\"/></dgm:ruleLst></dgm:layoutNode></dgm:forEach>")
+        def t:SaPresTree (SaKit.ptree(data body))
+        def k:SaConstraints (SaConstraints.resolve(t 400.0 200.0))
+        SaAlgorithms.run(k)
+        def x:SaText (SaText.fit(k f))
+        def ss:[SaInst] (SaKit.byName(t "s"))
+        def s0:SaInst (itemAt ss 0)
+        def s1:SaInst (itemAt ss 1)
+        c.near("the long one needs 12.5" s1.fontPt 12.5)
+        c.near("the short one takes the same" s0.fontPt 12.5)
+    }
+
+    sfn testLines:void (c:SaKit) {
+        print "-- which text --"
+        def data:string (SaKit.twoLevels("" 2 2))
+        def t:SaText (SaTextTest.fitOne(data 400.0 400.0 "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/>" "" "" (new SaMeasure())))
+        def s:SaInst (SaTextTest.shape(t 0))
+        def lines:[SaLine] (t.linesOf(s))
+        c.eqInt("its own text and the two under it" (array_length lines) 3)
+        def l0:SaLine (itemAt lines 0)
+        def l1:SaLine (itemAt lines 1)
+        c.eqStr("its own first" l0.text "Item 1")
+        c.eqInt("at level 0" l0.level 0)
+        c.eqStr("then the points under it" l1.text "Item 1.1")
+        c.eqInt("at level 1" l1.level 1)
+        def t2:SaText (SaTextTest.fitOne(data 400.0 400.0 "<dgm:presOf axis=\"des\" ptType=\"node\"/>" "" "" (new SaMeasure())))
+        def lines2:[SaLine] (t2.linesOf((SaTextTest.shape(t2 1))))
+        c.eqInt("only the points under it" (array_length lines2) 2)
+        def l20:SaLine (itemAt lines2 0)
+        c.eqInt("which are still level 1" l20.level 1)
+        c.eqStr("of the second item" l20.text "Item 2.1")
+        def t3:SaText (SaTextTest.fitOne((SaKit.flat("" 1)) 400.0 400.0 "<dgm:presOf axis=\"des\" ptType=\"node\"/>" "" "" (new SaMeasure())))
+        c.eqInt("nothing under it: no text" (array_length (t3.linesOf((SaTextTest.shape(t3 0))))) 0)
+        c.near("and no size" (SaTextTest.size(t3 0)) 0.0)
+        def t4:SaText (SaTextTest.fitOne((SaKit.flat("" 1)) 400.0 400.0 "" "" "" (new SaMeasure())))
+        c.eqInt("no presOf: no text" (array_length (t4.linesOf((SaTextTest.shape(t4 0))))) 0)
+        ; empty text is no text
+        def t5:SaText (SaTextTest.fitOne((SaTextTest.one("")) 400.0 400.0 "<dgm:presOf axis=\"self\"/>" "" "" (new SaMeasure())))
+        c.eqInt("an empty point shows nothing" (array_length (t5.linesOf((SaTextTest.shape(t5 0))))) 0)
+        ; a bold run makes a bold line
+        def bold:string (SaKit.data("" "<dgm:pt modelId=\"a\"><dgm:t><a:p><a:r><a:rPr b=\"1\"/><a:t>Bold</a:t></a:r></a:p></dgm:t></dgm:pt>" (SaKit.cx("0" "a"))))
+        def t6:SaText (SaTextTest.fitOne(bold 400.0 400.0 "<dgm:presOf axis=\"self\"/>" "" "" (new SaMeasure())))
+        def b0:SaLine (itemAt (t6.linesOf((SaTextTest.shape(t6 0)))) 0)
+        c.ok("a bold run is a bold line" b0.bold)
+    }
+
+    sfn main:void () {
+        print "== SaTextTest =="
+        def c (new SaKit())
+        SaTextTest.testMeasure(c)
+        SaTextTest.testWrap(c)
+        SaTextTest.testFit(c)
+        SaTextTest.testGroups(c)
+        SaTextTest.testLines(c)
+        c.finish("SaTextTest")
+    }
+}

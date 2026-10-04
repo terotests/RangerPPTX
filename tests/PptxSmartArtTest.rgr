@@ -8,7 +8,8 @@
 ; Fixture 38 holds two diagrams. "Process" has the drawing part PowerPoint
 ; saves beside a diagram's data: three steps and two arrows, which this reader
 ; draws as a group. "NoDrawing" has only its data, as anything but PowerPoint
-; writes it, and stays an opaque element until the layout engine exists.
+; writes it, and the layout engine (smartart/) draws it from that: process1,
+; the layout its data names.
 ;
 ; What a save has to do with the drawn one: put the SmartArt back as SmartArt
 ; (its own graphicFrame, with the relationships it names), restate only where
@@ -99,7 +100,7 @@ class PptxSmartArtTest {
         def raw:PptxPresentation (parser.parsePresentation())
         c.eqInt("one slide" (raw.slideCount()) 1)
         def slide:PptxSlide (itemAt raw.slides 0)
-        c.eqInt("the heading and the drawn diagram are shapes" (array_length slide.shapes) 2)
+        c.eqInt("the heading and both diagrams are shapes" (array_length slide.shapes) 3)
         def d:PptxShape (PptxSmartArtTest.byName(slide.shapes "Process"))
         c.ok("the diagram is one" d.isDiagram)
         c.ok("drawn as a group" (d.kind == (PptxShapeKind.group())))
@@ -125,13 +126,18 @@ class PptxSmartArtTest {
         c.eqStr("which is what it says now" d.diagramSig (d.diagramSignature()))
         c.ok("its frame's span is known" d.diagramFrame.known)
         c.eqStr("in the slide part" d.diagramFrame.part "ppt/slides/slide1.xml")
-        ; the one with no drawing: kept, not drawn
-        c.eqInt("the diagram with no drawing is kept as an element" (array_length slide.opaque) 1)
-        if ((array_length slide.opaque) == 1) {
-            def op:PptxOpaque (itemAt slide.opaque 0)
-            c.eqStr("a graphicFrame" op.name "graphicFrame")
-            c.eqInt("after both shapes" op.afterShapes 2)
-        }
+        ; the one with no drawing: laid out by the engine
+        c.eqInt("nothing is left unread" (array_length slide.opaque) 0)
+        def nd:PptxShape (PptxSmartArtTest.byName(slide.shapes "NoDrawing"))
+        c.ok("the diagram with no drawing is drawn too" nd.isDiagram)
+        c.near("in its own frame" nd.y (3600000.0 / 12700.0))
+        c.eqInt("as process1: two steps and an arrow" (array_length nd.children) 3)
+        def ndFirst:PptxShape (itemAt nd.children 0)
+        def ndArrow:PptxShape (itemAt nd.children 1)
+        c.eqStr("its first step" (ndFirst.text.plainText()) "Ask")
+        c.eqStr("the arrow" ndArrow.preset "rightArrow")
+        c.ok("its frame is known, so a save keeps it SmartArt" nd.diagramFrame.known)
+        c.eqStr("with its signature" nd.diagramSig (nd.diagramSignature()))
     }
 
     sfn testDraw:void (c:SmartArtCheck) {
@@ -232,7 +238,8 @@ class PptxSmartArtTest {
         c.ok("read back, it is a diagram" d2.isDiagram)
         c.near("at its new place" d2.x 130.0)
         c.eqInt("with its five shapes" (array_length d2.children) 5)
-        c.eqInt("the other is still kept, not drawn" (array_length s2.opaque) 1)
+        def nd2:PptxShape (PptxSmartArtTest.byName(s2.shapes "NoDrawing"))
+        c.ok("the other is drawn again from its data" (nd2.isDiagram && ((array_length nd2.children) == 3)))
         ; ids are numbered again on a write: no two shapes share one
         c.eqInt("the frame got a fresh id, not its old 3 twice" (PptxSmartArtTest.countOf(after "id=\"3\"")) 1)
     }

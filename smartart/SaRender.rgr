@@ -1,0 +1,121 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaRender — a laid-out diagram, in a host's colours, into a display list
+; ==============================================================================
+;
+; The engine's shapes name THEME colours (accent1, lt1, tx1, with a tint),
+; because that is what a SmartArt in a deck means. A host that is not a
+; PowerPoint deck — Sliqtly's slides — has its own palette, so it says what
+; each name is (`SaPalette`), the colours are resolved with DrawingML's own
+; tint and shade arithmetic (PptxResolver.applyMods), and the group is drawn
+; by the same painter the deck editor uses (PptxToEvg), in the host's units:
+; one unit is one point, which is what the engine laid it out in.
+;
+;   def pal (new SaPalette())
+;   pal.set("accent1" "#1F6FEB")  ...
+;   SaRender.paint(out res.shape pal x y)
+; ==============================================================================
+
+Import "SaEngine.rgr"
+Import "../src/PptxResolver.rgr"
+Import "../src/PptxToEvg.rgr"
+Import "pkg:evg/EVGDisplayList.rgr"
+
+class SaPalette {
+    def names:[string]
+    def hexes:[string]
+
+    Constructor () {
+    }
+
+    ; `hex` with or without the #, six digits
+    fn set:void (name:string hex:string) {
+        def h:string (to_uppercase hex)
+        if ((indexOf h "#") == 0) {
+            h = (substring h 1 (strlen h))
+        }
+        def i:int 0
+        while (i < (array_length names)) {
+            if ((itemAt names i) == name) {
+                set hexes i h
+                return
+            }
+            i = (i + 1)
+        }
+        push names name
+        push hexes h
+    }
+
+    ; the hex for a scheme name; tx1/bg1/tx2/bg2 are dk1/lt1/dk2/lt2
+    fn hexOf:string (name:string) {
+        def n:string name
+        if (n == "tx1") { n = "dk1" }
+        if (n == "bg1") { n = "lt1" }
+        if (n == "tx2") { n = "dk2" }
+        if (n == "bg2") { n = "lt2" }
+        def i:int 0
+        while (i < (array_length names)) {
+            if ((itemAt names i) == n) {
+                return (itemAt hexes i)
+            }
+            i = (i + 1)
+        }
+        ; what a theme with nothing said has
+        if ((n == "lt1") || (n == "lt2")) {
+            return "FFFFFF"
+        }
+        if ((n == "dk1") || (n == "dk2")) {
+            return "000000"
+        }
+        return "4472C4"
+    }
+}
+
+class SaRender {
+
+    sfn resolve:void (c:PptxColor pal:SaPalette) {
+        if ((c.isSet == false) || (c.isScheme == false)) {
+            return
+        }
+        c.srgb = (PptxResolver.applyMods((pal.hexOf(c.scheme)) c))
+        c.isScheme = false
+        c.tint = 0.0
+        c.shade = 0.0
+        c.lumMod = 1.0
+        c.lumOff = 0.0
+        c.satMod = 1.0
+    }
+
+    ; every colour in the group, resolved in place
+    sfn resolveAll:void (s:PptxShape pal:SaPalette) {
+        SaRender.resolve(s.fill pal)
+        SaRender.resolve(s.line pal)
+        def p:int 0
+        while (p < (array_length s.text.paragraphs)) {
+            def para:PptxParagraph (itemAt s.text.paragraphs p)
+            def r:int 0
+            while (r < (array_length para.runs)) {
+                def run:PptxTextRun (itemAt para.runs r)
+                SaRender.resolve(run.color pal)
+                r = (r + 1)
+            }
+            p = (p + 1)
+        }
+        def i:int 0
+        while (i < (array_length s.children)) {
+            SaRender.resolveAll((itemAt s.children i) pal)
+            i = (i + 1)
+        }
+    }
+
+    ; the group drawn with its top left at x, y (host units = points)
+    sfn paint:void (out:EVGDisplayList g:PptxShape pal:SaPalette x:double y:double) {
+        SaRender.resolveAll(g pal)
+        def conv (new PptxToEvg())
+        ; ptToPx is pt × 96/72 × scale: 0.75 makes it the identity
+        conv.setScale(0.75)
+        g.x = x
+        g.y = y
+        conv.emitShape(out g 0.0 0.0)
+    }
+}

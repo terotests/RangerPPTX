@@ -1,0 +1,139 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaLayoutTest — layout definitions: what is read, what is refused
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+class SaLayoutTest {
+
+    sfn wrap:string (body:string) {
+        return ("<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/test1\"><dgm:title val=\"Test\"/><dgm:catLst><dgm:cat type=\"list\" pri=\"1\"/></dgm:catLst><dgm:sampData><dgm:dataModel/></dgm:sampData><dgm:layoutNode name=\"root\">" + body + "</dgm:layoutNode></dgm:layoutDef>")
+    }
+
+    sfn refused:void (c:SaKit name:string body:string words:string) {
+        def r:SaLayoutReadResult (SaLayoutReader.read((SaLayoutTest.wrap(body))))
+        c.ok((name + " (said '" + r.error + "')") ((r.ok == false) && ((indexOf r.error words) >= 0)))
+    }
+
+    sfn testWhole:void (c:SaKit) {
+        print "-- a whole definition --"
+        def body:string "<dgm:varLst><dgm:dir val=\"rev\"/><dgm:resizeHandles/></dgm:varLst><dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/><dgm:param type=\"nodeHorzAlign\" val=\"l\"/></dgm:alg><dgm:shape/><dgm:presOf/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"node\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"primFontSz\" for=\"des\" ptType=\"node\" op=\"equ\" val=\"65\"/><dgm:constr type=\"sibSp\" val=\"INF\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst><dgm:forEach name=\"each\" axis=\"ch ch\" ptType=\"node sibTrans\" st=\"2\" cnt=\"3\" step=\"2\" hideLastTrans=\"0 1\"><dgm:layoutNode name=\"node\" styleLbl=\"node1\" chOrder=\"t\"><dgm:alg type=\"tx\"/><dgm:shape type=\"roundRect\" rot=\"90\" zOrderOff=\"-1\" hideGeom=\"1\"><dgm:adjLst><dgm:adj idx=\"2\" val=\"0.25\"/></dgm:adjLst></dgm:shape><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/></dgm:layoutNode></dgm:forEach><dgm:choose name=\"pick\"><dgm:if name=\"many\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"gt\" val=\"3\"><dgm:layoutNode name=\"a\"/></dgm:if><dgm:else name=\"few\"><dgm:layoutNode name=\"b\"/></dgm:else></dgm:choose><dgm:forEach name=\"again\" ref=\"each\"/><dgm:extLst/>"
+        def r:SaLayoutReadResult (SaLayoutReader.read((SaLayoutTest.wrap(body))))
+        c.ok("it is read" r.ok)
+        c.eqStr("with no error" r.error "")
+        def lo:SaLayoutDef r.layout
+        c.eqStr("the uniqueId" (lo.shortId()) "test1")
+        c.eqStr("the title" lo.title "Test")
+        def root:SaLoNode lo.root
+        c.eqStr("the root's name" root.name "root")
+        c.eqStr("a variable" (root.varValue("dir" "")) "rev")
+        c.eqStr("a variable with no val takes its default" (root.varValue("resizeHandles" "")) "rel")
+        c.ok("an algorithm" root.hasAlg)
+        c.eqStr("its type" root.alg.type "lin")
+        c.eqStr("its parameter" (root.alg.param("linDir" "")) "fromT")
+        c.eqStr("a parameter it does not have" (root.alg.param("nope" "dflt")) "dflt")
+        c.ok("an empty shape" (root.hasShape && (root.shape.type == "none")))
+        c.ok("an empty presOf" root.hasPresOf)
+        c.eqInt("three constraints" (array_length root.constrs) 3)
+        def k0:SaConstr (itemAt root.constrs 0)
+        c.eqStr("a constraint's type, for and forName" (k0.type + " " + k0.forRel + " " + k0.forName) "w ch node")
+        c.eqStr("its reference" (k0.refType + " " + k0.refFor) "w self")
+        c.ok("its factor" (k0.hasFact && (k0.fact == 0.5)))
+        c.ok("no value" (k0.hasVal == false))
+        def k1:SaConstr (itemAt root.constrs 1)
+        c.eqStr("for des, a point type, an op" (k1.forRel + " " + k1.ptType + " " + k1.op) "des node equ")
+        c.ok("a value" (k1.hasVal && (k1.val == 65.0)))
+        def k2:SaConstr (itemAt root.constrs 2)
+        c.ok("INF is very large" (k2.val > 100000.0))
+        def r0:SaRule (itemAt root.rules 0)
+        c.ok("a rule's value" (r0.hasVal && (r0.val == 5.0)))
+        c.ok("NaN is not given" ((r0.hasFact == false) && (r0.hasMax == false)))
+        c.eqInt("three children: forEach, choose, forEach" (array_length root.children) 3)
+        def fe:SaLoNode (itemAt root.children 0)
+        c.eqStr("a forEach" (fe.kind + " " + fe.name) "forEach each")
+        c.eqInt("two axis steps" (fe.iter.steps()) 2)
+        c.eqStr("each with its own type" ((fe.iter.ptTypeAt(0)) + " " + (fe.iter.ptTypeAt(1))) "node sibTrans")
+        c.eqStr("st, cnt, step" ((to_string (fe.iter.stAt(0))) + " " + (to_string (fe.iter.cntAt(0))) + " " + (to_string (fe.iter.stepAt(0)))) "2 3 2")
+        c.ok("hideLastTrans per step" (((fe.iter.hideLastTransAt(0)) == false) && (fe.iter.hideLastTransAt(1))))
+        c.eqStr("a step past the list takes the defaults" ((to_string (fe.iter.stAt(5))) + " " + (to_string (fe.iter.cntAt(5))) + " " + (to_string (fe.iter.stepAt(5)))) "1 0 1")
+        def node:SaLoNode (itemAt fe.children 0)
+        c.eqStr("a layoutNode's style label and order" (node.styleLbl + " " + node.chOrder) "node1 t")
+        c.eqStr("its shape" node.shape.type "roundRect")
+        c.ok("rotation, z offset, hidden geometry" (((node.shape.rot == 90.0) && (node.shape.zOrderOff == -1)) && node.shape.hideGeom))
+        c.eqInt("adjustments up to the highest index" (array_length node.shape.adj) 2)
+        c.ok("the second given, the first not" ((itemAt node.shape.adjSet 1) && ((itemAt node.shape.adjSet 0) == false)))
+        c.ok("its value" ((itemAt node.shape.adj 1) == 0.25))
+        c.eqStr("its presOf" (node.presOf.axisAt(0)) "desOrSelf")
+        def ch:SaLoNode (itemAt root.children 1)
+        c.eqStr("a choose" (ch.kind + " " + ch.name) "choose pick")
+        c.eqInt("with two branches" (array_length ch.children) 2)
+        def br:SaLoNode (itemAt ch.children 0)
+        c.eqStr("an if: function, op, value" (br.func + " " + br.op + " " + br.val) "cnt gt 3")
+        def el:SaLoNode (itemAt ch.children 1)
+        c.eqStr("an else" el.kind "else")
+        def again:SaLoNode (itemAt root.children 2)
+        c.eqStr("a reference" again.ref "each")
+        def found@(optional):SaLoNode (lo.forEachNamed("each"))
+        c.ok("a forEach found by name" (!null? found))
+        def missing@(optional):SaLoNode (lo.forEachNamed("nope"))
+        c.ok("and one that is not there is not" (null? missing))
+    }
+
+    sfn testRefusals:void (c:SaKit) {
+        print "-- refusals --"
+        def r:SaLayoutReadResult (SaLayoutReader.read("not xml"))
+        c.ok("not XML" ((r.ok == false) && ((indexOf r.error "not XML") >= 0)))
+        def r2:SaLayoutReadResult (SaLayoutReader.read("<dgm:dataModel/>"))
+        c.ok("a different root" ((r2.ok == false) && ((indexOf r2.error "not <dgm:layoutDef>") >= 0)))
+        def r3:SaLayoutReadResult (SaLayoutReader.read("<dgm:layoutDef/>"))
+        c.ok("no root node" ((r3.ok == false) && ((indexOf r3.error "layoutNode> is missing") >= 0)))
+        SaLayoutTest.refused(c "an unknown algorithm" "<dgm:alg type=\"grid\"/>" "algorithm \"grid\" is not one of")
+        SaLayoutTest.refused(c "an unknown constraint" "<dgm:constrLst><dgm:constr type=\"width\"/></dgm:constrLst>" "constraint type \"width\"")
+        SaLayoutTest.refused(c "an unknown for" "<dgm:constrLst><dgm:constr type=\"w\" for=\"kids\"/></dgm:constrLst>" "for \"kids\"")
+        SaLayoutTest.refused(c "an unknown refType" "<dgm:constrLst><dgm:constr type=\"w\" refType=\"wide\"/></dgm:constrLst>" "refType \"wide\"")
+        SaLayoutTest.refused(c "an unknown refFor" "<dgm:constrLst><dgm:constr type=\"w\" refType=\"w\" refFor=\"par\"/></dgm:constrLst>" "refFor \"par\"")
+        SaLayoutTest.refused(c "an unknown op" "<dgm:constrLst><dgm:constr type=\"w\" op=\"eq\"/></dgm:constrLst>" "op \"eq\"")
+        SaLayoutTest.refused(c "a value that is not a number" "<dgm:constrLst><dgm:constr type=\"w\" val=\"wide\"/></dgm:constrLst>" "val \"wide\" is not a number")
+        SaLayoutTest.refused(c "a factor that is not a number" "<dgm:constrLst><dgm:constr type=\"w\" refType=\"h\" fact=\"half\"/></dgm:constrLst>" "fact \"half\"")
+        SaLayoutTest.refused(c "an unknown rule type" "<dgm:ruleLst><dgm:rule type=\"font\"/></dgm:ruleLst>" "rule type \"font\"")
+        SaLayoutTest.refused(c "a rule value that is not a number" "<dgm:ruleLst><dgm:rule type=\"w\" max=\"big\"/></dgm:ruleLst>" "max \"big\"")
+        SaLayoutTest.refused(c "an unknown axis" "<dgm:forEach axis=\"children\"/>" "axis \"children\"")
+        SaLayoutTest.refused(c "an unknown point type" "<dgm:forEach axis=\"ch\" ptType=\"item\"/>" "ptType \"item\"")
+        SaLayoutTest.refused(c "a count that is not a number" "<dgm:forEach axis=\"ch\" cnt=\"all\"/>" "cnt \"all\"")
+        SaLayoutTest.refused(c "an unknown variable" "<dgm:varLst><dgm:direction/></dgm:varLst>" "variable <dgm:direction>")
+        SaLayoutTest.refused(c "an unknown function" "<dgm:choose><dgm:if func=\"len\" op=\"equ\" val=\"1\"/></dgm:choose>" "func \"len\"")
+        SaLayoutTest.refused(c "an unknown comparison" "<dgm:choose><dgm:if func=\"cnt\" op=\"eq\" val=\"1\"/></dgm:choose>" "op \"eq\"")
+        SaLayoutTest.refused(c "something else in a choose" "<dgm:choose><dgm:when/></dgm:choose>" "is not if or else")
+        SaLayoutTest.refused(c "an element a layout does not have" "<dgm:box/>" "<dgm:box> is not part of a layout definition")
+        SaLayoutTest.refused(c "an adjustment with no index" "<dgm:shape type=\"rect\"><dgm:adjLst><dgm:adj val=\"1\"/></dgm:adjLst></dgm:shape>" "idx")
+        SaLayoutTest.refused(c "the error names where it is" "<dgm:forEach name=\"steps\"><dgm:layoutNode name=\"node\"><dgm:alg type=\"x\"/></dgm:layoutNode></dgm:forEach>" "<dgm:layoutNode name=\"node\">")
+    }
+
+    sfn testBuiltins:void (c:SaKit) {
+        print "-- the built-in layouts --"
+        def names:string (SaBuiltins.names())
+        c.eqStr("the four of phase 1" names "chevron1, hList1, process1, vList2")
+        def list:[string] ([] _:string ("chevron1" "hList1" "process1" "vList2"))
+        def i:int 0
+        while (i < (array_length list)) {
+            def n:string (itemAt list i)
+            def xml:string (SaBuiltins.layoutXml(n))
+            def r:SaLayoutReadResult (SaLayoutReader.read(xml))
+            c.ok((n + " reads") r.ok)
+            c.eqStr((n + " is the layout it is named for") (r.layout.shortId()) n)
+            c.ok((n + " has a title") ((strlen r.layout.title) > 0))
+            i = (i + 1)
+        }
+        c.eqStr("a name it does not have" (SaBuiltins.layoutXml("cycle2")) "")
+    }
+
+    sfn main:void () {
+        print "== SaLayoutTest =="
+        def c (new SaKit())
+        SaLayoutTest.testWhole(c)
+        SaLayoutTest.testRefusals(c)
+        SaLayoutTest.testBuiltins(c)
+        c.finish("SaLayoutTest")
+    }
+}

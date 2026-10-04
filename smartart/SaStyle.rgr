@@ -1,0 +1,150 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaStyle — the colours a shape is drawn in
+; ==============================================================================
+;
+; A layout node names a style label (`styleLbl="node1"`); the diagram's colour
+; set says what each label's fill, line and text are, as theme colours; the
+; theme says what those are. So a diagram is in the deck's colours without
+; any colour in the file, and changes with the theme.
+;
+; The colour sets here, by the last segment of their id:
+;
+;   accent1_2 … accent6_2   "Colored Fill": every node in one accent (default)
+;   colorful1               "Colorful": the nodes cycle accent2 … accent6
+;   colorful2               the nodes cycle accent1 … accent6
+;
+; An unknown colour set is accent1_2, and the engine says so. Labels fall into
+; a few families; one this table does not know is drawn as a node.
+; ==============================================================================
+
+Import "../src/PptxModel.rgr"
+
+class SaPaint {
+    def fill:PptxColor (new PptxColor())
+    def noFill:boolean false
+    def line:PptxColor (new PptxColor())
+    def noLine:boolean false
+    def lineWidthPt:double 1.0
+    def text:PptxColor (new PptxColor())
+
+    Constructor () {
+    }
+}
+
+class SaStyle {
+
+    sfn knownColors:boolean (id:string) {
+        def s:string (SaStyle.short(id))
+        if ((strlen s) == 0) {
+            return true
+        }
+        if ((s == "colorful1") || (s == "colorful2")) {
+            return true
+        }
+        def d:int 1
+        while (d <= 6) {
+            if (s == ("accent" + (to_string d) + "_2")) {
+                return true
+            }
+            d = (d + 1)
+        }
+        return false
+    }
+
+    sfn short:string (id:string) {
+        def at:int (lastIndexOf id "/")
+        if (at < 0) {
+            return id
+        }
+        return (substring id (at + 1) (strlen id))
+    }
+
+    ; the accent a node at `idx` is drawn in
+    sfn accentFor:string (colorsId:string idx:int) {
+        def s:string (SaStyle.short(colorsId))
+        if (s == "colorful1") {
+            return ("accent" + (to_string ((idx % 5) + 2)))
+        }
+        if (s == "colorful2") {
+            return ("accent" + (to_string ((idx % 6) + 1)))
+        }
+        if (((indexOf s "accent") == 0) && ((strlen s) >= 7)) {
+            def d:string (substring s 6 7)
+            def n@(optional):int (str2int d)
+            if (!null? n) {
+                def v:int (unwrap n)
+                if ((v >= 1) && (v <= 6)) {
+                    return ("accent" + d)
+                }
+            }
+        }
+        return "accent1"
+    }
+
+    sfn scheme:PptxColor (name:string tint:double) {
+        def c:PptxColor (PptxColor.schemeOf(name))
+        c.tint = tint
+        return c
+    }
+
+    ; The family a style label belongs to.
+    sfn family:string (lbl:string) {
+        if ((lbl == "revTx") || (lbl == "")) {
+            return "text"
+        }
+        if ((indexOf lbl "sibTrans2D") == 0) {
+            return "arrow"
+        }
+        if (((indexOf lbl "sibTrans1D") == 0) || ((indexOf lbl "parChTrans1D") == 0)) {
+            return "line"
+        }
+        if (((indexOf lbl "alignAcc") == 0) || ((indexOf lbl "bgAcc") == 0)) {
+            return "light"
+        }
+        if (((indexOf lbl "fgAcc") == 0) || ((indexOf lbl "trAlignAcc") == 0)) {
+            return "outlined"
+        }
+        if ((indexOf lbl "bgShp") == 0) {
+            return "light"
+        }
+        return "node"
+    }
+
+    sfn paintFor:SaPaint (lbl:string colorsId:string idx:int) {
+        def p (new SaPaint())
+        def acc:string (SaStyle.accentFor(colorsId idx))
+        def fam:string (SaStyle.family(lbl))
+        if (fam == "node") {
+            p.fill = (PptxColor.schemeOf(acc))
+            p.line = (PptxColor.schemeOf("lt1"))
+            p.text = (PptxColor.schemeOf("lt1"))
+        }
+        if (fam == "arrow") {
+            p.fill = (SaStyle.scheme(acc 0.6))
+            p.noLine = true
+            p.text = (PptxColor.schemeOf("lt1"))
+        }
+        if (fam == "line") {
+            p.noFill = true
+            p.line = (SaStyle.scheme(acc 0.6))
+            p.text = (PptxColor.schemeOf("tx1"))
+        }
+        if (fam == "light") {
+            p.fill = (SaStyle.scheme(acc 0.4))
+            p.line = (SaStyle.scheme(acc 0.4))
+            p.text = (PptxColor.schemeOf("tx1"))
+        }
+        if (fam == "outlined") {
+            p.fill = (PptxColor.schemeOf("lt1"))
+            p.line = (PptxColor.schemeOf(acc))
+            p.text = (PptxColor.schemeOf("tx1"))
+        }
+        if (fam == "text") {
+            p.noFill = true
+            p.noLine = true
+            p.text = (PptxColor.schemeOf("tx1"))
+        }
+        return p
+    }
+}

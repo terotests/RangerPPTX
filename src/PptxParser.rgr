@@ -13,7 +13,7 @@ Import "../../ooxml/OpcPackage.rgr"
 Import "../../xml/XmlCore.rgr"
 Import "PptxModel.rgr"
 Import "PptxGeom.rgr"
-Import "../smartart/SaDataReader.rgr"
+Import "../smartart/SaEngine.rgr"
 
 class PptxParser {
     def pkg:OpcPackage (new OpcPackage())
@@ -1692,20 +1692,20 @@ class PptxParser {
             return none
         }
         def model:SaModel read.model
-        if ((strlen model.drawingRelId) == 0) {
-            return none
+        def drawPart:string ""
+        if ((strlen model.drawingRelId) > 0) {
+            drawPart = (pkg.resolveRelationship(slidePart model.drawingRelId))
         }
-        def drawPart:string (pkg.resolveRelationship(slidePart model.drawingRelId))
-        if ((strlen drawPart) == 0) {
-            return none
+        def treeOpt@(optional):XmlNode
+        if ((strlen drawPart) > 0) {
+            def rootOpt@(optional):XmlNode (xmlParser.parse((pkg.readXml(drawPart))))
+            if (!null? rootOpt) {
+                treeOpt = ((unwrap rootOpt).firstChild("spTree"))
+            }
         }
-        def rootOpt@(optional):XmlNode (xmlParser.parse((pkg.readXml(drawPart))))
-        if (null? rootOpt) {
-            return none
-        }
-        def treeOpt@(optional):XmlNode ((unwrap rootOpt).firstChild("spTree"))
         if (null? treeOpt) {
-            return none
+            ; no drawing: the layout engine draws it from the data
+            return (this.layoutDiagram(gf rel slidePart frame model))
         }
         def tree:XmlNode (unwrap treeOpt)
         def shape:PptxShape frame
@@ -1739,6 +1739,53 @@ class PptxParser {
         }
         shape.diagramFrame.set(slidePart gf.srcStart gf.srcEnd)
         shape.diagramText = (model.outline())
+        shape.diagramSig = (shape.diagramSignature())
+        def hit@(optional):PptxShape shape
+        return hit
+    }
+
+    ; A diagram with no drawing part — what anything but PowerPoint writes —
+    ; laid out by the engine (smartart/, PLAN_SMARTART.md): the layout the data
+    ; names, from the engine's own definitions when it has one for that id,
+    ; else from the definition saved in the file, else vList2. The result is
+    ; the same group a drawing part gives, so it is drawn, edited and saved
+    ; the same way.
+    fn layoutDiagram@(optional):PptxShape (gf:XmlNode rel:XmlNode slidePart:string frame:PptxShape model:SaModel) {
+        def none@(optional):PptxShape
+        if ((frame.width <= 0.0) || (frame.height <= 0.0)) {
+            return none
+        }
+        def opts (new SaOptions())
+        def builtin:string (SaBuiltins.layoutXml((SaLayoutDef.shortOf((model.layoutId())))))
+        if ((strlen builtin) == 0) {
+            def lo:string (rel.attr("r:lo"))
+            if ((strlen lo) > 0) {
+                def loPart:string (pkg.resolveRelationship(slidePart lo))
+                if ((strlen loPart) > 0) {
+                    def loXml:string (pkg.readXml(loPart))
+                    def lr:SaLayoutReadResult (SaLayoutReader.read(loXml))
+                    if lr.ok {
+                        opts.layoutXml = loXml
+                    }
+                }
+            }
+        }
+        def res:SaResult (SaEngine.layoutModel(model opts frame.width frame.height))
+        if (res.ok == false) {
+            return none
+        }
+        def shape:PptxShape res.shape
+        shape.name = frame.name
+        if ((strlen shape.name) == 0) {
+            shape.name = "Diagram"
+        }
+        shape.altText = frame.altText
+        shape.shapeId = frame.shapeId
+        shape.x = frame.x
+        shape.y = frame.y
+        shape.width = frame.width
+        shape.height = frame.height
+        shape.diagramFrame.set(slidePart gf.srcStart gf.srcEnd)
         shape.diagramSig = (shape.diagramSignature())
         def hit@(optional):PptxShape shape
         return hit

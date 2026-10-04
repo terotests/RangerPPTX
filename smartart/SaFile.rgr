@@ -1,0 +1,75 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaFile — a SmartArt file as a host meets it: bytes with a name and a type
+; ==============================================================================
+;
+; A host (Sliqtly's editor, its MCP server) keeps a diagram the way it keeps a
+; picture: a file in the deck, `media/process.xml`, named from the Markdown.
+; This is what such a host asks about the file before anything is laid out:
+; is it a diagram, what is its text, and how large is it before a box says.
+; ==============================================================================
+
+Import "../../pdf_writer/src/core/Utf8.rgr"
+
+class SaFile {
+
+    ; what OOXML calls a diagram's data part, and so the type a host stores
+    ; the file under
+    sfn TYPE:string () {
+        return "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml"
+    }
+
+    ; The natural size a host gives the file before its Markdown says
+    ; otherwise: 16:9, larger than any column, so a layout fits it down to the
+    ; column (a picture is never scaled up) and `{width}` / `{height}` work.
+    sfn naturalW:int () {
+        return 1600
+    }
+
+    sfn naturalH:int () {
+        return 900
+    }
+
+    sfn endsWith:boolean (s:string tail:string) {
+        def n:int (strlen s)
+        def t:int (strlen tail)
+        if (t > n) {
+            return false
+        }
+        return ((substring s (n - t) n) == tail)
+    }
+
+    ; A diagram: stored under its own type, or an .xml file whose first
+    ; element is a dgm:dataModel. A file of another kind is never one, however
+    ; it is named.
+    sfn isSmartArt:boolean (name:string type:string head:string) {
+        if (type == (SaFile.TYPE())) {
+            return true
+        }
+        def lower:string (to_lowercase name)
+        if ((SaFile.endsWith(lower ".xml")) == false) {
+            return false
+        }
+        if (((strlen type) > 0) && (((type != "application/xml") && (type != "text/xml")) && (type != "application/octet-stream"))) {
+            return false
+        }
+        return ((indexOf head "dataModel") >= 0)
+    }
+
+    ; the bytes as text: UTF-8, so a Finnish or Greek label is itself
+    sfn textOf:string (data:buffer) {
+        if ((buffer_length data) == 0) {
+            return ""
+        }
+        return (Utf8.decode((buffer_to_string data)))
+    }
+
+    ; the first bytes, as text, for isSmartArt
+    sfn headOf:string (data:buffer) {
+        def t:string (SaFile.textOf(data))
+        if ((strlen t) > 2048) {
+            return (substring t 0 2048)
+        }
+        return t
+    }
+}

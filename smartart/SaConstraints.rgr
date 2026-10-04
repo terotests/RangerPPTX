@@ -1,0 +1,224 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaConstraints — how big everything is, before anything is placed
+; ==============================================================================
+;
+; A constraint lives on one layout node and sets a value on itself (`for`
+; self), on its children (ch) or on everything under it (des), optionally only
+; those with a given name (`forName`) or presenting a given kind of point
+; (`ptType`). The value is a number (`val`), or another value times a factor:
+; `refType` read off `refFor`/`refForName` (`fact`, 1 when left out).
+;
+;   <dgm:constr type="h" for="ch" forName="node" refType="w" refFor="ch"
+;               refForName="node" fact="0.6"/>    a node is 0.6 as tall as wide
+;
+; `op` turns a value into a relation. `equ` on a font size makes every target
+; ONE size — the smallest any of them needs once the text is fitted — which is
+; why a process's steps all have the same type size. `gte` and `lte` are
+; bounds kept beside the value, so a later shrink (a rule) stays inside them.
+;
+; Values are resolved in program order, three times over, so a constraint
+; that reads a value another constraint sets later in the file still sees it.
+; A value nothing set is its default: a width or height is the parent's (the
+; frame's, at the root), a font size 65 pt, anything else 0.
+;
+; Each value remembers what it was derived from. `lin` needs that: a node
+; whose height is a fraction of its width shrinks with it when a row is too
+; long, and a column whose height is its parent's does not.
+; ==============================================================================
+
+Import "SaPresTree.rgr"
+
+class SaConstraints {
+    def ptree:SaPresTree (new SaPresTree())
+    def frameW:double 0.0
+    def frameH:double 0.0
+    def fontGroups:int 0
+    def parents:[SaInst]
+    def kids:[SaInst]
+
+    Constructor () {
+    }
+
+    sfn resolve:SaConstraints (t:SaPresTree w:double h:double) {
+        def c (new SaConstraints())
+        c.ptree = t
+        c.frameW = w
+        c.frameH = h
+        c.indexParents()
+        t.root.put("w" w "")
+        t.root.put("h" h "")
+        def pass:int 0
+        while (pass < 3) {
+            c.fontGroups = 0
+            c.applyAll()
+            pass = (pass + 1)
+        }
+        return c
+    }
+
+    fn indexParents:void () {
+        def every:[SaInst] (ptree.all())
+        def i:int 0
+        while (i < (array_length every)) {
+            def p:SaInst (itemAt every i)
+            def k:int 0
+            while (k < (array_length p.children)) {
+                push kids (itemAt p.children k)
+                push parents p
+                k = (k + 1)
+            }
+            i = (i + 1)
+        }
+    }
+
+    fn parentOf@(optional):SaInst (s:SaInst) {
+        def i:int 0
+        while (i < (array_length kids)) {
+            if ((itemAt kids i) == s) {
+                def hit@(optional):SaInst (itemAt parents i)
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaInst
+        return none
+    }
+
+    ; A value as anything reading it sees it: what was set, or the default.
+    fn get:double (s:SaInst type:string) {
+        if (s.has(type)) {
+            return (s.raw(type 0.0))
+        }
+        if ((type == "w") || (type == "h")) {
+            def p@(optional):SaInst (this.parentOf(s))
+            if (null? p) {
+                return (? (type == "w") frameW frameH)
+            }
+            return (this.get((unwrap p) type))
+        }
+        if ((type == "primFontSz") || (type == "secFontSz")) {
+            return 65.0
+        }
+        return 0.0
+    }
+
+    fn matches:boolean (s:SaInst name:string ptType:string) {
+        if (((strlen name) > 0) && (s.name != name)) {
+            return false
+        }
+        if (ptType == "all") {
+            return true
+        }
+        if (ptType == "node") {
+            return ((s.ctxType == "node") || (s.ctxType == "asst"))
+        }
+        if (ptType == "norm") {
+            return (s.ctxType == "node")
+        }
+        if (ptType == "nonNorm") {
+            return (s.ctxType != "node")
+        }
+        if (ptType == "nonAsst") {
+            return (s.ctxType != "asst")
+        }
+        return (s.ctxType == ptType)
+    }
+
+    fn targets:[SaInst] (s:SaInst rel:string name:string ptType:string) {
+        def out:[SaInst]
+        if (rel == "self") {
+            push out s
+            return out
+        }
+        def pool:[SaInst] s.children
+        if (rel == "des") {
+            pool = (s.descendants())
+        }
+        def i:int 0
+        while (i < (array_length pool)) {
+            def c:SaInst (itemAt pool i)
+            if (this.matches(c name ptType)) {
+                push out c
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    fn applyAll:void () {
+        def every:[SaInst] (ptree.all())
+        def i:int 0
+        while (i < (array_length every)) {
+            def s:SaInst (itemAt every i)
+            def k:int 0
+            while (k < (array_length s.constrs)) {
+                this.apply(s (itemAt s.constrs k))
+                k = (k + 1)
+            }
+            i = (i + 1)
+        }
+    }
+
+    fn apply:void (s:SaInst k:SaConstr) {
+        def ts:[SaInst] (this.targets(s k.forRel k.forName k.ptType))
+        if ((array_length ts) == 0) {
+            return
+        }
+        ; the value, once: references are read from `s`'s point of view
+        def has:boolean false
+        def v:double 0.0
+        def from:string ""
+        if (k.refType != "none") {
+            def refs:[SaInst] (this.targets(s k.refFor k.refForName k.refPtType))
+            if ((array_length refs) > 0) {
+                def r:SaInst (itemAt refs 0)
+                v = ((this.get(r k.refType)) * k.fact)
+                has = true
+                from = k.refType
+                ; a reference to the target's own other dimension, or to one
+                ; that was itself derived from it, carries the tie along
+                def rf:string (r.fromOf(k.refType))
+                if ((strlen rf) > 0) {
+                    from = rf
+                }
+            }
+        } {
+            if k.hasVal {
+                v = k.val
+                if k.hasFact {
+                    v = (v * k.fact)
+                }
+                has = true
+            }
+        }
+        if (((k.type == "primFontSz") || (k.type == "secFontSz")) && (k.op == "equ")) {
+            fontGroups = (fontGroups + 1)
+        }
+        def i:int 0
+        while (i < (array_length ts)) {
+            def t:SaInst (itemAt ts i)
+            if (((k.type == "primFontSz") || (k.type == "secFontSz")) && (k.op == "equ")) {
+                t.fontGroup = fontGroups
+            }
+            if has {
+                if ((k.op == "none") || (k.op == "equ")) {
+                    t.put(k.type v from)
+                }
+                if (k.op == "gte") {
+                    t.bound(k.type v 1000000000.0)
+                    if ((this.get(t k.type)) < v) {
+                        t.put(k.type v from)
+                    }
+                }
+                if (k.op == "lte") {
+                    t.bound(k.type -1000000000.0 v)
+                    if ((this.get(t k.type)) > v) {
+                        t.put(k.type v from)
+                    }
+                }
+            }
+            i = (i + 1)
+        }
+    }
+}

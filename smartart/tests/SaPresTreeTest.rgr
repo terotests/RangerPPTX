@@ -1,0 +1,260 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaPresTreeTest — a layout run against data: which shapes, for which points
+; ==============================================================================
+;
+; The data in most checks: three items under the document, two points under
+; the first, one under the second, and an assistant under the third.
+;
+;   doc 0
+;     a  "A"        a1 "A1", a2 "A2"
+;     b  "B"        b1 "B1"
+;     c  "C"        c1 (assistant) "C1"
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+class SaPresTreeTest {
+
+    sfn data:string () {
+        def pts:string ((SaKit.pt("a" "A")) + (SaKit.pt("a1" "A1")) + (SaKit.pt("a2" "A2")) + (SaKit.pt("b" "B")) + (SaKit.pt("b1" "B1")) + (SaKit.pt("c" "C")) + (SaKit.asst("c1" "C1")))
+        def cs:string ((SaKit.cx("0" "a")) + (SaKit.cx("a" "a1")) + (SaKit.cx("a" "a2")) + (SaKit.cx("0" "b")) + (SaKit.cx("b" "b1")) + (SaKit.cx("0" "c")) + (SaKit.cx("c" "c1")))
+        return (SaKit.data("" pts cs))
+    }
+
+    sfn ptree:SaPresTree () {
+        return (SaPresTree.build((SaKit.model((SaPresTreeTest.data()))) (SaKit.layout(""))))
+    }
+
+    sfn iter:SaIter (axis:string ptType:string) {
+        def it (new SaIter())
+        def a:[string] (SaLayoutReader.words(axis))
+        def p:[string] (SaLayoutReader.words(ptType))
+        def i:int 0
+        while (i < (array_length a)) {
+            push it.axis (itemAt a i)
+            i = (i + 1)
+        }
+        i = 0
+        while (i < (array_length p)) {
+            push it.ptType (itemAt p i)
+            i = (i + 1)
+        }
+        return it
+    }
+
+    sfn join:string (t:SaPresTree ids:[string]) {
+        ; transitions are named by their type and connection: "sib(a)"
+        def out:string ""
+        def i:int 0
+        while (i < (array_length ids)) {
+            def id:string (itemAt ids i)
+            def p:SaPoint (unwrap (t.model.pointById(id)))
+            def label:string id
+            if ((p.type == "parTrans") || (p.type == "sibTrans")) {
+                def c:SaCxn (unwrap (t.model.cxnById(p.cxnId)))
+                label = ((? (p.type == "parTrans") "par" "sib") + "(" + c.destId + ")")
+            }
+            if (p.type == "doc") {
+                label = "doc"
+            }
+            if (i > 0) {
+                out = (out + " ")
+            }
+            out = (out + label)
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn w:string (t:SaPresTree from:string axis:string ptType:string) {
+        return (SaPresTreeTest.join(t (t.walk(from (SaPresTreeTest.iter(axis ptType))))))
+    }
+
+    sfn testAxes:void (c:SaKit) {
+        print "-- axes --"
+        def t:SaPresTree (SaPresTreeTest.ptree())
+        c.eqStr("ch, all: each child with its transitions, the last one hidden" (SaPresTreeTest.w(t "0" "ch" "all")) "par(a) a sib(a) par(b) b sib(b) par(c) c")
+        c.eqStr("ch, node" (SaPresTreeTest.w(t "0" "ch" "node")) "a b c")
+        c.eqStr("ch, sibTrans: the last one hidden" (SaPresTreeTest.w(t "0" "ch" "sibTrans")) "sib(a) sib(b)")
+        c.eqStr("ch, parTrans" (SaPresTreeTest.w(t "0" "ch" "parTrans")) "par(a) par(b) par(c)")
+        c.eqStr("self" (SaPresTreeTest.w(t "a" "self" "all")) "a")
+        c.eqStr("des, node: depth first" (SaPresTreeTest.w(t "0" "des" "node")) "a a1 a2 b b1 c c1")
+        c.eqStr("desOrSelf, node" (SaPresTreeTest.w(t "a" "desOrSelf" "node")) "a a1 a2")
+        c.eqStr("par" (SaPresTreeTest.w(t "a1" "par" "all")) "a")
+        c.eqStr("ancst" (SaPresTreeTest.w(t "a1" "ancst" "all")) "a doc")
+        c.eqStr("ancstOrSelf" (SaPresTreeTest.w(t "a1" "ancstOrSelf" "all")) "a1 a doc")
+        c.eqStr("root" (SaPresTreeTest.w(t "b1" "root" "all")) "doc")
+        c.eqStr("followSib, sibTrans, cnt 1: the arrow after a node" (SaPresTreeTest.join(t (t.walk("a" (SaPresTreeTest.cnt((SaPresTreeTest.iter("followSib" "sibTrans")) 1)))))) "sib(a)")
+        c.eqStr("after the last node there is none" (SaPresTreeTest.join(t (t.walk("c" (SaPresTreeTest.cnt((SaPresTreeTest.iter("followSib" "sibTrans")) 1)))))) "")
+        c.eqStr("followSib, node" (SaPresTreeTest.w(t "a" "followSib" "node")) "b c")
+        c.eqStr("precedSib, node: the nearest first" (SaPresTreeTest.w(t "c" "precedSib" "node")) "b a")
+        def pcB:SaCxn (unwrap (t.model.parentCxn("b")))
+        c.eqStr("a transition's parent is its connection's source" (SaPresTreeTest.join(t (t.walk(pcB.sibTransId (SaPresTreeTest.iter("par" "all")))))) "doc")
+        c.eqStr("two steps: children of children" (SaPresTreeTest.w(t "0" "ch ch" "node node")) "a1 a2 b1 c1")
+        c.eqStr("none is the point itself" (SaPresTreeTest.w(t "b" "none" "all")) "b")
+        c.eqStr("no axis at all: the point, if it is of the type" (SaPresTreeTest.join(t (t.walk("b" (new SaIter()))))) "b")
+    }
+
+    sfn cnt:SaIter (it:SaIter n:int) {
+        push it.cnt n
+        return it
+    }
+
+    sfn testTypes:void (c:SaKit) {
+        print "-- point types --"
+        def t:SaPresTree (SaPresTreeTest.ptree())
+        c.eqStr("node takes assistants too" (SaPresTreeTest.w(t "c" "ch" "node")) "c1")
+        c.eqStr("norm does not" (SaPresTreeTest.w(t "c" "ch" "norm")) "")
+        c.eqStr("asst" (SaPresTreeTest.w(t "0" "des" "asst")) "c1")
+        c.eqStr("nonAsst under c: the transition" (SaPresTreeTest.w(t "c" "ch" "nonAsst")) "par(c1)")
+        c.eqStr("doc" (SaPresTreeTest.w(t "a" "ancstOrSelf" "doc")) "doc")
+    }
+
+    sfn pickOf:string (list:string st:int cnt:int step:int) {
+        def l:[string] (SaLayoutReader.words(list))
+        def p:[string] (SaPresTree.pick(l st cnt step))
+        def out:string ""
+        def i:int 0
+        while (i < (array_length p)) {
+            if (i > 0) {
+                out = (out + " ")
+            }
+            out = (out + (itemAt p i))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testPick:void (c:SaKit) {
+        print "-- st, cnt, step --"
+        c.eqStr("all" (SaPresTreeTest.pickOf("a b c d e" 1 0 1)) "a b c d e")
+        c.eqStr("from the second" (SaPresTreeTest.pickOf("a b c d e" 2 0 1)) "b c d e")
+        c.eqStr("two of them" (SaPresTreeTest.pickOf("a b c d e" 1 2 1)) "a b")
+        c.eqStr("every second" (SaPresTreeTest.pickOf("a b c d e" 1 0 2)) "a c e")
+        c.eqStr("from the end" (SaPresTreeTest.pickOf("a b c d e" -1 0 1)) "e")
+        c.eqStr("backwards from the end" (SaPresTreeTest.pickOf("a b c d e" -1 0 -1)) "e d c b a")
+        c.eqStr("a start past the end is nothing" (SaPresTreeTest.pickOf("a b" 5 0 1)) "")
+        c.eqStr("nothing from nothing" (SaPresTreeTest.pickOf("" 1 0 1)) "")
+        c.eqStr("st 0 is the first" (SaPresTreeTest.pickOf("a b c" 0 1 1)) "a")
+        c.eqStr("step 0 is step 1" (SaPresTreeTest.pickOf("a b c" 1 0 0)) "a b c")
+    }
+
+    sfn testHideLastTrans:void (c:SaKit) {
+        print "-- the last transition --"
+        def t:SaPresTree (SaPresTreeTest.ptree())
+        def it:SaIter (SaPresTreeTest.iter("ch" "sibTrans"))
+        push it.hideLastTrans false
+        c.eqStr("kept when hideLastTrans is 0" (SaPresTreeTest.join(t (t.walk("0" it)))) "sib(a) sib(b) sib(c)")
+        c.eqStr("hidden under a node too" (SaPresTreeTest.w(t "a" "ch" "sibTrans")) "sib(a1)")
+    }
+
+    sfn testRun:void (c:SaKit) {
+        print "-- running a layout --"
+        def body:string "<dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/></dgm:layoutNode><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"arrow\"/></dgm:forEach></dgm:forEach>"
+        def t:SaPresTree (SaKit.ptree((SaPresTreeTest.data()) body))
+        c.eqStr("a node per item, an arrow between" (SaKit.names(t)) "node arrow node arrow node")
+        def nodes:[SaInst] (SaKit.byName(t "node"))
+        def n0:SaInst (itemAt nodes 0)
+        c.eqStr("each for its item" n0.ctxId "a")
+        c.eqInt("presenting it and the points under it" (array_length n0.presIds) 3)
+        c.eqStr("in order" ((itemAt n0.presIds 1) + " " + (itemAt n0.presIds 2)) "a1 a2")
+        def arrows:[SaInst] (SaKit.byName(t "arrow"))
+        def a0:SaInst (itemAt arrows 0)
+        c.eqStr("an arrow is made for a sibling transition" a0.ctxType "sibTrans")
+        def n2:SaInst (itemAt nodes 2)
+        c.eqInt("positions in the forEach" n2.pos 3)
+        c.eqInt("and how many it had" n2.cnt 3)
+        t.numberByName()
+        c.eqInt("numbered by name" n2.nameIdx 2)
+        def a1:SaInst (itemAt arrows 1)
+        c.eqInt("arrows separately" a1.nameIdx 1)
+        c.eqInt("depth below the root" n0.depth 1)
+
+        ; nested layout nodes, and the context carried down
+        def body2:string "<dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"col\"><dgm:layoutNode name=\"head\"><dgm:presOf axis=\"self\"/></dgm:layoutNode><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"item\"><dgm:presOf/></dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:forEach>"
+        def t2:SaPresTree (SaKit.ptree((SaPresTreeTest.data()) body2))
+        c.eqStr("columns with a head and their items" (SaKit.names(t2)) "col head item item col head item col head item")
+        c.eqStr("each for its point" (SaKit.ctxs(t2)) "a a a1 a2 b b b1 c c c1")
+        def heads:[SaInst] (SaKit.byName(t2 "head"))
+        def h1:SaInst (itemAt heads 1)
+        c.eqInt("a head presents its column's point" (array_length h1.presIds) 1)
+        def cols:[SaInst] (SaKit.byName(t2 "col"))
+        def col0:SaInst (itemAt cols 0)
+        c.eqInt("a column has its head and its items as children" (array_length col0.children) 3)
+        c.eqInt("a column's descendants" (array_length (col0.descendants())) 3)
+        def hd@(optional):SaInst (col0.childNamed("head"))
+        c.ok("a child found by name" (!null? hd))
+    }
+
+    sfn chooseNames:string (cond:string) {
+        def body:string ("<dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:choose><dgm:if " + cond + "><dgm:layoutNode name=\"yes\"/></dgm:if><dgm:else><dgm:layoutNode name=\"no\"/></dgm:else></dgm:choose></dgm:forEach>")
+        return (SaKit.names((SaKit.ptree((SaPresTreeTest.data()) body))))
+    }
+
+    sfn testConditions:void (c:SaKit) {
+        print "-- conditions --"
+        c.eqStr("cnt of children >= 1" (SaPresTreeTest.chooseNames("func=\"cnt\" axis=\"ch\" ptType=\"node\" op=\"gte\" val=\"1\"")) "yes yes yes")
+        c.eqStr("cnt of children == 2" (SaPresTreeTest.chooseNames("func=\"cnt\" axis=\"ch\" ptType=\"node\" op=\"equ\" val=\"2\"")) "yes no no")
+        c.eqStr("cnt of normal children: not the assistant" (SaPresTreeTest.chooseNames("func=\"cnt\" axis=\"ch\" ptType=\"norm\" op=\"equ\" val=\"0\"")) "no no yes")
+        c.eqStr("pos == 2" (SaPresTreeTest.chooseNames("func=\"pos\" op=\"equ\" val=\"2\"")) "no yes no")
+        c.eqStr("revPos == 1: the last" (SaPresTreeTest.chooseNames("func=\"revPos\" op=\"equ\" val=\"1\"")) "no no yes")
+        c.eqStr("posEven" (SaPresTreeTest.chooseNames("func=\"posEven\" op=\"equ\" val=\"true\"")) "no yes no")
+        c.eqStr("posOdd" (SaPresTreeTest.chooseNames("func=\"posOdd\" op=\"equ\" val=\"1\"")) "yes no yes")
+        c.eqStr("depth == 1" (SaPresTreeTest.chooseNames("func=\"depth\" op=\"equ\" val=\"1\"")) "yes yes yes")
+        c.eqStr("maxDepth > 0: something under it" (SaPresTreeTest.chooseNames("func=\"maxDepth\" op=\"gt\" val=\"0\"")) "yes yes yes")
+        c.eqStr("neq" (SaPresTreeTest.chooseNames("func=\"pos\" op=\"neq\" val=\"1\"")) "no yes yes")
+        c.eqStr("lt" (SaPresTreeTest.chooseNames("func=\"pos\" op=\"lt\" val=\"3\"")) "yes yes no")
+        c.eqStr("lte" (SaPresTreeTest.chooseNames("func=\"pos\" op=\"lte\" val=\"1\"")) "yes no no")
+        c.eqStr("var dir == norm by default" (SaPresTreeTest.chooseNames("func=\"var\" arg=\"dir\" op=\"equ\" val=\"norm\"")) "yes yes yes")
+        ; a variable set on the root reaches the nodes under it
+        def body:string "<dgm:varLst><dgm:dir val=\"rev\"/></dgm:varLst><dgm:choose><dgm:if func=\"var\" arg=\"dir\" op=\"equ\" val=\"rev\"><dgm:layoutNode name=\"rev\"/></dgm:if><dgm:else><dgm:layoutNode name=\"norm\"/></dgm:else></dgm:choose>"
+        c.eqStr("a variable the root sets" (SaKit.names((SaKit.ptree((SaPresTreeTest.data()) body)))) "rev")
+        def body2:string "<dgm:varLst><dgm:chMax val=\"3\"/></dgm:varLst><dgm:layoutNode name=\"kid\"><dgm:choose><dgm:if func=\"var\" arg=\"chMax\" op=\"equ\" val=\"3\"><dgm:layoutNode name=\"inherited\"/></dgm:if></dgm:choose></dgm:layoutNode>"
+        c.eqStr("is inherited by a child" (SaKit.names((SaKit.ptree((SaPresTreeTest.data()) body2)))) "kid inherited")
+        ; a choose with no branch that holds and no else: nothing
+        def body3:string "<dgm:choose><dgm:if func=\"pos\" op=\"equ\" val=\"9\"><dgm:layoutNode name=\"x\"/></dgm:if></dgm:choose><dgm:layoutNode name=\"after\"/>"
+        c.eqStr("no branch taken" (SaKit.names((SaKit.ptree((SaPresTreeTest.data()) body3)))) "after")
+        ; a branch adds to the node it is in
+        def body4:string "<dgm:layoutNode name=\"n\"><dgm:choose><dgm:if func=\"var\" arg=\"dir\" op=\"equ\" val=\"norm\"><dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/></dgm:alg><dgm:shape type=\"ellipse\"/></dgm:if></dgm:choose></dgm:layoutNode>"
+        def t4:SaPresTree (SaKit.ptree((SaPresTreeTest.data()) body4))
+        def n:SaInst (itemAt (SaKit.byName(t4 "n")) 0)
+        c.eqStr("its algorithm" (n.alg.param("linDir" "")) "fromT")
+        c.eqStr("its shape" n.shape.type "ellipse")
+    }
+
+    sfn testRef:void (c:SaKit) {
+        print "-- a forEach by reference --"
+        def body:string "<dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"n\"/></dgm:forEach><dgm:forEach ref=\"items\"/>"
+        c.eqStr("ref runs the named forEach again" (SaKit.names((SaKit.ptree((SaPresTreeTest.data()) body)))) "n n n n n n")
+        def body2:string "<dgm:forEach ref=\"nope\"/>"
+        def t2:SaPresTree (SaKit.ptree((SaPresTreeTest.data()) body2))
+        c.ok(("a ref to nothing is an error (" + t2.error + ")") ((indexOf t2.error "ref \"nope\"") >= 0))
+    }
+
+    sfn testConstraintsCarried:void (c:SaKit) {
+        print "-- what a node is given --"
+        def body:string "<dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" val=\"10\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"w\" val=\"1\"/></dgm:ruleLst><dgm:layoutNode name=\"k\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"rect\"/></dgm:layoutNode>"
+        def t:SaPresTree (SaKit.ptree((SaPresTreeTest.data()) body))
+        c.eqInt("the root's constraints" (array_length t.root.constrs) 1)
+        c.eqInt("and rules" (array_length t.root.rules) 1)
+        def k:SaInst (itemAt t.root.children 0)
+        c.eqStr("a child's style label" k.styleLbl "node1")
+        c.ok("its algorithm and shape" ((k.hasAlg && k.hasShape) && (k.shape.type == "rect")))
+        c.eqStr("its context is its parent's: the document" k.ctxType "doc")
+    }
+
+    sfn main:void () {
+        print "== SaPresTreeTest =="
+        def c (new SaKit())
+        SaPresTreeTest.testAxes(c)
+        SaPresTreeTest.testTypes(c)
+        SaPresTreeTest.testPick(c)
+        SaPresTreeTest.testHideLastTrans(c)
+        SaPresTreeTest.testRun(c)
+        SaPresTreeTest.testConditions(c)
+        SaPresTreeTest.testRef(c)
+        SaPresTreeTest.testConstraintsCarried(c)
+        c.finish("SaPresTreeTest")
+    }
+}

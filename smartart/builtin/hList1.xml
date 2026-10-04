@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- hList1, "Horizontal Bullet List": a column per item, its heading in a
+     filled bar on top and its sub-points under it as bullets. Written for
+     this engine; see process1.xml. -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" uniqueId="urn:microsoft.com/office/officeart/2005/8/layout/hList1">
+  <dgm:title val="Horizontal Bullet List"/>
+  <dgm:layoutNode name="diagram">
+    <dgm:varLst><dgm:dir/><dgm:animLvl val="lvl"/><dgm:resizeHandles val="exact"/></dgm:varLst>
+    <dgm:choose name="direction">
+      <dgm:if name="forward" func="var" arg="dir" op="equ" val="norm"><dgm:alg type="lin"><dgm:param type="nodeVertAlign" val="t"/></dgm:alg></dgm:if>
+      <dgm:else name="backward"><dgm:alg type="lin"><dgm:param type="linDir" val="fromR"/><dgm:param type="nodeVertAlign" val="t"/></dgm:alg></dgm:else>
+    </dgm:choose>
+    <dgm:shape/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="composite" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="composite" refType="h"/>
+      <dgm:constr type="sibSp" refType="w" fact="0.05"/>
+      <dgm:constr type="primFontSz" for="des" forName="parTx" op="equ" val="65"/>
+      <dgm:constr type="primFontSz" for="des" forName="desTx" op="equ" val="65"/>
+      <dgm:constr type="primFontSz" for="des" forName="desTx" refType="primFontSz" refFor="des" refForName="parTx" op="lte" fact="0.78"/>
+    </dgm:constrLst>
+    <dgm:forEach name="items" axis="ch" ptType="node">
+      <dgm:layoutNode name="composite">
+        <dgm:alg type="composite"/>
+        <dgm:shape/>
+        <dgm:constrLst>
+          <dgm:constr type="l" for="ch" forName="parTx" val="0"/>
+          <dgm:constr type="t" for="ch" forName="parTx" val="0"/>
+          <dgm:constr type="w" for="ch" forName="parTx" refType="w"/>
+          <dgm:constr type="h" for="ch" forName="parTx" refType="h" fact="0.25"/>
+          <dgm:constr type="l" for="ch" forName="desTx" val="0"/>
+          <dgm:constr type="t" for="ch" forName="desTx" refType="h" fact="0.25"/>
+          <dgm:constr type="w" for="ch" forName="desTx" refType="w"/>
+          <dgm:constr type="h" for="ch" forName="desTx" refType="h" fact="0.75"/>
+        </dgm:constrLst>
+        <dgm:layoutNode name="parTx" styleLbl="node1">
+          <dgm:alg type="tx"/>
+          <dgm:shape type="rect"/>
+          <dgm:presOf axis="self"/>
+          <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+          <dgm:ruleLst><dgm:rule type="primFontSz" val="5" fact="NaN" max="NaN"/></dgm:ruleLst>
+        </dgm:layoutNode>
+        <dgm:layoutNode name="desTx" styleLbl="alignAccFollowNode1">
+          <dgm:alg type="tx"><dgm:param type="txAnchorVert" val="t"/><dgm:param type="parTxLTRAlign" val="l"/></dgm:alg>
+          <dgm:shape type="rect"/>
+          <dgm:presOf axis="des" ptType="node"/>
+          <dgm:constrLst>
+            <dgm:constr type="tMarg" refType="primFontSz" fact="0.2"/>
+            <dgm:constr type="bMarg" refType="primFontSz" fact="0.2"/>
+            <dgm:constr type="lMarg" refType="primFontSz" fact="0.2"/>
+            <dgm:constr type="rMarg" refType="primFontSz" fact="0.2"/>
+          </dgm:constrLst>
+          <dgm:ruleLst><dgm:rule type="primFontSz" val="5" fact="NaN" max="NaN"/></dgm:ruleLst>
+        </dgm:layoutNode>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

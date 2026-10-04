@@ -1,0 +1,749 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaPresTree — a layout definition run against a data model
+; ==============================================================================
+;
+; The result is a tree of SaInst: one per layout node the program reached,
+; each with the data point it was reached FOR (its context), the points it
+; presents (`presOf`), and what the program said about it on the way — its
+; algorithm, shape, constraints, rules and variables, including whatever the
+; `choose` branches it went through added.
+;
+; THE DATA AS THE PROGRAM SEES IT. Under a parent, its children are not just
+; the nodes: each parent-of connection contributes its parent transition, the
+; node, and its sibling transition, in that order. That is what lets
+;
+;     <dgm:forEach axis="followSib" ptType="sibTrans" cnt="1">
+;
+; mean "the arrow after this step": the sibling transition is the next thing
+; after the node among its siblings. `hideLastTrans` (on by default) drops the
+; transition after the last child, so a process of three steps has two arrows.
+; ==============================================================================
+
+Import "SaModel.rgr"
+Import "SaLayoutDef.rgr"
+
+class SaInst {
+    def lo:SaLoNode (new SaLoNode())
+    def name:string ""
+    def styleLbl:string ""
+    ; the data point this instance was made for
+    def ctxId:string ""
+    def ctxType:string ""
+    ; the points it presents, in order
+    def presIds:[string]
+    def hasAlg:boolean false
+    def alg:SaAlgDef (new SaAlgDef())
+    def hasShape:boolean false
+    def shape:SaShapeDef (new SaShapeDef())
+    def constrs:[SaConstr]
+    def rules:[SaRule]
+    def vars:[SaParam]
+    def children:[SaInst]
+    def depth:int 0
+    ; position in the forEach that made it, 1-based, and how many there were
+    def pos:int 1
+    def cnt:int 1
+    ; index among instances of the same name, 0-based: what colour cycling counts
+    def nameIdx:int 0
+
+    ; geometry, filled in by the constraints and the algorithms (points, in
+    ; the frame's space)
+    def x:double 0.0
+    def y:double 0.0
+    def w:double 0.0
+    def h:double 0.0
+    def fontPt:double 0.0
+
+    ; constraint values (SaConstraints): by type, with what each was derived
+    ; from ("w", "h", "" for a number) and its bounds from gte / lte
+    def vNames:[string]
+    def vVals:[double]
+    def vFrom:[string]
+    def bNames:[string]
+    def bLo:[double]
+    def bHi:[double]
+    ; the instances whose primary font size must be one size with this one's
+    def fontGroup:int -1
+
+    Constructor () {
+    }
+
+    fn slot:int (type:string) {
+        def i:int 0
+        while (i < (array_length vNames)) {
+            if ((itemAt vNames i) == type) {
+                return i
+            }
+            i = (i + 1)
+        }
+        return -1
+    }
+
+    fn has:boolean (type:string) {
+        return ((this.slot(type)) >= 0)
+    }
+
+    fn put:void (type:string v:double from:string) {
+        def i:int (this.slot(type))
+        if (i < 0) {
+            push vNames type
+            push vVals v
+            push vFrom from
+            return
+        }
+        set vVals i v
+        set vFrom i from
+    }
+
+    fn raw:double (type:string fallback:double) {
+        def i:int (this.slot(type))
+        if (i < 0) {
+            return fallback
+        }
+        return (itemAt vVals i)
+    }
+
+    fn fromOf:string (type:string) {
+        def i:int (this.slot(type))
+        if (i < 0) {
+            return ""
+        }
+        return (itemAt vFrom i)
+    }
+
+    fn bound:void (type:string lo:double hi:double) {
+        def i:int 0
+        while (i < (array_length bNames)) {
+            if ((itemAt bNames i) == type) {
+                if (lo > (itemAt bLo i)) {
+                    set bLo i lo
+                }
+                if (hi < (itemAt bHi i)) {
+                    set bHi i hi
+                }
+                return
+            }
+            i = (i + 1)
+        }
+        push bNames type
+        push bLo lo
+        push bHi hi
+    }
+
+    fn lowOf:double (type:string) {
+        def i:int 0
+        while (i < (array_length bNames)) {
+            if ((itemAt bNames i) == type) {
+                return (itemAt bLo i)
+            }
+            i = (i + 1)
+        }
+        return -1000000000.0
+    }
+
+    fn highOf:double (type:string) {
+        def i:int 0
+        while (i < (array_length bNames)) {
+            if ((itemAt bNames i) == type) {
+                return (itemAt bHi i)
+            }
+            i = (i + 1)
+        }
+        return 1000000000.0
+    }
+
+    ; every length this instance and those under it hold, times `s`
+    fn scaleLengths:void (s:double) {
+        def i:int 0
+        while (i < (array_length vNames)) {
+            if (SaInst.isLength((itemAt vNames i))) {
+                set vVals i ((itemAt vVals i) * s)
+            }
+            i = (i + 1)
+        }
+        def k:int 0
+        while (k < (array_length children)) {
+            def c:SaInst (itemAt children k)
+            c.scaleLengths(s)
+            k = (k + 1)
+        }
+    }
+
+    sfn isLength:boolean (t:string) {
+        if (((t == "primFontSz") || (t == "secFontSz")) || (t == "pyraAcctRatio")) {
+            return false
+        }
+        return ((indexOf t "user") != 0)
+    }
+
+    fn varValue:string (name:string fallback:string) {
+        def i:int ((array_length vars) - 1)
+        while (i >= 0) {
+            def p:SaParam (itemAt vars i)
+            if (p.name == name) {
+                return p.value
+            }
+            i = (i - 1)
+        }
+        return fallback
+    }
+
+    ; every instance under this one, depth first, this one excluded
+    fn descendants:[SaInst] () {
+        def out:[SaInst]
+        this.collect(out)
+        return out
+    }
+
+    fn collect:void (out:[SaInst]) {
+        def i:int 0
+        while (i < (array_length children)) {
+            def c:SaInst (itemAt children i)
+            push out c
+            c.collect(out)
+            i = (i + 1)
+        }
+    }
+
+    fn childNamed@(optional):SaInst (n:string) {
+        def i:int 0
+        while (i < (array_length children)) {
+            def c:SaInst (itemAt children i)
+            if (c.name == n) {
+                def hit@(optional):SaInst c
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaInst
+        return none
+    }
+}
+
+class SaPresTree {
+    def model:SaModel (new SaModel())
+    def layout:SaLayoutDef (new SaLayoutDef())
+    def root:SaInst (new SaInst())
+    def error:string ""
+    ; how many instances, a guard against a layout that never ends
+    def made:int 0
+    def maxInstances:int 5000
+
+    Constructor () {
+    }
+
+    sfn build:SaPresTree (m:SaModel lo:SaLayoutDef) {
+        def t (new SaPresTree())
+        t.model = m
+        t.layout = lo
+        def r (new SaInst())
+        def d:SaPoint (m.doc())
+        r.ctxId = d.id
+        r.ctxType = "doc"
+        t.root = r
+        t.runLayoutNode(lo.root r d.id 1 1)
+        return t
+    }
+
+    ; ------------------------------------------------------------------
+    ; The data, as the program walks it
+    ; ------------------------------------------------------------------
+
+    fn typeOf:string (id:string) {
+        def p@(optional):SaPoint (model.pointById(id))
+        if (null? p) {
+            return ""
+        }
+        return p.type
+    }
+
+    ; Under `id`: for each parent-of connection, its parent transition, the
+    ; node and its sibling transition.
+    fn chList:[string] (id:string) {
+        def out:[string]
+        def cs:[SaCxn] (model.childCxns(id))
+        def i:int 0
+        while (i < (array_length cs)) {
+            def c:SaCxn (itemAt cs i)
+            if ((strlen c.parTransId) > 0) {
+                push out c.parTransId
+            }
+            push out c.destId
+            if ((strlen c.sibTransId) > 0) {
+                push out c.sibTransId
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; the parent: a node's is the source of its parent-of connection; a
+    ; transition's is the source of the connection it belongs to
+    fn parentOf:string (id:string) {
+        def p@(optional):SaPoint (model.pointById(id))
+        if (null? p) {
+            return ""
+        }
+        if ((p.type == "parTrans") || (p.type == "sibTrans")) {
+            def c@(optional):SaCxn (model.cxnById(p.cxnId))
+            if (null? c) {
+                return ""
+            }
+            return c.srcId
+        }
+        def pc@(optional):SaCxn (model.parentCxn(id))
+        if (null? pc) {
+            return ""
+        }
+        return pc.srcId
+    }
+
+    fn siblingsOf:[string] (id:string) {
+        def par:string (this.parentOf(id))
+        if ((strlen par) == 0) {
+            def none:[string]
+            return none
+        }
+        return (this.chList(par))
+    }
+
+    fn desOf:void (id:string out:[string]) {
+        def kids:[string] (this.chList(id))
+        def i:int 0
+        while (i < (array_length kids)) {
+            def k:string (itemAt kids i)
+            push out k
+            this.desOf(k out)
+            i = (i + 1)
+        }
+    }
+
+    fn axisFrom:[string] (id:string axis:string) {
+        def out:[string]
+        if ((axis == "self") || (axis == "none")) {
+            push out id
+            return out
+        }
+        if (axis == "ch") {
+            return (this.chList(id))
+        }
+        if (axis == "des") {
+            this.desOf(id out)
+            return out
+        }
+        if (axis == "desOrSelf") {
+            push out id
+            this.desOf(id out)
+            return out
+        }
+        if ((axis == "par") || ((axis == "ancst") || (axis == "ancstOrSelf"))) {
+            if (axis == "ancstOrSelf") {
+                push out id
+            }
+            def at:string (this.parentOf(id))
+            def guard:int 0
+            while (((strlen at) > 0) && (guard < 10000)) {
+                push out at
+                if (axis == "par") {
+                    return out
+                }
+                at = (this.parentOf(at))
+                guard = (guard + 1)
+            }
+            return out
+        }
+        if (axis == "root") {
+            def d:SaPoint (model.doc())
+            push out d.id
+            return out
+        }
+        if ((axis == "followSib") || ((axis == "precedSib") || ((axis == "follow") || (axis == "preced")))) {
+            def sibs:[string] (this.siblingsOf(id))
+            def me:int -1
+            def i:int 0
+            while (i < (array_length sibs)) {
+                if ((itemAt sibs i) == id) {
+                    me = i
+                }
+                i = (i + 1)
+            }
+            if (me < 0) {
+                return out
+            }
+            if ((axis == "followSib") || (axis == "follow")) {
+                def j:int (me + 1)
+                while (j < (array_length sibs)) {
+                    push out (itemAt sibs j)
+                    if (axis == "follow") {
+                        this.desOf((itemAt sibs j) out)
+                    }
+                    j = (j + 1)
+                }
+            } {
+                def k:int (me - 1)
+                while (k >= 0) {
+                    push out (itemAt sibs k)
+                    k = (k - 1)
+                }
+            }
+            return out
+        }
+        return out
+    }
+
+    fn matchesType:boolean (id:string want:string) {
+        if (want == "all") {
+            return true
+        }
+        def t:string (this.typeOf(id))
+        if (want == "node") {
+            return ((t == "node") || (t == "asst"))
+        }
+        if (want == "norm") {
+            return (t == "node")
+        }
+        if (want == "nonNorm") {
+            return (t != "node")
+        }
+        if (want == "nonAsst") {
+            return (t != "asst")
+        }
+        return (t == want)
+    }
+
+    ; the transition after the last of its parent's children
+    fn isLastTrans:boolean (id:string) {
+        def p@(optional):SaPoint (model.pointById(id))
+        if (null? p) {
+            return false
+        }
+        if (p.type != "sibTrans") {
+            return false
+        }
+        def c@(optional):SaCxn (model.cxnById(p.cxnId))
+        if (null? c) {
+            return false
+        }
+        def cs:[SaCxn] (model.childCxns(c.srcId))
+        if ((array_length cs) == 0) {
+            return false
+        }
+        def last:SaCxn (itemAt cs ((array_length cs) - 1))
+        return (last.id == c.id)
+    }
+
+    ; The points a forEach, presOf or if walks to from `id`.
+    fn walk:[string] (id:string it:SaIter) {
+        def cur:[string]
+        push cur id
+        def steps:int (it.steps())
+        if (steps == 0) {
+            ; no axis: the point itself, filtered by type
+            def only:[string]
+            if (this.matchesType(id (it.ptTypeAt(0)))) {
+                push only id
+            }
+            return only
+        }
+        def s:int 0
+        while (s < steps) {
+            def next:[string]
+            def ci:int 0
+            while (ci < (array_length cur)) {
+                def found:[string] (this.axisFrom((itemAt cur ci) (it.axisAt(s))))
+                ; type filter, last transition hidden
+                def filtered:[string]
+                def fi:int 0
+                while (fi < (array_length found)) {
+                    def f:string (itemAt found fi)
+                    if (this.matchesType(f (it.ptTypeAt(s)))) {
+                        def hidden:boolean ((it.hideLastTransAt(s)) && (this.isLastTrans(f)))
+                        if (hidden == false) {
+                            push filtered f
+                        }
+                    }
+                    fi = (fi + 1)
+                }
+                ; st (1-based; negative from the end), step, cnt
+                def picked:[string] (SaPresTree.pick(filtered (it.stAt(s)) (it.cntAt(s)) (it.stepAt(s))))
+                def pi:int 0
+                while (pi < (array_length picked)) {
+                    push next (itemAt picked pi)
+                    pi = (pi + 1)
+                }
+                ci = (ci + 1)
+            }
+            cur = next
+            s = (s + 1)
+        }
+        return cur
+    }
+
+    sfn pick:[string] (list:[string] st:int cnt:int step:int) {
+        def out:[string]
+        def n:int (array_length list)
+        if (n == 0) {
+            return out
+        }
+        def start:int (st - 1)
+        if (st < 0) {
+            start = (n + st)
+        }
+        if (st == 0) {
+            start = 0
+        }
+        def stride:int step
+        if (stride == 0) {
+            stride = 1
+        }
+        def i:int start
+        while ((i >= 0) && (i < n)) {
+            push out (itemAt list i)
+            if ((cnt > 0) && ((array_length out) >= cnt)) {
+                return out
+            }
+            i = (i + stride)
+        }
+        return out
+    }
+
+    ; ------------------------------------------------------------------
+    ; Running the program
+    ; ------------------------------------------------------------------
+
+    fn runLayoutNode:void (lo:SaLoNode inst:SaInst ctx:string pos:int cnt:int) {
+        inst.lo = lo
+        inst.name = lo.name
+        inst.styleLbl = lo.styleLbl
+        inst.ctxId = ctx
+        inst.ctxType = (this.typeOf(ctx))
+        inst.pos = pos
+        inst.cnt = cnt
+        this.runBody(lo inst ctx pos cnt)
+    }
+
+    ; What a layoutNode, forEach body, if or else says, applied to `inst`,
+    ; and its children run.
+    fn runBody:void (body:SaLoNode inst:SaInst ctx:string pos:int cnt:int) {
+        if (made > maxInstances) {
+            error = ("the layout made more than " + (to_string maxInstances) + " shapes; it does not end")
+            return
+        }
+        if body.hasAlg {
+            inst.hasAlg = true
+            inst.alg = body.alg
+        }
+        if body.hasShape {
+            inst.hasShape = true
+            inst.shape = body.shape
+        }
+        if body.hasPresOf {
+            def ps:[string] (this.walk(ctx body.presOf))
+            def pi:int 0
+            while (pi < (array_length ps)) {
+                push inst.presIds (itemAt ps pi)
+                pi = (pi + 1)
+            }
+        }
+        def k:int 0
+        while (k < (array_length body.constrs)) {
+            push inst.constrs (itemAt body.constrs k)
+            k = (k + 1)
+        }
+        k = 0
+        while (k < (array_length body.rules)) {
+            push inst.rules (itemAt body.rules k)
+            k = (k + 1)
+        }
+        k = 0
+        while (k < (array_length body.vars)) {
+            push inst.vars (itemAt body.vars k)
+            k = (k + 1)
+        }
+        def i:int 0
+        while (i < (array_length body.children)) {
+            def c:SaLoNode (itemAt body.children i)
+            if (c.kind == "layoutNode") {
+                def child (new SaInst())
+                made = (made + 1)
+                child.depth = (inst.depth + 1)
+                ; variables are inherited: a child starts with its parent's
+                def vi:int 0
+                while (vi < (array_length inst.vars)) {
+                    push child.vars (itemAt inst.vars vi)
+                    vi = (vi + 1)
+                }
+                push inst.children child
+                this.runLayoutNode(c child ctx pos cnt)
+            }
+            if (c.kind == "forEach") {
+                this.runForEach(c inst ctx)
+            }
+            if (c.kind == "choose") {
+                def branch@(optional):SaLoNode (this.choose(c inst ctx pos cnt))
+                if (!null? branch) {
+                    this.runBody((unwrap branch) inst ctx pos cnt)
+                }
+            }
+            i = (i + 1)
+        }
+    }
+
+    fn runForEach:void (fe:SaLoNode inst:SaInst ctx:string) {
+        def body:SaLoNode fe
+        if ((strlen fe.ref) > 0) {
+            def target@(optional):SaLoNode (layout.forEachNamed(fe.ref))
+            if (null? target) {
+                error = ("forEach " + fe.name + ": ref \"" + fe.ref + "\" names no forEach")
+                return
+            }
+            body = (unwrap target)
+        }
+        def pts:[string] (this.walk(ctx body.iter))
+        def n:int (array_length pts)
+        def i:int 0
+        while (i < n) {
+            ; a forEach body has no algorithm or shape of its own; anything it
+            ; holds lands on the instance it runs in
+            this.runBody(body inst (itemAt pts i) (i + 1) n)
+            i = (i + 1)
+        }
+    }
+
+    fn choose@(optional):SaLoNode (ch:SaLoNode inst:SaInst ctx:string pos:int cnt:int) {
+        def i:int 0
+        while (i < (array_length ch.children)) {
+            def br:SaLoNode (itemAt ch.children i)
+            if (br.kind == "else") {
+                def e@(optional):SaLoNode br
+                return e
+            }
+            if (this.test(br inst ctx pos cnt)) {
+                def t@(optional):SaLoNode br
+                return t
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaLoNode
+        return none
+    }
+
+    fn test:boolean (br:SaLoNode inst:SaInst ctx:string pos:int cnt:int) {
+        def f:string br.func
+        if (f == "var") {
+            def have:string (inst.varValue(br.arg (SaPresTree.varDefault(br.arg))))
+            return (SaPresTree.compare(have br.op br.val))
+        }
+        def value:int 0
+        if (f == "cnt") {
+            value = (array_length (this.walk(ctx br.iter)))
+        }
+        if (f == "pos") {
+            value = pos
+        }
+        if (f == "revPos") {
+            value = ((cnt - pos) + 1)
+        }
+        if (f == "posEven") {
+            return (SaPresTree.compare((? ((pos % 2) == 0) "1" "0") br.op (SaPresTree.boolText(br.val))))
+        }
+        if (f == "posOdd") {
+            return (SaPresTree.compare((? ((pos % 2) == 1) "1" "0") br.op (SaPresTree.boolText(br.val))))
+        }
+        if (f == "depth") {
+            value = (model.depthOf(ctx))
+        }
+        if (f == "maxDepth") {
+            value = (this.maxDepthUnder(ctx 0))
+        }
+        return (SaPresTree.compare((to_string value) br.op br.val))
+    }
+
+    fn maxDepthUnder:int (id:string at:int) {
+        def best:int at
+        def kids:[SaPoint] (model.children(id))
+        def i:int 0
+        while (i < (array_length kids)) {
+            def k:SaPoint (itemAt kids i)
+            def d:int (this.maxDepthUnder(k.id (at + 1)))
+            if (d > best) {
+                best = d
+            }
+            i = (i + 1)
+        }
+        return best
+    }
+
+    sfn boolText:string (v:string) {
+        if ((v == "true") || (v == "1")) {
+            return "1"
+        }
+        return "0"
+    }
+
+    sfn varDefault:string (name:string) {
+        if (name == "dir") { return "norm" }
+        if (name == "hierBranch") { return "std" }
+        if (name == "chMax") { return "-1" }
+        if (name == "chPref") { return "-1" }
+        if (name == "bulletEnabled") { return "0" }
+        if (name == "orgChart") { return "0" }
+        return ""
+    }
+
+    ; Numbers compared as numbers, anything else as text.
+    sfn compare:boolean (have:string op:string want:string) {
+        def a@(optional):double (str2double (trim have))
+        def b@(optional):double (str2double (trim want))
+        if ((!null? a) && (!null? b)) {
+            def x:double (unwrap a)
+            def y:double (unwrap b)
+            if (op == "equ") { return (x == y) }
+            if (op == "neq") { return (x != y) }
+            if (op == "gt") { return (x > y) }
+            if (op == "lt") { return (x < y) }
+            if (op == "gte") { return (x >= y) }
+            if (op == "lte") { return (x <= y) }
+            return false
+        }
+        if (op == "equ") { return (have == want) }
+        if (op == "neq") { return (have != want) }
+        return false
+    }
+
+    ; every instance, depth first, the root first
+    fn all:[SaInst] () {
+        def out:[SaInst]
+        push out root
+        root.collect(out)
+        return out
+    }
+
+    ; numbers instances of the same name in order: the colour index
+    fn numberByName:void () {
+        def every:[SaInst] (this.all())
+        def names:[string]
+        def counts:[int]
+        def i:int 0
+        while (i < (array_length every)) {
+            def s:SaInst (itemAt every i)
+            def at:int -1
+            def j:int 0
+            while (j < (array_length names)) {
+                if ((itemAt names j) == s.name) {
+                    at = j
+                }
+                j = (j + 1)
+            }
+            if (at < 0) {
+                push names s.name
+                push counts 0
+                at = ((array_length names) - 1)
+            }
+            s.nameIdx = (itemAt counts at)
+            set counts at ((itemAt counts at) + 1)
+            i = (i + 1)
+        }
+    }
+}

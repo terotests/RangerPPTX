@@ -1,0 +1,120 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaRenderTest — a diagram in a host's colours, into a display list
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+Import "../SaRender.rgr"
+Import "../SaFile.rgr"
+
+class SaRenderTest {
+
+    sfn palette:SaPalette () {
+        def p (new SaPalette())
+        p.set("accent1" "#1F6FEB")
+        p.set("accent2" "0f9d8a")
+        p.set("lt1" "#FFFFFF")
+        p.set("dk1" "#111111")
+        return p
+    }
+
+    sfn testPalette:void (c:SaKit) {
+        print "-- a palette --"
+        def p:SaPalette (SaRenderTest.palette())
+        c.eqStr("a name it was given, upper-cased, no #" (p.hexOf("accent1")) "1F6FEB")
+        c.eqStr("given without a #" (p.hexOf("accent2")) "0F9D8A")
+        c.eqStr("tx1 is dk1" (p.hexOf("tx1")) "111111")
+        c.eqStr("bg1 is lt1" (p.hexOf("bg1")) "FFFFFF")
+        c.eqStr("a light it was not given is white" (p.hexOf("lt2")) "FFFFFF")
+        c.eqStr("a dark one black" (p.hexOf("dk2")) "000000")
+        c.eqStr("an accent it was not given has a default" (p.hexOf("accent5")) "4472C4")
+        p.set("accent1" "#000000")
+        c.eqStr("set again, replaced" (p.hexOf("accent1")) "000000")
+    }
+
+    sfn testResolve:void (c:SaKit) {
+        print "-- colours resolved --"
+        def p:SaPalette (SaRenderTest.palette())
+        def plain:PptxColor (PptxColor.schemeOf("accent1"))
+        SaRender.resolve(plain p)
+        c.ok("a scheme colour becomes RGB" (plain.isScheme == false))
+        c.eqStr("its own" plain.srgb "1F6FEB")
+        def tinted:PptxColor (SaStyle.scheme("accent1" 0.6))
+        SaRender.resolve(tinted p)
+        c.ok("a tint makes it lighter" ((tinted.srgb != "1F6FEB") && ((strlen tinted.srgb) == 6)))
+        c.ok("and is used up" (tinted.tint == 0.0))
+        def rgb:PptxColor (PptxColor.srgbOf("ABCDEF"))
+        SaRender.resolve(rgb p)
+        c.eqStr("an RGB colour is left as it is" rgb.srgb "ABCDEF")
+        def unset (new PptxColor())
+        SaRender.resolve(unset p)
+        c.ok("an unset one stays unset" (unset.isSet == false))
+    }
+
+    sfn testPaint:void (c:SaKit) {
+        print "-- painted --"
+        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) (new SaOptions()) 480.0 270.0))
+        def out (new EVGDisplayList())
+        SaRender.paint(out r.shape (SaRenderTest.palette()) 100.0 50.0)
+        def texts:string ""
+        def minX:double 100000.0
+        def maxX:double 0.0
+        def fills:int 0
+        def i:int 0
+        while (i < (array_length out.cmds)) {
+            def cmd:EVGDrawCmd (itemAt out.cmds i)
+            if ((strlen cmd.text) > 0) {
+                texts = (texts + cmd.text + "|")
+            }
+            if ((cmd.x < minX) && (cmd.w > 0.0)) {
+                minX = cmd.x
+            }
+            if ((cmd.x + cmd.w) > maxX) {
+                maxX = (cmd.x + cmd.w)
+            }
+            if ((cmd.r == 31) && ((cmd.g == 111) && (cmd.b == 235))) {
+                fills = (fills + 1)
+            }
+            i = (i + 1)
+        }
+        c.ok(("every step's text is drawn (" + texts + ")") ((((indexOf texts "Item 1") >= 0) && ((indexOf texts "Item 2") >= 0)) && ((indexOf texts "Item 3") >= 0)))
+        c.ok(("at the box it was given, in points, its 1 pt outline aside (" + (to_string minX) + " to " + (to_string maxX) + ")") (minX >= 99.0))
+        c.ok("and no wider than the diagram, its outline aside" (maxX <= 581.0))
+        c.ok("the steps in the palette's first accent" (fills >= 3))
+        def n0:PptxShape (itemAt r.shape.children 0)
+        c.ok("the shapes' colours are resolved" (n0.fill.isScheme == false))
+        c.near("the group sits where it was put" r.shape.x 100.0)
+    }
+
+    sfn testFile:void (c:SaKit) {
+        print "-- a file in a deck --"
+        def xml:string (SaKit.flat("process1" 2))
+        c.ok("its own type" (SaFile.isSmartArt("x.bin" (SaFile.TYPE()) "")))
+        c.ok(".xml with a data model in it" (SaFile.isSmartArt("media/Steps.XML" "" xml)))
+        c.ok(".xml sent as application/xml" (SaFile.isSmartArt("a.xml" "application/xml" xml)))
+        c.ok(".xml that is something else" ((SaFile.isSmartArt("a.xml" "" "<svg/>")) == false))
+        c.ok("a picture named .xml" ((SaFile.isSmartArt("a.xml" "image/png" xml)) == false))
+        c.ok("a data model not named .xml" ((SaFile.isSmartArt("a.txt" "" xml)) == false))
+        def utf:string (EVGCodepoint.encodeUtf8("Hämeenlinna – Ω"))
+        def bytes:buffer (buffer_from_string utf)
+        c.eqStr("its text is UTF-8" (SaFile.textOf(bytes)) "Hämeenlinna – Ω")
+        c.eqStr("nothing is nothing" (SaFile.textOf((buffer_from_string ""))) "")
+        c.ok("a head, not the whole file" ((strlen (SaFile.headOf((buffer_from_string (SaKit.flat("process1" 200)))))) <= 2048))
+        c.eqInt("16:9, wider than any column" ((SaFile.naturalW()) * 9) ((SaFile.naturalH()) * 16))
+        ; the whole road: bytes in, a drawing out, the Finnish intact
+        def fi:string (SaKit.data("process1" (SaKit.pt("a" "Hämeenlinna")) (SaKit.cx("0" "a"))))
+        def r:SaResult (SaEngine.layout((SaFile.textOf((buffer_from_string (EVGCodepoint.encodeUtf8(fi))))) (new SaOptions()) 480.0 270.0))
+        def n0:PptxShape (itemAt r.shape.children 0)
+        c.eqStr("read from bytes, drawn with its own letters" (n0.text.plainText()) "Hämeenlinna")
+    }
+
+    sfn main:void () {
+        print "== SaRenderTest =="
+        def c (new SaKit())
+        SaRenderTest.testPalette(c)
+        SaRenderTest.testResolve(c)
+        SaRenderTest.testPaint(c)
+        SaRenderTest.testFile(c)
+        c.finish("SaRenderTest")
+    }
+}

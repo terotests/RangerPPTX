@@ -1,0 +1,488 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaLayoutReader — `dgm:layoutDef` XML into an SaLayoutDef, or the reason not
+; ==============================================================================
+;
+; Two kinds of layout definition reach this: the ones this repository ships
+; (`builtin/`, written by hand) and the ones PowerPoint saves into every file
+; it writes. Both are read the same way, and both are held to the vocabulary
+; of the specification: an algorithm, constraint, axis or point type this
+; does not know is REFUSED by name rather than skipped. A layout that quietly
+; dropped a constraint would draw something, and that something would be
+; wrong in a way no message ever mentions.
+;
+; Elements that describe a layout rather than define it — its title, its
+; categories, the sample data PowerPoint's gallery draws, extensions — are
+; read past.
+; ==============================================================================
+
+Import "../../xml/XmlCore.rgr"
+Import "SaLayoutDef.rgr"
+
+class SaLayoutReadResult {
+    def ok:boolean false
+    def error:string ""
+    def layout:SaLayoutDef (new SaLayoutDef())
+
+    Constructor () {
+    }
+}
+
+class SaLayoutReader {
+
+    sfn read:SaLayoutReadResult (xml:string) {
+        def res (new SaLayoutReadResult())
+        def parser (new XmlParser())
+        def rootOpt@(optional):XmlNode (parser.parse(xml))
+        if (null? rootOpt) {
+            res.error = "not XML: no element could be read"
+            return res
+        }
+        def root:XmlNode (unwrap rootOpt)
+        if (root.name != "layoutDef") {
+            res.error = ("the root element is <" + root.name + ">, not <dgm:layoutDef>")
+            return res
+        }
+        res.layout.uniqueId = (root.attr("uniqueId"))
+        def title@(optional):XmlNode (root.firstChild("title"))
+        if (!null? title) {
+            res.layout.title = ((unwrap title).attr("val"))
+        }
+        def lnOpt@(optional):XmlNode (root.firstChild("layoutNode"))
+        if (null? lnOpt) {
+            res.error = "<dgm:layoutNode> is missing: a layout needs its root node"
+            return res
+        }
+        def ln:XmlNode (unwrap lnOpt)
+        def rootNode (new SaLoNode())
+        def err:string (SaLayoutReader.readBody(ln rootNode "layoutNode"))
+        if ((strlen err) > 0) {
+            res.error = err
+            return res
+        }
+        res.layout.root = rootNode
+        res.ok = true
+        return res
+    }
+
+    sfn isOneOf:boolean (v:string list:string) {
+        def padded:string (" " + list + " ")
+        return ((indexOf padded (" " + v + " ")) >= 0)
+    }
+
+    sfn algTypes:string () {
+        return "composite conn cycle hierChild hierRoot pyra lin sp tx snake"
+    }
+
+    sfn constrTypes:string () {
+        return "none alignOff begMarg bendDist begPad b bMarg bOff ctrX ctrXOff ctrY ctrYOff connDist diam endMarg endPad h hArH hOff l lMarg lOff r rMarg rOff primFontSz pyraAcctRatio secFontSz sibSp secSibSp sp stemThick t tMarg tOff userA userB userC userD userE userF userG userH userI userJ userK userL userM userN userO userP userQ userR userS userT userU userV userW userX userY userZ w wArH wOff"
+    }
+
+    sfn axes:string () {
+        return "self ch des desOrSelf par ancst ancstOrSelf followSib precedSib follow preced root none"
+    }
+
+    sfn ptTypes:string () {
+        return "all doc node norm nonNorm asst nonAsst parTrans pres sibTrans"
+    }
+
+    sfn varNames:string () {
+        return "orgChart chMax chPref bulletEnabled dir hierBranch animOne animLvl resizeHandles"
+    }
+
+    ; "1 2 3" → words
+    sfn words:[string] (s:string) {
+        def out:[string]
+        def cur:string ""
+        def i:int 0
+        def n:int (strlen s)
+        while (i < n) {
+            def c:int (charAt s i)
+            if (((c == 32) || (c == 9)) || ((c == 10) || (c == 13))) {
+                if ((strlen cur) > 0) {
+                    push out cur
+                    cur = ""
+                }
+            } {
+                cur = (cur + (substring s i (i + 1)))
+            }
+            i = (i + 1)
+        }
+        if ((strlen cur) > 0) {
+            push out cur
+        }
+        return out
+    }
+
+    ; A number as the files write them. "NaN" is "not given"; "INF" is very
+    ; large. `ok` false when it is neither and not a number either.
+    sfn number:double (s:string) {
+        def t:string (trim s)
+        if ((t == "INF") || (t == "+INF")) {
+            return 1000000000.0
+        }
+        if (t == "-INF") {
+            return -1000000000.0
+        }
+        def v@(optional):double (str2double t)
+        return (?? v 0.0)
+    }
+
+    sfn isNumber:boolean (s:string) {
+        def t:string (trim s)
+        if (((t == "INF") || (t == "+INF")) || ((t == "-INF") || (t == "NaN"))) {
+            return true
+        }
+        def v@(optional):double (str2double t)
+        return (!null? v)
+    }
+
+    sfn isNaN:boolean (s:string) {
+        return ((trim s) == "NaN")
+    }
+
+    ; The iteration attributes, as lists, each value checked.
+    sfn readIter:string (n:XmlNode it:SaIter where:string) {
+        def axes:[string] (SaLayoutReader.words((n.attr("axis"))))
+        def i:int 0
+        while (i < (array_length axes)) {
+            def a:string (itemAt axes i)
+            if ((SaLayoutReader.isOneOf(a (SaLayoutReader.axes()))) == false) {
+                return (where + ": axis \"" + a + "\" is not one of " + (SaLayoutReader.axes()))
+            }
+            push it.axis a
+            i = (i + 1)
+        }
+        def pts:[string] (SaLayoutReader.words((n.attr("ptType"))))
+        i = 0
+        while (i < (array_length pts)) {
+            def p:string (itemAt pts i)
+            if ((SaLayoutReader.isOneOf(p (SaLayoutReader.ptTypes()))) == false) {
+                return (where + ": ptType \"" + p + "\" is not one of " + (SaLayoutReader.ptTypes()))
+            }
+            push it.ptType p
+            i = (i + 1)
+        }
+        def e1:string (SaLayoutReader.readInts(n "st" it.st where))
+        if ((strlen e1) > 0) {
+            return e1
+        }
+        def e2:string (SaLayoutReader.readInts(n "cnt" it.cnt where))
+        if ((strlen e2) > 0) {
+            return e2
+        }
+        def e3:string (SaLayoutReader.readInts(n "step" it.step where))
+        if ((strlen e3) > 0) {
+            return e3
+        }
+        def hs:[string] (SaLayoutReader.words((n.attr("hideLastTrans"))))
+        i = 0
+        while (i < (array_length hs)) {
+            def h:string (itemAt hs i)
+            push it.hideLastTrans ((h == "1") || (h == "true"))
+            i = (i + 1)
+        }
+        return ""
+    }
+
+    sfn readInts:string (n:XmlNode name:string out:[int] where:string) {
+        def ws:[string] (SaLayoutReader.words((n.attr(name))))
+        def i:int 0
+        while (i < (array_length ws)) {
+            def w:string (itemAt ws i)
+            def v@(optional):int (str2int w)
+            if (null? v) {
+                return (where + ": " + name + " \"" + w + "\" is not a whole number")
+            }
+            push out (unwrap v)
+            i = (i + 1)
+        }
+        return ""
+    }
+
+    ; The children of a layoutNode, forEach, if or else, into `node`.
+    sfn readBody:string (x:XmlNode node:SaLoNode kind:string) {
+        node.kind = kind
+        node.name = (x.attr("name"))
+        def where:string ("<dgm:" + kind + ">")
+        if ((strlen node.name) > 0) {
+            where = ("<dgm:" + kind + " name=\"" + node.name + "\">")
+        }
+        if (kind == "layoutNode") {
+            node.styleLbl = (x.attr("styleLbl"))
+            node.chOrder = (x.attrOr("chOrder" "b"))
+            node.moveWith = (x.attr("moveWith"))
+        }
+        if ((kind == "forEach") || (kind == "if")) {
+            def ie:string (SaLayoutReader.readIter(x node.iter where))
+            if ((strlen ie) > 0) {
+                return ie
+            }
+        }
+        if (kind == "forEach") {
+            node.ref = (x.attr("ref"))
+        }
+        if (kind == "if") {
+            node.func = (x.attr("func"))
+            node.arg = (x.attrOr("arg" "none"))
+            node.op = (x.attr("op"))
+            node.val = (x.attr("val"))
+            if ((SaLayoutReader.isOneOf(node.func "cnt pos revPos posEven posOdd var depth maxDepth")) == false) {
+                return (where + ": func \"" + node.func + "\" is not one of cnt, pos, revPos, posEven, posOdd, var, depth, maxDepth")
+            }
+            if ((SaLayoutReader.isOneOf(node.op "equ neq gt lt gte lte")) == false) {
+                return (where + ": op \"" + node.op + "\" is not one of equ, neq, gt, lt, gte, lte")
+            }
+        }
+        def i:int 0
+        while (i < (x.childCount())) {
+            def c:XmlNode (x.childAt(i))
+            if (c.isText == false) {
+                def err:string (SaLayoutReader.readChild(c node where))
+                if ((strlen err) > 0) {
+                    return err
+                }
+            }
+            i = (i + 1)
+        }
+        return ""
+    }
+
+    sfn readChild:string (c:XmlNode node:SaLoNode where:string) {
+        def nm:string c.name
+        if (nm == "extLst") {
+            return ""
+        }
+        if (nm == "layoutNode") {
+            def k (new SaLoNode())
+            push node.children k
+            return (SaLayoutReader.readBody(c k "layoutNode"))
+        }
+        if (nm == "forEach") {
+            def f (new SaLoNode())
+            push node.children f
+            return (SaLayoutReader.readBody(c f "forEach"))
+        }
+        if (nm == "choose") {
+            def ch (new SaLoNode())
+            ch.kind = "choose"
+            ch.name = (c.attr("name"))
+            push node.children ch
+            def j:int 0
+            while (j < (c.childCount())) {
+                def b:XmlNode (c.childAt(j))
+                if (b.isText == false) {
+                    if ((b.name == "if") || (b.name == "else")) {
+                        def br (new SaLoNode())
+                        push ch.children br
+                        def be:string (SaLayoutReader.readBody(b br b.name))
+                        if ((strlen be) > 0) {
+                            return be
+                        }
+                    } {
+                        return ("<dgm:choose>: <dgm:" + b.name + "> is not if or else")
+                    }
+                }
+                j = (j + 1)
+            }
+            return ""
+        }
+        if (nm == "alg") {
+            node.hasAlg = true
+            node.alg.type = (c.attr("type"))
+            if ((SaLayoutReader.isOneOf(node.alg.type (SaLayoutReader.algTypes()))) == false) {
+                return (where + ": algorithm \"" + node.alg.type + "\" is not one of " + (SaLayoutReader.algTypes()))
+            }
+            def ps:[XmlNode] (c.childrenNamed("param"))
+            def k2:int 0
+            while (k2 < (array_length ps)) {
+                def pn:XmlNode (itemAt ps k2)
+                def prm (new SaParam())
+                prm.name = (pn.attr("type"))
+                prm.value = (pn.attr("val"))
+                push node.alg.params prm
+                k2 = (k2 + 1)
+            }
+            return ""
+        }
+        if (nm == "shape") {
+            node.hasShape = true
+            node.shape.type = (c.attrOr("type" "none"))
+            node.shape.rot = (SaLayoutReader.number((c.attrOr("rot" "0"))))
+            def zo@(optional):int (str2int (trim (c.attrOr("zOrderOff" "0"))))
+            node.shape.zOrderOff = (?? zo 0)
+            node.shape.hideGeom = ((c.attr("hideGeom")) == "1")
+            node.shape.lkTxEntry = ((c.attr("lkTxEntry")) == "1")
+            def adjLst@(optional):XmlNode (c.firstChild("adjLst"))
+            if (!null? adjLst) {
+                def adjs:[XmlNode] ((unwrap adjLst).childrenNamed("adj"))
+                def k3:int 0
+                while (k3 < (array_length adjs)) {
+                    def an:XmlNode (itemAt adjs k3)
+                    def idx@(optional):int (str2int (trim (an.attr("idx"))))
+                    if ((null? idx) || ((unwrap idx) < 1)) {
+                        return (where + ": an adj's idx \"" + (an.attr("idx")) + "\" is not a number from 1")
+                    }
+                    node.shape.setAdj((unwrap idx) (SaLayoutReader.number((an.attr("val")))))
+                    k3 = (k3 + 1)
+                }
+            }
+            return ""
+        }
+        if (nm == "presOf") {
+            node.hasPresOf = true
+            return (SaLayoutReader.readIter(c node.presOf (where + " <dgm:presOf>")))
+        }
+        if (nm == "constrLst") {
+            def cs:[XmlNode] (c.childrenNamed("constr"))
+            def k4:int 0
+            while (k4 < (array_length cs)) {
+                def cn:XmlNode (itemAt cs k4)
+                def ce:string (SaLayoutReader.readConstr(cn node where))
+                if ((strlen ce) > 0) {
+                    return ce
+                }
+                k4 = (k4 + 1)
+            }
+            return ""
+        }
+        if (nm == "ruleLst") {
+            def rs:[XmlNode] (c.childrenNamed("rule"))
+            def k5:int 0
+            while (k5 < (array_length rs)) {
+                def rn:XmlNode (itemAt rs k5)
+                def re:string (SaLayoutReader.readRule(rn node where))
+                if ((strlen re) > 0) {
+                    return re
+                }
+                k5 = (k5 + 1)
+            }
+            return ""
+        }
+        if (nm == "varLst") {
+            def k6:int 0
+            while (k6 < (c.childCount())) {
+                def vn:XmlNode (c.childAt(k6))
+                if (vn.isText == false) {
+                    if ((SaLayoutReader.isOneOf(vn.name (SaLayoutReader.varNames()))) == false) {
+                        return (where + ": variable <dgm:" + vn.name + "> is not one of " + (SaLayoutReader.varNames()))
+                    }
+                    def v (new SaParam())
+                    v.name = vn.name
+                    v.value = (vn.attrOr("val" (SaLayoutReader.varDefault(vn.name))))
+                    push node.vars v
+                }
+                k6 = (k6 + 1)
+            }
+            return ""
+        }
+        return (where + ": <dgm:" + nm + "> is not part of a layout definition")
+    }
+
+    ; what a variable is when it is named with no val
+    sfn varDefault:string (name:string) {
+        if (name == "dir") { return "norm" }
+        if (name == "hierBranch") { return "std" }
+        if (name == "chMax") { return "-1" }
+        if (name == "chPref") { return "-1" }
+        if (name == "bulletEnabled") { return "0" }
+        if (name == "orgChart") { return "0" }
+        if (name == "animOne") { return "one" }
+        if (name == "animLvl") { return "none" }
+        if (name == "resizeHandles") { return "rel" }
+        return ""
+    }
+
+    sfn readConstr:string (cn:XmlNode node:SaLoNode where:string) {
+        def k (new SaConstr())
+        k.type = (cn.attrOr("type" "none"))
+        def w:string (where + " <dgm:constr type=\"" + k.type + "\">")
+        if ((SaLayoutReader.isOneOf(k.type (SaLayoutReader.constrTypes()))) == false) {
+            return (where + ": constraint type \"" + k.type + "\" is not one the specification defines")
+        }
+        k.forRel = (cn.attrOr("for" "self"))
+        if ((SaLayoutReader.isOneOf(k.forRel "self ch des")) == false) {
+            return (w + ": for \"" + k.forRel + "\" is not self, ch or des")
+        }
+        k.forName = (cn.attr("forName"))
+        k.ptType = (cn.attrOr("ptType" "all"))
+        k.refType = (cn.attrOr("refType" "none"))
+        if ((SaLayoutReader.isOneOf(k.refType (SaLayoutReader.constrTypes()))) == false) {
+            return (w + ": refType \"" + k.refType + "\" is not a constraint type")
+        }
+        k.refFor = (cn.attrOr("refFor" "self"))
+        if ((SaLayoutReader.isOneOf(k.refFor "self ch des")) == false) {
+            return (w + ": refFor \"" + k.refFor + "\" is not self, ch or des")
+        }
+        k.refForName = (cn.attr("refForName"))
+        k.refPtType = (cn.attrOr("refPtType" "all"))
+        k.op = (cn.attrOr("op" "none"))
+        if ((SaLayoutReader.isOneOf(k.op "none equ gte lte")) == false) {
+            return (w + ": op \"" + k.op + "\" is not none, equ, gte or lte")
+        }
+        if (cn.hasAttr("val")) {
+            if ((SaLayoutReader.isNumber((cn.attr("val")))) == false) {
+                return (w + ": val \"" + (cn.attr("val")) + "\" is not a number")
+            }
+            if ((SaLayoutReader.isNaN((cn.attr("val")))) == false) {
+                k.val = (SaLayoutReader.number((cn.attr("val"))))
+                k.hasVal = true
+            }
+        }
+        if (cn.hasAttr("fact")) {
+            if ((SaLayoutReader.isNumber((cn.attr("fact")))) == false) {
+                return (w + ": fact \"" + (cn.attr("fact")) + "\" is not a number")
+            }
+            if ((SaLayoutReader.isNaN((cn.attr("fact")))) == false) {
+                k.fact = (SaLayoutReader.number((cn.attr("fact"))))
+                k.hasFact = true
+            }
+        }
+        push node.constrs k
+        return ""
+    }
+
+    sfn readRule:string (rn:XmlNode node:SaLoNode where:string) {
+        def r (new SaRule())
+        r.type = (rn.attrOr("type" "none"))
+        def w:string (where + " <dgm:rule type=\"" + r.type + "\">")
+        if ((SaLayoutReader.isOneOf(r.type (SaLayoutReader.constrTypes()))) == false) {
+            return (where + ": rule type \"" + r.type + "\" is not a constraint type")
+        }
+        r.forRel = (rn.attrOr("for" "self"))
+        if ((SaLayoutReader.isOneOf(r.forRel "self ch des")) == false) {
+            return (w + ": for \"" + r.forRel + "\" is not self, ch or des")
+        }
+        r.forName = (rn.attr("forName"))
+        r.ptType = (rn.attrOr("ptType" "all"))
+        def names:[string] ([] _:string ("val" "fact" "max"))
+        def i:int 0
+        while (i < 3) {
+            def a:string (itemAt names i)
+            if (rn.hasAttr(a)) {
+                def s:string (rn.attr(a))
+                if ((SaLayoutReader.isNumber(s)) == false) {
+                    return (w + ": " + a + " \"" + s + "\" is not a number")
+                }
+                if ((SaLayoutReader.isNaN(s)) == false) {
+                    def v:double (SaLayoutReader.number(s))
+                    if (a == "val") {
+                        r.val = v
+                        r.hasVal = true
+                    }
+                    if (a == "fact") {
+                        r.fact = v
+                        r.hasFact = true
+                    }
+                    if (a == "max") {
+                        r.max = v
+                        r.hasMax = true
+                    }
+                }
+            }
+            i = (i + 1)
+        }
+        push node.rules r
+        return ""
+    }
+}

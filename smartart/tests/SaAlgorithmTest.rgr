@@ -1,0 +1,135 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaAlgorithmTest — where lin and composite put things, in points
+; ==============================================================================
+;
+; A 400 × 200 frame; three items unless a check says otherwise.
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+class SaAlgorithmTest {
+
+    sfn run:SaAlgorithms (n:int rootBody:string) {
+        def t:SaPresTree (SaKit.ptree((SaKit.flat("" n)) rootBody))
+        def c:SaConstraints (SaConstraints.resolve(t 400.0 200.0))
+        return (SaAlgorithms.run(c))
+    }
+
+    ; a lin with the given params over nodes with the given constraints
+    sfn lin:SaAlgorithms (n:int params:string constrs:string) {
+        return (SaAlgorithmTest.run(n ("<dgm:alg type=\"lin\">" + params + "</dgm:alg><dgm:constrLst>" + constrs + "</dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/></dgm:forEach>")))
+    }
+
+    sfn node:SaInst (a:SaAlgorithms i:int) {
+        def l:[SaInst] (SaKit.byName(a.cons.ptree "node"))
+        return (itemAt l i)
+    }
+
+    sfn box:string (s:SaInst) {
+        return ((to_string (to_int ((s.x * 10.0) + 0.5))) + "," + (to_string (to_int ((s.y * 10.0) + 0.5))) + " " + (to_string (to_int ((s.w * 10.0) + 0.5))) + "x" + (to_string (to_int ((s.h * 10.0) + 0.5))))
+    }
+
+    sfn boxes:string (a:SaAlgorithms) {
+        def l:[SaInst] (SaKit.byName(a.cons.ptree "node"))
+        def out:string ""
+        def i:int 0
+        while (i < (array_length l)) {
+            if (i > 0) {
+                out = (out + " | ")
+            }
+            out = (out + (SaAlgorithmTest.box((itemAt l i))))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testLin:void (c:SaKit) {
+        print "-- lin (boxes in tenths of a point: x,y wxh) --"
+        def sized:string "<dgm:constr type=\"w\" for=\"ch\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" val=\"50\"/>"
+        c.eqStr("a row, centred, at the middle" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(3 "" sized)))) "500,750 1000x500 | 1500,750 1000x500 | 2500,750 1000x500")
+        c.eqStr("sibSp between" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(3 "" (sized + "<dgm:constr type=\"sibSp\" val=\"20\"/>"))))) "300,750 1000x500 | 1500,750 1000x500 | 2700,750 1000x500")
+        c.eqStr("fromR: the first item on the right" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(3 "<dgm:param type=\"linDir\" val=\"fromR\"/>" sized)))) "2500,750 1000x500 | 1500,750 1000x500 | 500,750 1000x500")
+        c.eqStr("nodeVertAlign t" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(1 "<dgm:param type=\"nodeVertAlign\" val=\"t\"/>" sized)))) "1500,0 1000x500")
+        c.eqStr("nodeVertAlign b" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(1 "<dgm:param type=\"nodeVertAlign\" val=\"b\"/>" sized)))) "1500,1500 1000x500")
+        c.eqStr("fromT: a column" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(2 "<dgm:param type=\"linDir\" val=\"fromT\"/>" sized)))) "1500,500 1000x500 | 1500,1000 1000x500")
+        c.eqStr("fromB: the first at the bottom" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(2 "<dgm:param type=\"linDir\" val=\"fromB\"/>" sized)))) "1500,1000 1000x500 | 1500,500 1000x500")
+        c.eqStr("nodeHorzAlign l in a column" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(1 "<dgm:param type=\"linDir\" val=\"fromT\"/><dgm:param type=\"nodeHorzAlign\" val=\"l\"/>" sized)))) "0,750 1000x500")
+        c.eqStr("nodeHorzAlign r" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(1 "<dgm:param type=\"linDir\" val=\"fromT\"/><dgm:param type=\"nodeHorzAlign\" val=\"r\"/>" sized)))) "3000,750 1000x500")
+        c.eqStr("one item: centred both ways" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(1 "" sized)))) "1500,750 1000x500")
+    }
+
+    sfn testShrink:void (c:SaKit) {
+        print "-- lin, too long --"
+        ; 3 × 200 = 600 in 400: two thirds; a height that is a number stays
+        c.eqStr("widths shrink, a height that is a number does not" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(3 "" "<dgm:constr type=\"w\" for=\"ch\" val=\"200\"/><dgm:constr type=\"h\" for=\"ch\" val=\"50\"/>")))) "0,750 1333x500 | 1333,750 1333x500 | 2667,750 1333x500")
+        ; a height derived from the width shrinks with it
+        c.eqStr("a height tied to the width shrinks with it" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(3 "" "<dgm:constr type=\"w\" for=\"ch\" val=\"200\"/><dgm:constr type=\"h\" for=\"ch\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.5\"/>")))) "0,667 1333x667 | 1333,667 1333x667 | 2667,667 1333x667")
+        ; spacing shrinks with them
+        c.eqStr("and so does the spacing" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(2 "" "<dgm:constr type=\"w\" for=\"ch\" val=\"300\"/><dgm:constr type=\"h\" for=\"ch\" val=\"50\"/><dgm:constr type=\"sibSp\" val=\"200\"/>")))) "0,750 1500x500 | 2500,750 1500x500")
+        ; too tall: everything shrinks so the tallest fits
+        c.eqStr("too tall: everything shrinks" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(2 "" "<dgm:constr type=\"w\" for=\"ch\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" val=\"400\"/>")))) "1500,0 500x2000 | 2000,0 500x2000")
+        ; nothing set: each is the parent's size, then fitted
+        c.eqStr("nothing set: the frame, divided" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(4 "" "")))) "0,0 1000x2000 | 1000,0 1000x2000 | 2000,0 1000x2000 | 3000,0 1000x2000")
+        ; a column too long
+        c.eqStr("a column too long shrinks heights" (SaAlgorithmTest.boxes((SaAlgorithmTest.lin(4 "<dgm:param type=\"linDir\" val=\"fromT\"/>" "<dgm:constr type=\"w\" for=\"ch\" val=\"400\"/><dgm:constr type=\"h\" for=\"ch\" val=\"100\"/>")))) "0,0 4000x500 | 0,500 4000x500 | 0,1000 4000x500 | 0,1500 4000x500")
+    }
+
+    sfn testComposite:void (c:SaKit) {
+        print "-- composite --"
+        def body:string "<dgm:alg type=\"composite\"/><dgm:constrLst><dgm:constr type=\"l\" for=\"ch\" forName=\"a\" val=\"10\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"a\" val=\"20\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"a\" val=\"30\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"a\" val=\"40\"/><dgm:constr type=\"ctrX\" for=\"ch\" forName=\"b\" refType=\"w\" fact=\"0.5\"/><dgm:constr type=\"ctrY\" for=\"ch\" forName=\"b\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"b\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"b\" val=\"50\"/><dgm:constr type=\"r\" for=\"ch\" forName=\"c\" refType=\"w\"/><dgm:constr type=\"b\" for=\"ch\" forName=\"c\" refType=\"h\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"c\" val=\"40\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"c\" val=\"30\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"d\" val=\"100\"/><dgm:constr type=\"r\" for=\"ch\" forName=\"d\" val=\"300\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"d\" val=\"50\"/><dgm:constr type=\"b\" for=\"ch\" forName=\"d\" val=\"60\"/></dgm:constrLst><dgm:layoutNode name=\"a\"/><dgm:layoutNode name=\"b\"/><dgm:layoutNode name=\"c\"/><dgm:layoutNode name=\"d\"/><dgm:layoutNode name=\"e\"/>"
+        def a:SaAlgorithms (SaAlgorithmTest.run(1 body))
+        def t:SaPresTree a.cons.ptree
+        c.eqStr("l, t, w, h" (SaAlgorithmTest.box((itemAt (SaKit.byName(t "a")) 0))) "100,200 300x400")
+        c.eqStr("centred by ctrX, ctrY" (SaAlgorithmTest.box((itemAt (SaKit.byName(t "b")) 0))) "1500,750 1000x500")
+        c.eqStr("from the right and the bottom" (SaAlgorithmTest.box((itemAt (SaKit.byName(t "c")) 0))) "3600,1700 400x300")
+        c.eqStr("both edges: the size between them" (SaAlgorithmTest.box((itemAt (SaKit.byName(t "d")) 0))) "1000,500 2000x100")
+        c.eqStr("nothing said: the whole box" (SaAlgorithmTest.box((itemAt (SaKit.byName(t "e")) 0))) "0,0 4000x2000")
+    }
+
+    sfn testNested:void (c:SaKit) {
+        print "-- a box inside a box --"
+        ; columns in a row, each a composite with a head on top a quarter high:
+        ; the head is sized from the column's FINAL box, not the frame
+        def body:string "<dgm:alg type=\"lin\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" refType=\"h\"/></dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"col\"><dgm:alg type=\"composite\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" refType=\"h\" fact=\"0.25\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"body\" refType=\"h\" fact=\"0.25\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"body\" refType=\"h\" fact=\"0.75\"/></dgm:constrLst><dgm:layoutNode name=\"head\"/><dgm:layoutNode name=\"body\"/></dgm:layoutNode></dgm:forEach>"
+        def a:SaAlgorithms (SaAlgorithmTest.run(4 body))
+        def t:SaPresTree a.cons.ptree
+        def heads:[SaInst] (SaKit.byName(t "head"))
+        def bodies:[SaInst] (SaKit.byName(t "body"))
+        c.eqStr("the second column's head" (SaAlgorithmTest.box((itemAt heads 1))) "1000,0 1000x500")
+        c.eqStr("its body, under it" (SaAlgorithmTest.box((itemAt bodies 1))) "1000,500 1000x1500")
+        c.eqStr("the last column's head" (SaAlgorithmTest.box((itemAt heads 3))) "3000,0 1000x500")
+    }
+
+    sfn testOther:void (c:SaKit) {
+        print "-- the rest --"
+        def a:SaAlgorithms (SaAlgorithmTest.run(3 "<dgm:alg type=\"cycle\"/><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/></dgm:forEach>"))
+        c.eqInt("an algorithm not here yet says so" (array_length a.warnings) 1)
+        c.ok("by name" ((indexOf (itemAt a.warnings 0) "cycle") >= 0))
+        c.eqStr("and places its shapes in a line" (SaAlgorithmTest.boxes(a)) "0,0 1333x2000 | 1333,0 1333x2000 | 2667,0 1333x2000")
+        ; a connector among a lin's children points the way the line goes
+        def body:string "<dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/></dgm:alg><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"arrow\"><dgm:alg type=\"conn\"/></dgm:layoutNode></dgm:forEach></dgm:forEach>"
+        def a2:SaAlgorithms (SaAlgorithmTest.run(2 body))
+        def arrow:SaInst (itemAt (SaKit.byName(a2.cons.ptree "arrow")) 0)
+        c.near("a connector in a column points down" (arrow.raw("connDir" -1.0)) 90.0)
+        c.eqInt("one connector for two items" (array_length (SaKit.byName(a2.cons.ptree "arrow"))) 1)
+        ; no children, no algorithm: nothing to do, nothing goes wrong
+        def a3:SaAlgorithms (SaAlgorithmTest.run(0 ""))
+        c.eqInt("an empty diagram has nothing to warn about" (array_length a3.warnings) 0)
+        ; a sp node takes room and nothing else
+        def body4:string "<dgm:alg type=\"lin\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" val=\"100\"/></dgm:constrLst><dgm:layoutNode name=\"node\"/><dgm:layoutNode name=\"space\"><dgm:alg type=\"sp\"/></dgm:layoutNode><dgm:layoutNode name=\"node\"/>"
+        def a4:SaAlgorithms (SaAlgorithmTest.run(1 body4))
+        c.eqStr("space between two shapes" (SaAlgorithmTest.boxes(a4)) "500,500 1000x1000 | 2500,500 1000x1000")
+    }
+
+    sfn main:void () {
+        print "== SaAlgorithmTest =="
+        def c (new SaKit())
+        SaAlgorithmTest.testLin(c)
+        SaAlgorithmTest.testShrink(c)
+        SaAlgorithmTest.testComposite(c)
+        SaAlgorithmTest.testNested(c)
+        SaAlgorithmTest.testOther(c)
+        c.finish("SaAlgorithmTest")
+    }
+}

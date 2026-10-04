@@ -1,0 +1,314 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaEngine — a SmartArt data model in, a drawn diagram out
+; ==============================================================================
+;
+;   def r:SaResult (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+;   r.ok        the file was a diagram
+;   r.error     why not, when it was not
+;   r.shape     a PptxShape group (isDiagram), its children in the box's own
+;               space: the same thing PptxParser makes from the drawing part
+;               PowerPoint saves, so one representation is drawn, edited and
+;               exported whoever laid the diagram out
+;   r.warnings  what was drawn other than asked: an unknown layout or colour
+;               set, an algorithm not implemented yet, text that did not fit
+;
+; The layout is the one the data's document point names (`loTypeId`), or
+; `SaOptions.layout` when the host's Markdown overrides it, read from the
+; built-in definitions (`builtin/`, embedded in SaBuiltins) — or one passed in
+; whole (`layoutXml`), which is how a layout PowerPoint saved in a file is
+; used. An id with no definition is drawn as `vList2` and said so.
+; ==============================================================================
+
+Import "SaModel.rgr"
+Import "SaDataReader.rgr"
+Import "SaLayoutReader.rgr"
+Import "SaText.rgr"
+Import "SaStyle.rgr"
+Import "SaBuiltins.rgr"
+Import "../src/PptxModel.rgr"
+
+class SaOptions {
+    ; overrides of what the data's document point names; a short name
+    ; (`process1`) or a full id
+    def layout:string ""
+    def colors:string ""
+    def style:string ""
+    ; a whole layout definition, used instead of any id
+    def layoutXml:string ""
+    def measure:SaMeasure (new SaMeasure())
+
+    Constructor () {
+    }
+}
+
+class SaResult {
+    def ok:boolean false
+    def error:string ""
+    def warnings:[string]
+    def shape:PptxShape (new PptxShape())
+    ; the layout that was used, by its short name
+    def layoutUsed:string ""
+    def ptree:SaPresTree (new SaPresTree())
+
+    Constructor () {
+    }
+}
+
+class SaEngine {
+
+    sfn layout:SaResult (dataXml:string opts:SaOptions w:double h:double) {
+        def read:SaReadResult (SaDataReader.read(dataXml))
+        if (read.ok == false) {
+            def bad (new SaResult())
+            bad.error = read.error
+            return bad
+        }
+        return (SaEngine.layoutModel(read.model opts w h))
+    }
+
+    sfn fullId:string (s:string kind:string) {
+        if ((indexOf s ":") >= 0) {
+            return s
+        }
+        return ("urn:microsoft.com/office/officeart/2005/8/" + kind + "/" + s)
+    }
+
+    sfn layoutModel:SaResult (model:SaModel opts:SaOptions w:double h:double) {
+        def res (new SaResult())
+        model.complete()
+        ; which layout
+        def lo (new SaLayoutDef())
+        if ((strlen opts.layoutXml) > 0) {
+            def lr:SaLayoutReadResult (SaLayoutReader.read(opts.layoutXml))
+            if (lr.ok == false) {
+                res.error = ("the layout definition: " + lr.error)
+                return res
+            }
+            lo = lr.layout
+        } {
+            def want:string (model.layoutId())
+            if ((strlen opts.layout) > 0) {
+                want = opts.layout
+            }
+            def shortWant:string (SaLayoutDef.shortOf(want))
+            def xml:string (SaBuiltins.layoutXml(shortWant))
+            if ((strlen xml) == 0) {
+                if ((strlen shortWant) > 0) {
+                    push res.warnings ("the layout \"" + shortWant + "\" is not one this engine has; drawn as vList2 (it has: " + (SaBuiltins.names()) + ")")
+                }
+                xml = (SaBuiltins.layoutXml("vList2"))
+            }
+            def lr2:SaLayoutReadResult (SaLayoutReader.read(xml))
+            if (lr2.ok == false) {
+                res.error = ("the built-in layout " + shortWant + ": " + lr2.error)
+                return res
+            }
+            lo = lr2.layout
+        }
+        res.layoutUsed = (lo.shortId())
+        def colors:string ((model.doc()).colorsId)
+        if ((strlen opts.colors) > 0) {
+            colors = (SaEngine.fullId(opts.colors "colors"))
+        }
+        if ((SaStyle.knownColors(colors)) == false) {
+            push res.warnings ("the colour set \"" + (SaStyle.short(colors)) + "\" is not one this engine has; drawn as accent1_2")
+            colors = ""
+        }
+        ; run it
+        def ptree:SaPresTree (SaPresTree.build(model lo))
+        if ((strlen ptree.error) > 0) {
+            res.error = ptree.error
+            return res
+        }
+        ptree.numberByName()
+        res.ptree = ptree
+        def cons:SaConstraints (SaConstraints.resolve(ptree w h))
+        def algs:SaAlgorithms (SaAlgorithms.run(cons))
+        def text:SaText (SaText.fit(cons opts.measure))
+        def k:int 0
+        while (k < (array_length algs.warnings)) {
+            push res.warnings (itemAt algs.warnings k)
+            k = (k + 1)
+        }
+        k = 0
+        while (k < (array_length text.warnings)) {
+            push res.warnings (itemAt text.warnings k)
+            k = (k + 1)
+        }
+        ; draw it
+        def g (new PptxShape())
+        g.kind = (PptxShapeKind.group())
+        g.isDiagram = true
+        g.name = "Diagram"
+        g.x = 0.0
+        g.y = 0.0
+        g.width = w
+        g.height = h
+        g.hasXfrm = true
+        g.hasOff = true
+        g.hasExt = true
+        g.chX = 0.0
+        g.chY = 0.0
+        g.chW = w
+        g.chH = h
+        g.diagramText = (model.outline())
+        def every:[SaInst] (ptree.all())
+        def i:int 0
+        while (i < (array_length every)) {
+            def s:SaInst (itemAt every i)
+            def made@(optional):PptxShape (SaEngine.shapeOf(s text colors))
+            if (!null? made) {
+                push g.children (unwrap made)
+            }
+            i = (i + 1)
+        }
+        res.shape = g
+        res.ok = true
+        return res
+    }
+
+    ; the preset a connector is drawn as, by the way its line goes
+    sfn arrowFor:double (dir:double) {
+        return dir
+    }
+
+    sfn connPreset:string (dir:double) {
+        if (dir == 180.0) {
+            return "leftArrow"
+        }
+        if (dir == 90.0) {
+            return "downArrow"
+        }
+        if (dir == 270.0) {
+            return "upArrow"
+        }
+        return "rightArrow"
+    }
+
+    ; what a preset calls its adjustments, in order
+    sfn adjName:string (preset:string idx:int) {
+        def two:string " rightArrow leftArrow upArrow downArrow leftRightArrow upDownArrow notchedRightArrow stripedRightArrow "
+        if ((indexOf two (" " + preset + " ")) >= 0) {
+            return ("adj" + (to_string idx))
+        }
+        if (idx == 1) {
+            return "adj"
+        }
+        return ("adj" + (to_string idx))
+    }
+
+    sfn shapeOf@(optional):PptxShape (s:SaInst text:SaText colors:string) {
+        def none@(optional):PptxShape
+        def lines:[SaLine] (text.linesOf(s))
+        def geometry:boolean ((s.hasShape && (s.shape.type != "none")) && (s.shape.hideGeom == false))
+        if ((geometry == false) && ((array_length lines) == 0)) {
+            return none
+        }
+        if ((s.w <= 0.0) || (s.h <= 0.0)) {
+            return none
+        }
+        def sh (new PptxShape())
+        sh.kind = (PptxShapeKind.shape())
+        sh.name = (s.name + " " + (to_string (s.nameIdx + 1)))
+        sh.x = s.x
+        sh.y = s.y
+        sh.width = s.w
+        sh.height = s.h
+        sh.hasXfrm = true
+        sh.hasOff = true
+        sh.hasExt = true
+        sh.rotation = s.shape.rot
+        def preset:string s.shape.type
+        if ((preset == "conn") || (s.alg.type == "conn")) {
+            preset = (SaEngine.connPreset((s.raw("connDir" 0.0))))
+        }
+        if ((preset == "none") || (preset == "")) {
+            preset = "rect"
+        }
+        sh.preset = preset
+        def a:int 0
+        while (a < (array_length s.shape.adj)) {
+            if (itemAt s.shape.adjSet a) {
+                def v:double (itemAt s.shape.adj a)
+                def nm:string (SaEngine.adjName(preset (a + 1)))
+                push sh.adjNames nm
+                push sh.adjValues (v * 100000.0)
+                if (nm == "adj") {
+                    sh.adj = v
+                }
+            }
+            a = (a + 1)
+        }
+        def paint:SaPaint (SaStyle.paintFor(s.styleLbl colors s.nameIdx))
+        if (geometry == false) {
+            paint.noFill = true
+            paint.noLine = true
+        }
+        if paint.noFill {
+            sh.noFill = true
+        } {
+            sh.fill = paint.fill
+        }
+        if paint.noLine {
+            sh.noLine = true
+        } {
+            sh.line = paint.line
+            sh.lineWidthPt = paint.lineWidthPt
+        }
+        if ((array_length lines) > 0) {
+            sh.hasText = true
+            def body:PptxTextBody sh.text
+            def size:double s.fontPt
+            body.insetL = (text.margin(s "lMarg" size))
+            body.insetR = (text.margin(s "rMarg" size))
+            body.insetT = (text.margin(s "tMarg" size))
+            body.insetB = (text.margin(s "bMarg" size))
+            body.insetsSet = true
+            def anchor:string (s.alg.param("txAnchorVert" "mid"))
+            body.anchor = "ctr"
+            if (anchor == "t") {
+                body.anchor = "t"
+            }
+            if (anchor == "b") {
+                body.anchor = "b"
+            }
+            body.anchorSet = true
+            body.wrap = true
+            def align:string (s.alg.param("parTxLTRAlign" "ctr"))
+            def k:int 0
+            while (k < (array_length lines)) {
+                def ln:SaLine (itemAt lines k)
+                def para (new PptxParagraph())
+                para.level = ln.level
+                para.alignSet = true
+                para.lineSpacingPct = 90.0
+                if (ln.level > 0) {
+                    para.align = "l"
+                    para.hasBullet = true
+                    para.bulletSet = true
+                    para.bulletChar = "•"
+                    para.marginLeftPt = ((to_double ln.level) * size * 0.6)
+                    para.indentPt = (0.0 - (size * 0.6))
+                    para.marginSet = true
+                    para.indentSet = true
+                } {
+                    para.align = align
+                }
+                def run (new PptxTextRun())
+                run.text = ln.text
+                run.fontSizePt = size
+                run.sizeSet = true
+                run.bold = ln.bold
+                run.boldSet = ln.bold
+                run.color = paint.text
+                run.colorStated = true
+                push para.runs run
+                push body.paragraphs para
+                k = (k + 1)
+            }
+        }
+        def hit@(optional):PptxShape sh
+        return hit
+    }
+}

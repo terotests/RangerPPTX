@@ -1,0 +1,121 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaBuiltins — the built-in layout definitions (GENERATED, do not edit)
+; ==============================================================================
+;
+; Made from smartart/builtin/*.xml by smartart/tools/embed_layouts.mjs. Edit
+; the XML and run the tool; npm run pptx:smartart:test fails while this file
+; is out of date.
+; ==============================================================================
+
+class SaBuiltins {
+
+    sfn names:string () {
+        return "chevron1, hList1, process1, vList2"
+    }
+
+    sfn layoutXml:string (name:string) {
+        if (name == "chevron1") {
+            return (SaBuiltins.chevron1())
+        }
+        if (name == "hList1") {
+            return (SaBuiltins.hList1())
+        }
+        if (name == "process1") {
+            return (SaBuiltins.process1())
+        }
+        if (name == "vList2") {
+            return (SaBuiltins.vList2())
+        }
+        return ""
+    }
+
+    sfn chevron1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/chevron1\">")
+        s = (s + "<dgm:title val=\"Basic Chevron Process\"/><dgm:layoutNode name=\"diagram\"><dgm:varLst><dgm:dir/><dgm:resizeHandles val=\"exact\"/></dgm:varLst>")
+        s = (s + "<dgm:choose name=\"direction\"><dgm:if name=\"forward\" func=\"var\" arg=\"dir\" op=\"equ\" val=\"norm\"><dgm:alg type=\"lin\"/></dgm:if><dgm:else name=\"backward\">")
+        s = (s + "<dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromR\"/></dgm:alg></dgm:else></dgm:choose><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"node\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.4\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"-0.1\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"node\" op=\"equ\" val=\"65\"/>")
+        s = (s + "</dgm:constrLst><dgm:forEach name=\"steps\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"chevron\">")
+        s = (s + "<dgm:adjLst><dgm:adj idx=\"1\" val=\"0.5\"/></dgm:adjLst></dgm:shape><dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.15\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.15\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"h\" fact=\"0.5\"/><dgm:constr type=\"rMarg\" refType=\"h\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn hList1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/hList1\">")
+        s = (s + "<dgm:title val=\"Horizontal Bullet List\"/><dgm:layoutNode name=\"diagram\"><dgm:varLst><dgm:dir/><dgm:animLvl val=\"lvl\"/><dgm:resizeHandles val=\"exact\"/>")
+        s = (s + "</dgm:varLst><dgm:choose name=\"direction\"><dgm:if name=\"forward\" func=\"var\" arg=\"dir\" op=\"equ\" val=\"norm\"><dgm:alg type=\"lin\">")
+        s = (s + "<dgm:param type=\"nodeVertAlign\" val=\"t\"/></dgm:alg></dgm:if><dgm:else name=\"backward\"><dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromR\"/>")
+        s = (s + "<dgm:param type=\"nodeVertAlign\" val=\"t\"/></dgm:alg></dgm:else></dgm:choose><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"composite\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"composite\" refType=\"h\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" fact=\"0.05\"/><dgm:constr type=\"primFontSz\" for=\"des\" forName=\"parTx\" op=\"equ\" val=\"65\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"des\" forName=\"desTx\" op=\"equ\" val=\"65\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"des\" forName=\"desTx\" refType=\"primFontSz\" refFor=\"des\" refForName=\"parTx\" op=\"lte\" fact=\"0.78\"/></dgm:constrLst>")
+        s = (s + "<dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"composite\"><dgm:alg type=\"composite\"/><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"parTx\" val=\"0\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"parTx\" val=\"0\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"parTx\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"parTx\" refType=\"h\" fact=\"0.25\"/>")
+        s = (s + "<dgm:constr type=\"l\" for=\"ch\" forName=\"desTx\" val=\"0\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"desTx\" refType=\"h\" fact=\"0.25\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"desTx\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"desTx\" refType=\"h\" fact=\"0.75\"/></dgm:constrLst>")
+        s = (s + "<dgm:layoutNode name=\"parTx\" styleLbl=\"node1\"><dgm:alg type=\"tx\"/><dgm:shape type=\"rect\"/><dgm:presOf axis=\"self\"/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode><dgm:layoutNode name=\"desTx\" styleLbl=\"alignAccFollowNode1\">")
+        s = (s + "<dgm:alg type=\"tx\"><dgm:param type=\"txAnchorVert\" val=\"t\"/><dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"rect\"/>")
+        s = (s + "<dgm:presOf axis=\"des\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.2\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.2\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.2\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode></dgm:layoutNode></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn process1:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/process1\">")
+        s = (s + "<dgm:title val=\"Basic Process\"/><dgm:layoutNode name=\"diagram\"><dgm:varLst><dgm:dir/><dgm:resizeHandles val=\"exact\"/></dgm:varLst><dgm:choose name=\"direction\">")
+        s = (s + "<dgm:if name=\"forward\" func=\"var\" arg=\"dir\" op=\"equ\" val=\"norm\"><dgm:alg type=\"lin\"/></dgm:if><dgm:else name=\"backward\"><dgm:alg type=\"lin\">")
+        s = (s + "<dgm:param type=\"linDir\" val=\"fromR\"/></dgm:alg></dgm:else></dgm:choose><dgm:shape/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"node\" refType=\"w\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"node\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.6\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"sibTrans\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.21\"/>")
+        s = (s + "<dgm:constr type=\"h\" for=\"ch\" forName=\"sibTrans\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.26\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.1\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"node\" op=\"equ\" val=\"65\"/>")
+        s = (s + "</dgm:constrLst><dgm:forEach name=\"steps\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\" styleLbl=\"node1\"><dgm:varLst><dgm:bulletEnabled val=\"1\"/>")
+        s = (s + "</dgm:varLst><dgm:alg type=\"tx\"/><dgm:shape type=\"roundRect\"><dgm:adjLst><dgm:adj idx=\"1\" val=\"0.1\"/></dgm:adjLst></dgm:shape>")
+        s = (s + "<dgm:presOf axis=\"desOrSelf\" ptType=\"node\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst><dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst>")
+        s = (s + "</dgm:layoutNode><dgm:forEach name=\"arrows\" axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"sibTrans\" styleLbl=\"sibTrans2D1\">")
+        s = (s + "<dgm:alg type=\"conn\"/><dgm:shape type=\"conn\"><dgm:adjLst><dgm:adj idx=\"1\" val=\"0.6\"/><dgm:adj idx=\"2\" val=\"0.5\"/></dgm:adjLst></dgm:shape></dgm:layoutNode>")
+        s = (s + "</dgm:forEach></dgm:forEach></dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+
+    sfn vList2:string () {
+        def s:string ""
+        s = (s + "<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/layout/vList2\">")
+        s = (s + "<dgm:title val=\"Vertical Bullet List\"/><dgm:layoutNode name=\"linear\"><dgm:varLst><dgm:animLvl val=\"lvl\"/><dgm:resizeHandles val=\"exact\"/></dgm:varLst>")
+        s = (s + "<dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/><dgm:param type=\"nodeHorzAlign\" val=\"l\"/></dgm:alg><dgm:shape/><dgm:constrLst>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"parentText\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"parentText\" refType=\"w\" fact=\"0.13\"/>")
+        s = (s + "<dgm:constr type=\"w\" for=\"ch\" forName=\"childText\" refType=\"w\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"childText\" refType=\"w\" fact=\"0.16\"/>")
+        s = (s + "<dgm:constr type=\"sibSp\" refType=\"w\" fact=\"0.015\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"parentText\" op=\"equ\" val=\"65\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"childText\" op=\"equ\" val=\"65\"/>")
+        s = (s + "<dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"childText\" refType=\"primFontSz\" refFor=\"ch\" refForName=\"parentText\" op=\"lte\" fact=\"0.78\"/></dgm:constrLst>")
+        s = (s + "<dgm:forEach name=\"items\" axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"parentText\" styleLbl=\"node1\"><dgm:alg type=\"tx\">")
+        s = (s + "<dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"roundRect\"><dgm:adjLst><dgm:adj idx=\"1\" val=\"0.16667\"/></dgm:adjLst></dgm:shape>")
+        s = (s + "<dgm:presOf axis=\"self\"/><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.3\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode><dgm:choose name=\"hasPoints\">")
+        s = (s + "<dgm:if name=\"some\" axis=\"ch\" ptType=\"node\" func=\"cnt\" op=\"gte\" val=\"1\"><dgm:layoutNode name=\"childText\" styleLbl=\"revTx\"><dgm:alg type=\"tx\">")
+        s = (s + "<dgm:param type=\"txAnchorVert\" val=\"t\"/><dgm:param type=\"parTxLTRAlign\" val=\"l\"/></dgm:alg><dgm:shape type=\"rect\"/><dgm:presOf axis=\"des\" ptType=\"node\"/>")
+        s = (s + "<dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.1\"/><dgm:constr type=\"bMarg\" refType=\"primFontSz\" fact=\"0.1\"/>")
+        s = (s + "<dgm:constr type=\"lMarg\" refType=\"primFontSz\" fact=\"0.3\"/><dgm:constr type=\"rMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst><dgm:ruleLst>")
+        s = (s + "<dgm:rule type=\"primFontSz\" val=\"5\" fact=\"NaN\" max=\"NaN\"/></dgm:ruleLst></dgm:layoutNode></dgm:if><dgm:else name=\"none\"/></dgm:choose></dgm:forEach>")
+        s = (s + "</dgm:layoutNode></dgm:layoutDef>")
+        return s
+    }
+}

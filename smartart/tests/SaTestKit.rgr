@@ -1,0 +1,197 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaTestKit — what the SmartArt suites share: checks, and data to check with
+; ==============================================================================
+
+Import "../SaEngine.rgr"
+
+class SaKit {
+    def passed:int 0
+    def failed:int 0
+
+    Constructor () {
+    }
+
+    fn ok:void (name:string cond:boolean) {
+        if cond {
+            passed = (passed + 1)
+            print ("  PASS " + name)
+        } {
+            failed = (failed + 1)
+            print ("  FAIL " + name)
+        }
+    }
+
+    fn eqStr:void (name:string got:string want:string) {
+        this.ok((name + " (got '" + got + "' want '" + want + "')") (got == want))
+    }
+
+    fn eqInt:void (name:string got:int want:int) {
+        this.ok((name + " (got " + (to_string got) + " want " + (to_string want) + ")") (got == want))
+    }
+
+    fn near:void (name:string got:double want:double) {
+        def d:double (got - want)
+        if (d < 0.0) {
+            d = (0.0 - d)
+        }
+        this.ok((name + " (got " + (to_string got) + " want " + (to_string want) + ")") (d < 0.01))
+    }
+
+    fn finish:void (suite:string) {
+        print ""
+        print ("passed = " + (to_string passed) + "  failed = " + (to_string failed))
+        if (failed == 0) {
+            print "ALL PASS"
+        } {
+            print "FAILURES"
+        }
+    }
+
+    ; --- data -----------------------------------------------------------
+
+    sfn pt:string (id:string text:string) {
+        return ("<dgm:pt modelId=\"" + id + "\"><dgm:t><a:p><a:r><a:t>" + text + "</a:t></a:r></a:p></dgm:t></dgm:pt>")
+    }
+
+    sfn asst:string (id:string text:string) {
+        return ("<dgm:pt modelId=\"" + id + "\" type=\"asst\"><dgm:t><a:p><a:r><a:t>" + text + "</a:t></a:r></a:p></dgm:t></dgm:pt>")
+    }
+
+    sfn cx:string (src:string dest:string) {
+        return ("<dgm:cxn srcId=\"" + src + "\" destId=\"" + dest + "\"/>")
+    }
+
+    sfn data:string (layout:string pts:string cxns:string) {
+        def lo:string ""
+        if ((strlen layout) > 0) {
+            lo = (" loTypeId=\"urn:microsoft.com/office/officeart/2005/8/layout/" + layout + "\"")
+        }
+        return ("<dgm:dataModel xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><dgm:ptLst><dgm:pt modelId=\"0\" type=\"doc\"><dgm:prSet" + lo + "/></dgm:pt>" + pts + "</dgm:ptLst><dgm:cxnLst>" + cxns + "</dgm:cxnLst></dgm:dataModel>")
+    }
+
+    ; n items, "Item 1" … "Item n", one level
+    sfn flat:string (layout:string n:int) {
+        def pts:string ""
+        def cs:string ""
+        def i:int 1
+        while (i <= n) {
+            pts = (pts + (SaKit.pt(("n" + (to_string i)) ("Item " + (to_string i)))))
+            cs = (cs + (SaKit.cx("0" ("n" + (to_string i)))))
+            i = (i + 1)
+        }
+        return (SaKit.data(layout pts cs))
+    }
+
+    ; n items with k points under each ("Item i.j")
+    sfn twoLevels:string (layout:string n:int k:int) {
+        def pts:string ""
+        def cs:string ""
+        def i:int 1
+        while (i <= n) {
+            def id:string ("n" + (to_string i))
+            pts = (pts + (SaKit.pt(id ("Item " + (to_string i)))))
+            cs = (cs + (SaKit.cx("0" id)))
+            def j:int 1
+            while (j <= k) {
+                def cid:string (id + "." + (to_string j))
+                pts = (pts + (SaKit.pt(cid ("Item " + (to_string i) + "." + (to_string j)))))
+                cs = (cs + (SaKit.cx(id cid)))
+                j = (j + 1)
+            }
+            i = (i + 1)
+        }
+        return (SaKit.data(layout pts cs))
+    }
+
+    sfn model:SaModel (xml:string) {
+        def r:SaReadResult (SaDataReader.read(xml))
+        r.model.complete()
+        return r.model
+    }
+
+    ; a layout definition around a root layoutNode body
+    sfn layout:SaLayoutDef (rootBody:string) {
+        def xml:string ("<dgm:layoutDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" uniqueId=\"test\"><dgm:layoutNode name=\"root\">" + rootBody + "</dgm:layoutNode></dgm:layoutDef>")
+        def r:SaLayoutReadResult (SaLayoutReader.read(xml))
+        if (r.ok == false) {
+            print ("  (layout did not read: " + r.error + ")")
+        }
+        return r.layout
+    }
+
+    sfn ptree:SaPresTree (dataXml:string rootBody:string) {
+        return (SaPresTree.build((SaKit.model(dataXml)) (SaKit.layout(rootBody))))
+    }
+
+    ; the instances' names, in order, joined by spaces
+    sfn names:string (t:SaPresTree) {
+        def all:[SaInst] (t.all())
+        def out:string ""
+        def i:int 1
+        while (i < (array_length all)) {
+            def s:SaInst (itemAt all i)
+            if (i > 1) {
+                out = (out + " ")
+            }
+            out = (out + s.name)
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; the instances' context points, in order
+    sfn ctxs:string (t:SaPresTree) {
+        def all:[SaInst] (t.all())
+        def out:string ""
+        def i:int 1
+        while (i < (array_length all)) {
+            def s:SaInst (itemAt all i)
+            if (i > 1) {
+                out = (out + " ")
+            }
+            out = (out + s.ctxId)
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn byName:[SaInst] (t:SaPresTree name:string) {
+        def out:[SaInst]
+        def all:[SaInst] (t.all())
+        def i:int 0
+        while (i < (array_length all)) {
+            def s:SaInst (itemAt all i)
+            if (s.name == name) {
+                push out s
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn shapes:[PptxShape] (r:SaResult prefix:string) {
+        def out:[PptxShape]
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def s:PptxShape (itemAt r.shape.children i)
+            if ((indexOf s.name (prefix + " ")) == 0) {
+                push out s
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn sizeOf:double (s:PptxShape) {
+        if ((array_length s.text.paragraphs) == 0) {
+            return 0.0
+        }
+        def p:PptxParagraph (itemAt s.text.paragraphs 0)
+        if ((array_length p.runs) == 0) {
+            return 0.0
+        }
+        def r:PptxTextRun (itemAt p.runs 0)
+        return r.fontSizePt
+    }
+}

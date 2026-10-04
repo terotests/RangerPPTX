@@ -43,6 +43,9 @@ check() { # name output-file
 }
 
 status=0
+# the layouts the engine carries are generated from builtin/*.xml
+node gallery/pptx/smartart/tools/embed_layouts.mjs --check || status=1
+
 for s in "${SUITES[@]}"; do
   src="$TESTS/$s.rgr"
   dir="$OUT/$s"

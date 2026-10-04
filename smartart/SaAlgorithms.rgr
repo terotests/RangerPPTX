@@ -1,0 +1,292 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaAlgorithms — where each shape goes
+; ==============================================================================
+;
+; Run top-down from the root, whose box is the frame. Each instance's
+; algorithm places its children inside its own box; then each child's subtree
+; is sized again (its constraints re-run with its new box) and placed in turn.
+;
+;   lin        children in a row or a column (`linDir` fromL fromR fromT fromB),
+;              `sibSp` apart, centred along the line and aligned across it
+;              (`nodeVertAlign` / `nodeHorzAlign`). A line longer than the box
+;              is SHRUNK to fit: every length along it, and across it every
+;              size that was derived from a length along it — a step whose
+;              height is 0.6 of its width stays that shape; a column whose
+;              height is its parent's keeps it. Then, if something is still
+;              taller (wider) than the box, everything shrinks once more.
+;   composite  children where their own l / t / r / b / ctrX / ctrY say,
+;              relative to the box, at the w / h they were given
+;   tx, sp, conn
+;              nothing to place. tx is text in the node's own shape (SaText);
+;              sp is room; a conn among a lin's children is placed by the lin
+;              like any child, and drawn as an arrow pointing along it.
+;
+; Algorithms not here yet (snake, cycle, hierRoot, hierChild, pyra) place
+; their children as a lin would, and the engine says so in its warnings.
+; ==============================================================================
+
+Import "SaConstraints.rgr"
+
+class SaAlgorithms {
+    def cons:SaConstraints (new SaConstraints())
+    def warnings:[string]
+
+    Constructor () {
+    }
+
+    sfn run:SaAlgorithms (c:SaConstraints) {
+        def a (new SaAlgorithms())
+        a.cons = c
+        def r:SaInst c.ptree.root
+        r.x = 0.0
+        r.y = 0.0
+        r.w = c.frameW
+        r.h = c.frameH
+        a.place(r)
+        return a
+    }
+
+    fn warnOnce:void (msg:string) {
+        def i:int 0
+        while (i < (array_length warnings)) {
+            if ((itemAt warnings i) == msg) {
+                return
+            }
+            i = (i + 1)
+        }
+        push warnings msg
+    }
+
+    fn place:void (p:SaInst) {
+        def t:string p.alg.type
+        if ((array_length p.children) > 0) {
+            if ((t == "lin") || (t == "")) {
+                this.lin(p)
+            } {
+                if (t == "composite") {
+                    this.composite(p)
+                } {
+                    if ((t == "tx") || ((t == "sp") || (t == "conn"))) {
+                        this.composite(p)
+                    } {
+                        this.warnOnce(("the " + t + " algorithm is not implemented yet; its shapes are placed in a line"))
+                        this.lin(p)
+                    }
+                }
+            }
+        }
+        def i:int 0
+        while (i < (array_length p.children)) {
+            def c:SaInst (itemAt p.children i)
+            this.resize(c)
+            this.place(c)
+            i = (i + 1)
+        }
+    }
+
+    ; A child's subtree sized again for the box its parent gave it: its own
+    ; constraints, and its descendants', re-run with its w and h fixed.
+    fn resize:void (c:SaInst) {
+        c.put("w" c.w (c.fromOf("w")))
+        c.put("h" c.h (c.fromOf("h")))
+        def subtree:[SaInst]
+        push subtree c
+        c.collect(subtree)
+        def pass:int 0
+        while (pass < 2) {
+            def i:int 0
+            while (i < (array_length subtree)) {
+                def s:SaInst (itemAt subtree i)
+                def k:int 0
+                while (k < (array_length s.constrs)) {
+                    def con:SaConstr (itemAt s.constrs k)
+                    ; the box is the parent's to give: a node's own w and h
+                    ; constraints do not undo it
+                    def ownSize:boolean (((s == c) && (con.forRel == "self")) && ((con.type == "w") || (con.type == "h")))
+                    if (ownSize == false) {
+                        cons.apply(s con)
+                    }
+                    k = (k + 1)
+                }
+                i = (i + 1)
+            }
+            pass = (pass + 1)
+        }
+        c.put("w" c.w (c.fromOf("w")))
+        c.put("h" c.h (c.fromOf("h")))
+    }
+
+    fn lin:void (p:SaInst) {
+        def dir:string (p.alg.param("linDir" "fromL"))
+        def vertical:boolean ((dir == "fromT") || (dir == "fromB"))
+        def n:int (array_length p.children)
+        def along:[double]
+        def across:[double]
+        def tied:[boolean]
+        def i:int 0
+        while (i < n) {
+            def c:SaInst (itemAt p.children i)
+            def cw:double (cons.get(c "w"))
+            def chh:double (cons.get(c "h"))
+            if vertical {
+                push along chh
+                push across cw
+                push tied ((c.fromOf("w")) == "h")
+            } {
+                push along cw
+                push across chh
+                push tied ((c.fromOf("h")) == "w")
+            }
+            i = (i + 1)
+        }
+        def sp:double (cons.get(p "sibSp"))
+        def room:double (? vertical p.h p.w)
+        def roomAcross:double (? vertical p.w p.h)
+        def total:double (SaAlgorithms.sum(along) + (sp * (to_double (n - 1))))
+        ; too long: shrink along the line, and what is tied to it
+        if ((total > room) && (total > 0.0)) {
+            def s:double (room / total)
+            i = 0
+            while (i < n) {
+                set along i ((itemAt along i) * s)
+                if (itemAt tied i) {
+                    set across i ((itemAt across i) * s)
+                }
+                i = (i + 1)
+            }
+            sp = (sp * s)
+            total = room
+        }
+        ; still too big across: shrink everything
+        def maxAcross:double (SaAlgorithms.max(across))
+        if ((maxAcross > roomAcross) && (maxAcross > 0.0)) {
+            def s2:double (roomAcross / maxAcross)
+            i = 0
+            while (i < n) {
+                set along i ((itemAt along i) * s2)
+                set across i ((itemAt across i) * s2)
+                i = (i + 1)
+            }
+            sp = (sp * s2)
+            total = (total * s2)
+        }
+        def alignV:string (p.alg.param("nodeVertAlign" "mid"))
+        def alignH:string (p.alg.param("nodeHorzAlign" "ctr"))
+        def at:double ((room - total) / 2.0)
+        i = 0
+        while (i < n) {
+            def idx:int i
+            if ((dir == "fromR") || (dir == "fromB")) {
+                idx = ((n - 1) - i)
+            }
+            def c2:SaInst (itemAt p.children idx)
+            def a:double (itemAt along idx)
+            def b:double (itemAt across idx)
+            def off:double ((roomAcross - b) / 2.0)
+            if vertical {
+                if (alignH == "l") {
+                    off = 0.0
+                }
+                if (alignH == "r") {
+                    off = (roomAcross - b)
+                }
+                c2.x = (p.x + off)
+                c2.y = (p.y + at)
+                c2.w = b
+                c2.h = a
+            } {
+                if (alignV == "t") {
+                    off = 0.0
+                }
+                if (alignV == "b") {
+                    off = (roomAcross - b)
+                }
+                c2.x = (p.x + at)
+                c2.y = (p.y + off)
+                c2.w = a
+                c2.h = b
+            }
+            ; a connector points the way the line goes
+            if (c2.alg.type == "conn") {
+                c2.put("connDir" (SaAlgorithms.dirCode(dir)) "")
+            }
+            at = ((at + a) + sp)
+            i = (i + 1)
+        }
+    }
+
+    sfn dirCode:double (dir:string) {
+        if (dir == "fromR") { return 180.0 }
+        if (dir == "fromT") { return 90.0 }
+        if (dir == "fromB") { return 270.0 }
+        return 0.0
+    }
+
+    fn composite:void (p:SaInst) {
+        def i:int 0
+        while (i < (array_length p.children)) {
+            def c:SaInst (itemAt p.children i)
+            def w:double (cons.get(c "w"))
+            def h:double (cons.get(c "h"))
+            def x:double 0.0
+            def y:double 0.0
+            if (c.has("l")) {
+                x = (c.raw("l" 0.0))
+            } {
+                if (c.has("ctrX")) {
+                    x = ((c.raw("ctrX" 0.0)) - (w / 2.0))
+                } {
+                    if (c.has("r")) {
+                        x = ((c.raw("r" 0.0)) - w)
+                    }
+                }
+            }
+            if (c.has("t")) {
+                y = (c.raw("t" 0.0))
+            } {
+                if (c.has("ctrY")) {
+                    y = ((c.raw("ctrY" 0.0)) - (h / 2.0))
+                } {
+                    if (c.has("b")) {
+                        y = ((c.raw("b" 0.0)) - h)
+                    }
+                }
+            }
+            ; both edges given: the width is what lies between them
+            if ((c.has("l")) && (c.has("r"))) {
+                w = ((c.raw("r" 0.0)) - x)
+            }
+            if ((c.has("t")) && (c.has("b"))) {
+                h = ((c.raw("b" 0.0)) - y)
+            }
+            c.x = (p.x + x)
+            c.y = (p.y + y)
+            c.w = w
+            c.h = h
+            i = (i + 1)
+        }
+    }
+
+    sfn sum:double (xs:[double]) {
+        def s:double 0.0
+        def i:int 0
+        while (i < (array_length xs)) {
+            s = (s + (itemAt xs i))
+            i = (i + 1)
+        }
+        return s
+    }
+
+    sfn max:double (xs:[double]) {
+        def m:double 0.0
+        def i:int 0
+        while (i < (array_length xs)) {
+            if ((itemAt xs i) > m) {
+                m = (itemAt xs i)
+            }
+            i = (i + 1)
+        }
+        return m
+    }
+}

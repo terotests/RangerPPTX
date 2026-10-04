@@ -1,0 +1,157 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaConstraintTest — values: set, referenced, bounded, shared, defaulted
+; ==============================================================================
+;
+; Every check lays a small program over three items (a, b, c) in a 400 × 200
+; frame and reads the values the resolver left on the instances.
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+class SaConstraintTest {
+
+    sfn resolve:SaConstraints (rootBody:string) {
+        def t:SaPresTree (SaKit.ptree((SaKit.flat("" 3)) rootBody))
+        return (SaConstraints.resolve(t 400.0 200.0))
+    }
+
+    ; three "node" children and the given constraints on the root
+    sfn three:SaConstraints (constrs:string) {
+        return (SaConstraintTest.resolve(("<dgm:constrLst>" + constrs + "</dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"gap\"/></dgm:forEach></dgm:forEach>")))
+    }
+
+    sfn first:SaInst (c:SaConstraints name:string) {
+        def l:[SaInst] (SaKit.byName(c.ptree name))
+        if ((array_length l) == 0) {
+            return (new SaInst())
+        }
+        return (itemAt l 0)
+    }
+
+    sfn testDefaults:void (c:SaKit) {
+        print "-- defaults --"
+        def k:SaConstraints (SaConstraintTest.three(""))
+        def n:SaInst (SaConstraintTest.first(k "node"))
+        c.near("the root is the frame: w" (k.get(k.ptree.root "w")) 400.0)
+        c.near("h" (k.get(k.ptree.root "h")) 200.0)
+        c.near("a width nothing set is the parent's" (k.get(n "w")) 400.0)
+        c.near("a height too" (k.get(n "h")) 200.0)
+        c.near("a font size nothing set is 65" (k.get(n "primFontSz")) 65.0)
+        c.near("anything else is 0" (k.get(n "sibSp")) 0.0)
+        c.ok("and was not set" ((n.has("w")) == false))
+    }
+
+    sfn testValues:void (c:SaKit) {
+        print "-- values --"
+        def k:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"50\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"node\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.6\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"gap\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.2\"/><dgm:constr type=\"sibSp\" refType=\"w\" fact=\"0.05\"/>"))
+        def nodes:[SaInst] (SaKit.byName(k.ptree "node"))
+        def n:SaInst (itemAt nodes 2)
+        c.near("a number, on every child of that name" (k.get(n "w")) 50.0)
+        c.near("a reference to a sibling's width, times a factor" (k.get(n "h")) 30.0)
+        c.eqStr("which remembers it came from a width" (n.fromOf("h")) "w")
+        def g:SaInst (SaConstraintTest.first(k "gap"))
+        c.near("another name, the same reference" (k.get(g "w")) 10.0)
+        c.near("the gap's height, unset, is the root's" (k.get(g "h")) 200.0)
+        c.near("on the root itself, a reference to its own width" (k.get(k.ptree.root "sibSp")) 20.0)
+        c.eqInt("two gaps for three nodes" (array_length (SaKit.byName(k.ptree "gap"))) 2)
+    }
+
+    sfn testFilters:void (c:SaKit) {
+        print "-- which nodes a constraint is for --"
+        def k:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" val=\"7\"/><dgm:constr type=\"h\" for=\"ch\" ptType=\"sibTrans\" val=\"3\"/>"))
+        def n:SaInst (SaConstraintTest.first(k "node"))
+        def g:SaInst (SaConstraintTest.first(k "gap"))
+        c.near("no forName: every child" (k.get(n "w")) 7.0)
+        c.near("the gaps too" (k.get(g "w")) 7.0)
+        c.near("ptType sibTrans: the gaps" (k.get(g "h")) 3.0)
+        c.ok("not the nodes" ((n.has("h")) == false))
+        ; des reaches grandchildren; ch does not
+        def deep:string "<dgm:constrLst><dgm:constr type=\"w\" for=\"des\" forName=\"leaf\" val=\"9\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"leaf\" val=\"4\"/></dgm:constrLst><dgm:layoutNode name=\"mid\"><dgm:layoutNode name=\"leaf\"/></dgm:layoutNode>"
+        def k2:SaConstraints (SaConstraintTest.resolve(deep))
+        def leaf:SaInst (SaConstraintTest.first(k2 "leaf"))
+        c.near("des: a grandchild" (k2.get(leaf "w")) 9.0)
+        c.ok("ch: not a grandchild" ((leaf.has("h")) == false))
+        ; a name nothing has: nothing happens
+        def k3:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"nobody\" val=\"1\"/>"))
+        c.near("a name nothing has changes nothing" (k3.get((SaConstraintTest.first(k3 "node")) "w")) 400.0)
+    }
+
+    sfn testRefs:void (c:SaKit) {
+        print "-- references --"
+        ; a reference to a value set LATER in the file still sees it
+        def k:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"h\" for=\"ch\" forName=\"node\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.5\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"80\"/>"))
+        c.near("a value set later in the file" (k.get((SaConstraintTest.first(k "node")) "h")) 40.0)
+        ; chains: w ← parent, h ← w, gap ← h
+        def k2:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" refType=\"w\" fact=\"0.25\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"node\" refType=\"w\" refFor=\"ch\" refForName=\"node\" fact=\"0.5\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"gap\" refType=\"h\" refFor=\"ch\" refForName=\"node\" fact=\"0.5\"/>"))
+        def g:SaInst (SaConstraintTest.first(k2 "gap"))
+        c.near("a chain of three" (k2.get(g "w")) 25.0)
+        c.eqStr("tied, through the chain, to a width" (g.fromOf("w")) "w")
+        ; a reference to a node that is not there: the constraint does nothing
+        def k3:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" refType=\"w\" refFor=\"ch\" refForName=\"ghost\"/>"))
+        c.ok("a reference to nothing sets nothing" (((SaConstraintTest.first(k3 "node")).has("w")) == false))
+        ; a number times a factor
+        def k4:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"10\" fact=\"3\"/>"))
+        c.near("val times fact" (k4.get((SaConstraintTest.first(k4 "node")) "w")) 30.0)
+        ; a font size margin: remembers its source
+        def k5:SaConstraints (SaConstraintTest.resolve("<dgm:layoutNode name=\"n\"><dgm:constrLst><dgm:constr type=\"tMarg\" refType=\"primFontSz\" fact=\"0.3\"/></dgm:constrLst></dgm:layoutNode>"))
+        def n5:SaInst (SaConstraintTest.first(k5 "n"))
+        c.near("a margin from the font size" (k5.get(n5 "tMarg")) 19.5)
+        c.eqStr("which says so" (n5.fromOf("tMarg")) "primFontSz")
+    }
+
+    sfn testOps:void (c:SaKit) {
+        print "-- relations --"
+        def k:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"100\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"node\" op=\"lte\" val=\"60\"/>"))
+        def n:SaInst (SaConstraintTest.first(k "node"))
+        c.near("lte brings a value down" (k.get(n "w")) 60.0)
+        c.near("and is kept as a bound" (n.highOf("w")) 60.0)
+        def k2:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"10\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"node\" op=\"gte\" val=\"30\"/>"))
+        def n2:SaInst (SaConstraintTest.first(k2 "node"))
+        c.near("gte brings a value up" (k2.get(n2 "w")) 30.0)
+        c.near("a lower bound" (n2.lowOf("w")) 30.0)
+        def k3:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"10\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"node\" op=\"lte\" val=\"60\"/>"))
+        c.near("lte leaves a smaller value" (k3.get((SaConstraintTest.first(k3 "node")) "w")) 10.0)
+        ; bounds without a value
+        def nb:SaInst (SaConstraintTest.first(k "gap"))
+        c.ok("no bound where none was set" ((nb.highOf("w")) > 1000000.0))
+        ; equ on a font size: one group
+        def k4:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"node\" op=\"equ\" val=\"40\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"gap\" op=\"equ\" val=\"20\"/>"))
+        def ns:[SaInst] (SaKit.byName(k4.ptree "node"))
+        def gs:[SaInst] (SaKit.byName(k4.ptree "gap"))
+        def ns0:SaInst (itemAt ns 0)
+        def ns2:SaInst (itemAt ns 2)
+        def gs0:SaInst (itemAt gs 0)
+        c.ok("the nodes are one font group" ((ns0.fontGroup >= 0) && (ns0.fontGroup == ns2.fontGroup)))
+        c.ok("the gaps another" ((gs0.fontGroup >= 0) && (gs0.fontGroup != ns0.fontGroup)))
+        c.near("with the size it gave" (k4.get(ns2 "primFontSz")) 40.0)
+        ; a lte bound referenced from another font
+        def k5:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"node\" val=\"50\"/><dgm:constr type=\"primFontSz\" for=\"ch\" forName=\"gap\" refType=\"primFontSz\" refFor=\"ch\" refForName=\"node\" op=\"lte\" fact=\"0.5\"/>"))
+        def g5:SaInst (SaConstraintTest.first(k5 "gap"))
+        c.near("a font no larger than half another" (k5.get(g5 "primFontSz")) 25.0)
+        c.near("bounded there" (g5.highOf("primFontSz")) 25.0)
+    }
+
+    sfn testScale:void (c:SaKit) {
+        print "-- scaling --"
+        def k:SaConstraints (SaConstraintTest.three("<dgm:constr type=\"w\" for=\"ch\" val=\"10\"/><dgm:constr type=\"tMarg\" for=\"ch\" val=\"4\"/><dgm:constr type=\"primFontSz\" for=\"ch\" val=\"30\"/><dgm:constr type=\"userA\" for=\"ch\" val=\"5\"/>"))
+        def n:SaInst (SaConstraintTest.first(k "node"))
+        k.ptree.root.scaleLengths(0.5)
+        c.near("lengths scale" (n.raw("w" 0.0)) 5.0)
+        c.near("margins are lengths" (n.raw("tMarg" 0.0)) 2.0)
+        c.near("a font size is not a length" (n.raw("primFontSz" 0.0)) 30.0)
+        c.near("nor is a user value" (n.raw("userA" 0.0)) 5.0)
+    }
+
+    sfn main:void () {
+        print "== SaConstraintTest =="
+        def c (new SaKit())
+        SaConstraintTest.testDefaults(c)
+        SaConstraintTest.testValues(c)
+        SaConstraintTest.testFilters(c)
+        SaConstraintTest.testRefs(c)
+        SaConstraintTest.testOps(c)
+        SaConstraintTest.testScale(c)
+        c.finish("SaConstraintTest")
+    }
+}

@@ -1,0 +1,293 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaText — the text a shape shows, and the size it is set at
+; ==============================================================================
+;
+; A shape shows the points its `presOf` walked to. The first is its own text;
+; the ones under it (presOf axis="desOrSelf") are bullets, one level per level
+; of depth below it — that is how a vertical bullet list's box holds a heading
+; and its points.
+;
+; The size starts at the shape's primary font size (65 pt unless a constraint
+; says otherwise, and never above an `lte` bound) and comes down, half a point
+; at a time, until the text fits the box inside its margins — as far as a
+; `primFontSz` rule allows (its `val` is the floor). Shapes whose font size
+; was made one by an `equ` constraint then all take the smallest of them.
+;
+; Width is measured by an SaMeasure. The one here is the average-width guess
+; (0.52 em per character, counted as characters, not bytes) that a headless
+; run uses; a host with real fonts passes a subclass that asks them. Give the
+; subclass a `Constructor () {}` of its own: without one the C++ writer stops
+; with "Cannot read properties of undefined (reading 'params')".
+; ==============================================================================
+
+Import "SaAlgorithms.rgr"
+Import "pkg:evg/EVGCodepoint.rgr"
+
+class SaMeasure {
+    def em:double 0.52
+
+    Constructor () {
+    }
+
+    fn widthOf:double (text:string sizePt:double bold:boolean) {
+        def n:double (to_double (EVGCodepoint.charCount(text)))
+        def f:double em
+        if bold {
+            f = (em * 1.08)
+        }
+        return (n * sizePt * f)
+    }
+}
+
+class SaLine {
+    def text:string ""
+    def level:int 0
+    def bold:boolean false
+
+    Constructor () {
+    }
+}
+
+class SaText {
+    def ptree:SaPresTree (new SaPresTree())
+    def cons:SaConstraints (new SaConstraints())
+    def measure:SaMeasure (new SaMeasure())
+    ; how tall a line is, as a multiple of the size: SmartArt sets its text at
+    ; 90 % line spacing, and a line is 1.2 em
+    def lineFactor:double 1.08
+    def warnings:[string]
+
+    Constructor () {
+    }
+
+    sfn fit:SaText (c:SaConstraints m:SaMeasure) {
+        def t (new SaText())
+        t.ptree = c.ptree
+        t.cons = c
+        t.measure = m
+        t.fitAll()
+        return t
+    }
+
+    ; the paragraphs a shape shows: its first point's, then the points under
+    ; it as bullets
+    fn linesOf:[SaLine] (s:SaInst) {
+        def out:[SaLine]
+        if ((array_length s.presIds) == 0) {
+            return out
+        }
+        ; levels count from the point the shape was made for: its own text
+        ; is level 0, the points under it 1, 2…
+        def base:int (ptree.model.depthOf(s.ctxId))
+        def i:int 0
+        while (i < (array_length s.presIds)) {
+            def id:string (itemAt s.presIds i)
+            def p@(optional):SaPoint (ptree.model.pointById(id))
+            if (!null? p) {
+                def pt:SaPoint (unwrap p)
+                def lvl:int ((ptree.model.depthOf(id)) - base)
+                if (lvl < 0) {
+                    lvl = 0
+                }
+                if ((pt.isContent()) || ((pt.type == "parTrans") || (pt.type == "sibTrans"))) {
+                    def k:int 0
+                    while (k < (array_length pt.paras)) {
+                        def para:SaPara (itemAt pt.paras k)
+                        def ln (new SaLine())
+                        ln.text = (para.plainText())
+                        ln.level = (lvl + para.level)
+                        if ((array_length para.runs) > 0) {
+                            def r0:SaRun (itemAt para.runs 0)
+                            ln.bold = r0.bold
+                        }
+                        push out ln
+                        k = (k + 1)
+                    }
+                }
+            }
+            i = (i + 1)
+        }
+        ; a shape whose points have no text at all shows nothing
+        def any:boolean false
+        def j:int 0
+        while (j < (array_length out)) {
+            def lj:SaLine (itemAt out j)
+            if ((strlen lj.text) > 0) {
+                any = true
+            }
+            j = (j + 1)
+        }
+        if (any == false) {
+            def none:[SaLine]
+            return none
+        }
+        return out
+    }
+
+    ; how the shape's margins come out at `size`: a margin derived from the
+    ; font size follows it
+    fn margin:double (s:SaInst type:string size:double) {
+        if ((s.has(type)) == false) {
+            return (size * 0.1)
+        }
+        def v:double (s.raw(type 0.0))
+        if ((s.fromOf(type)) == "primFontSz") {
+            def nominal:double (cons.get(s "primFontSz"))
+            if (nominal > 0.0) {
+                return ((v * size) / nominal)
+            }
+        }
+        return v
+    }
+
+    ; lines once wrapped into width `w` at `size`; -1 when a word alone is
+    ; wider than the box
+    fn wrappedCount:int (lines:[SaLine] size:double w:double) {
+        def total:int 0
+        def i:int 0
+        while (i < (array_length lines)) {
+            def ln:SaLine (itemAt lines i)
+            def indent:double ((to_double ln.level) * size * 0.6)
+            def avail:double (w - indent)
+            def n:int (this.wrapOne(ln.text size avail ln.bold))
+            if (n < 0) {
+                return -1
+            }
+            total = (total + n)
+            i = (i + 1)
+        }
+        return total
+    }
+
+    fn wrapOne:int (text:string size:double w:double bold:boolean) {
+        if ((strlen text) == 0) {
+            return 1
+        }
+        def words:[string] (SaText.words(text))
+        def count:int 1
+        def cur:double 0.0
+        def space:double (measure.widthOf(" " size bold))
+        def i:int 0
+        while (i < (array_length words)) {
+            def ww:double (measure.widthOf((itemAt words i) size bold))
+            if (ww > w) {
+                return -1
+            }
+            if (cur == 0.0) {
+                cur = ww
+            } {
+                if (((cur + space) + ww) <= w) {
+                    cur = ((cur + space) + ww)
+                } {
+                    count = (count + 1)
+                    cur = ww
+                }
+            }
+            i = (i + 1)
+        }
+        return count
+    }
+
+    sfn words:[string] (s:string) {
+        def out:[string]
+        def cur:string ""
+        def i:int 0
+        def n:int (strlen s)
+        while (i < n) {
+            def c:int (charAt s i)
+            if ((c == 32) || (c == 10)) {
+                if ((strlen cur) > 0) {
+                    push out cur
+                    cur = ""
+                }
+            } {
+                cur = (cur + (substring s i (i + 1)))
+            }
+            i = (i + 1)
+        }
+        if ((strlen cur) > 0) {
+            push out cur
+        }
+        return out
+    }
+
+    fn fits:boolean (s:SaInst lines:[SaLine] size:double) {
+        def w:double ((s.w - (this.margin(s "lMarg" size))) - (this.margin(s "rMarg" size)))
+        def h:double ((s.h - (this.margin(s "tMarg" size))) - (this.margin(s "bMarg" size)))
+        if ((w <= 0.0) || (h <= 0.0)) {
+            return false
+        }
+        def n:int (this.wrappedCount(lines size w))
+        if (n < 0) {
+            return false
+        }
+        return (((to_double n) * size * lineFactor) <= h)
+    }
+
+    ; the smallest size a rule lets the shape's text go down to; its start
+    ; size when no rule lets it shrink
+    fn floorOf:double (s:SaInst start:double) {
+        def i:int 0
+        while (i < (array_length s.rules)) {
+            def r:SaRule (itemAt s.rules i)
+            if ((r.type == "primFontSz") && (r.forRel == "self")) {
+                if r.hasVal {
+                    return r.val
+                }
+                return 1.0
+            }
+            i = (i + 1)
+        }
+        return start
+    }
+
+    fn fitAll:void () {
+        def every:[SaInst] (ptree.all())
+        def i:int 0
+        while (i < (array_length every)) {
+            def s:SaInst (itemAt every i)
+            def lines:[SaLine] (this.linesOf(s))
+            if ((array_length lines) > 0) {
+                def start:double (cons.get(s "primFontSz"))
+                def hi:double (s.highOf("primFontSz"))
+                if (start > hi) {
+                    start = hi
+                }
+                ; on the half-point grid the sizes are stepped on
+                start = ((to_double (to_int ((start * 2.0) + 0.0001))) / 2.0)
+                def floor:double (this.floorOf(s start))
+                def size:double start
+                while ((size > floor) && ((this.fits(s lines size)) == false)) {
+                    size = (size - 0.5)
+                }
+                if (size < floor) {
+                    size = floor
+                }
+                if ((this.fits(s lines size)) == false) {
+                    push warnings ("the text of " + s.name + " does not fit even at " + (to_string size) + " pt")
+                }
+                s.fontPt = size
+            }
+            i = (i + 1)
+        }
+        ; one size per equ group: the smallest any member needed
+        i = 0
+        while (i < (array_length every)) {
+            def g:SaInst (itemAt every i)
+            if ((g.fontGroup >= 0) && (g.fontPt > 0.0)) {
+                def least:double g.fontPt
+                def j:int 0
+                while (j < (array_length every)) {
+                    def o:SaInst (itemAt every j)
+                    if (((o.fontGroup == g.fontGroup) && (o.fontPt > 0.0)) && (o.fontPt < least)) {
+                        least = o.fontPt
+                    }
+                    j = (j + 1)
+                }
+                g.fontPt = least
+            }
+            i = (i + 1)
+        }
+    }
+}

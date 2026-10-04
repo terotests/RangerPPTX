@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- chevron1, "Basic Chevron Process": chevrons in a row, each one's point in
+     the next one's notch. Written for this engine; see process1.xml. -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" uniqueId="urn:microsoft.com/office/officeart/2005/8/layout/chevron1">
+  <dgm:title val="Basic Chevron Process"/>
+  <dgm:layoutNode name="diagram">
+    <dgm:varLst><dgm:dir/><dgm:resizeHandles val="exact"/></dgm:varLst>
+    <dgm:choose name="direction">
+      <dgm:if name="forward" func="var" arg="dir" op="equ" val="norm"><dgm:alg type="lin"/></dgm:if>
+      <dgm:else name="backward"><dgm:alg type="lin"><dgm:param type="linDir" val="fromR"/></dgm:alg></dgm:else>
+    </dgm:choose>
+    <dgm:shape/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="node" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="node" refType="w" refFor="ch" refForName="node" fact="0.4"/>
+      <dgm:constr type="sibSp" refType="w" refFor="ch" refForName="node" fact="-0.1"/>
+      <dgm:constr type="primFontSz" for="ch" forName="node" op="equ" val="65"/>
+    </dgm:constrLst>
+    <dgm:forEach name="steps" axis="ch" ptType="node">
+      <dgm:layoutNode name="node" styleLbl="node1">
+        <dgm:alg type="tx"/>
+        <dgm:shape type="chevron"><dgm:adjLst><dgm:adj idx="1" val="0.5"/></dgm:adjLst></dgm:shape>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst>
+          <dgm:constr type="tMarg" refType="primFontSz" fact="0.15"/>
+          <dgm:constr type="bMarg" refType="primFontSz" fact="0.15"/>
+          <dgm:constr type="lMarg" refType="h" fact="0.5"/>
+          <dgm:constr type="rMarg" refType="h" fact="0.3"/>
+        </dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="5" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

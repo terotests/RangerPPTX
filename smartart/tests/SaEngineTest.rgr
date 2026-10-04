@@ -1,0 +1,341 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaEngineTest — the built-in layouts, end to end, and the colours
+; ==============================================================================
+;
+; What every layout must do whatever the oracle later says about exact
+; positions: draw every item, inside the frame, in reading order, without one
+; step on top of another, at one type size per group — at 1, 2, 3, 5 and 8
+; items. The exact boxes are the oracle's to judge (smartart/oracle).
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+class SaEngineTest {
+
+    sfn draw:SaResult (xml:string) {
+        return (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+    }
+
+    sfn inside:boolean (s:PptxShape) {
+        def e:double 0.01
+        return ((((s.x >= (0.0 - e)) && (s.y >= (0.0 - e))) && ((s.x + s.width) <= (480.0 + e))) && ((s.y + s.height) <= (270.0 + e)))
+    }
+
+    sfn allInside:boolean (r:SaResult) {
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            if ((SaEngineTest.inside((itemAt r.shape.children i))) == false) {
+                return false
+            }
+            i = (i + 1)
+        }
+        return true
+    }
+
+    ; left to right (or top to bottom) and not on top of one another, allowing
+    ; `overlap` points (the chevrons interlock on purpose)
+    sfn inOrder:boolean (l:[PptxShape] vertical:boolean overlap:double) {
+        def i:int 1
+        while (i < (array_length l)) {
+            def a:PptxShape (itemAt l (i - 1))
+            def b:PptxShape (itemAt l i)
+            if vertical {
+                if ((b.y + overlap) < (a.y + a.height)) {
+                    return false
+                }
+            } {
+                if ((b.x + overlap) < (a.x + a.width)) {
+                    return false
+                }
+            }
+            i = (i + 1)
+        }
+        return true
+    }
+
+    sfn oneSize:boolean (l:[PptxShape]) {
+        if ((array_length l) == 0) {
+            return true
+        }
+        def first:double (SaKit.sizeOf((itemAt l 0)))
+        def i:int 0
+        while (i < (array_length l)) {
+            def s:double (SaKit.sizeOf((itemAt l i)))
+            if (s != first) {
+                return false
+            }
+            i = (i + 1)
+        }
+        return (first > 0.0)
+    }
+
+    sfn texts:string (l:[PptxShape]) {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length l)) {
+            def s:PptxShape (itemAt l i)
+            if (i > 0) {
+                out = (out + "|")
+            }
+            out = (out + (s.text.plainText()))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn expected:string (n:int) {
+        def out:string ""
+        def i:int 1
+        while (i <= n) {
+            if (i > 1) {
+                out = (out + "|")
+            }
+            out = (out + "Item " + (to_string i))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; the checks every layout gets at each count; `main` the shapes holding
+    ; the items, `vertical` the reading direction
+    sfn common:void (c:SaKit lay:string main:string vertical:boolean overlap:double) {
+        def counts:[int] ([] _:int (1 2 3 5 8))
+        def i:int 0
+        while (i < (array_length counts)) {
+            def n:int (itemAt counts i)
+            def tag:string (lay + " × " + (to_string n))
+            def r:SaResult (SaEngineTest.draw((SaKit.flat(lay n))))
+            c.ok((tag + ": drawn") r.ok)
+            c.eqStr((tag + ": with the layout asked for") r.layoutUsed lay)
+            c.eqInt((tag + ": nothing to warn about") (array_length r.warnings) 0)
+            def items:[PptxShape] (SaKit.shapes(r main))
+            c.eqStr((tag + ": every item, in order") (SaEngineTest.texts(items)) (SaEngineTest.expected(n)))
+            c.ok((tag + ": inside the frame") (SaEngineTest.allInside(r)))
+            c.ok((tag + ": in reading order, apart") (SaEngineTest.inOrder(items vertical overlap)))
+            c.ok((tag + ": one type size") (SaEngineTest.oneSize(items)))
+            i = (i + 1)
+        }
+    }
+
+    sfn testProcess:void (c:SaKit) {
+        print "-- process1 --"
+        SaEngineTest.common(c "process1" "node" false 0.0)
+        def r:SaResult (SaEngineTest.draw((SaKit.flat("process1" 3))))
+        def arrows:[PptxShape] (SaKit.shapes(r "sibTrans"))
+        c.eqInt("an arrow between each two steps" (array_length arrows) 2)
+        def a0:PptxShape (itemAt arrows 0)
+        c.eqStr("pointing right" a0.preset "rightArrow")
+        c.ok("with no text" (a0.hasText == false))
+        c.eqStr("its adjustments named as the preset names them" ((itemAt a0.adjNames 0) + " " + (itemAt a0.adjNames 1)) "adj1 adj2")
+        def nodes:[PptxShape] (SaKit.shapes(r "node"))
+        def n0:PptxShape (itemAt nodes 0)
+        def n1:PptxShape (itemAt nodes 1)
+        c.ok("an arrow between the first two steps" ((a0.x > (n0.x + n0.width)) && ((a0.x + a0.width) < n1.x)))
+        c.eqStr("a step is a rounded rectangle" n0.preset "roundRect")
+        c.near("whose corner is the layout's" n0.adj 0.1)
+        c.near("in hundred-thousandths too" (itemAt n0.adjValues 0) 10000.0)
+        c.near("a step is 0.6 as tall as wide" (n0.height / n0.width) 0.6)
+        def r1:SaResult (SaEngineTest.draw((SaKit.flat("process1" 1))))
+        c.eqInt("one step: no arrow" (array_length (SaKit.shapes(r1 "sibTrans"))) 0)
+    }
+
+    sfn testChevron:void (c:SaKit) {
+        print "-- chevron1 --"
+        ; each chevron's point sits in the next one's notch: they overlap by
+        ; a tenth of a chevron's width
+        SaEngineTest.common(c "chevron1" "node" false 200.0)
+        def r:SaResult (SaEngineTest.draw((SaKit.flat("chevron1" 3))))
+        def nodes:[PptxShape] (SaKit.shapes(r "node"))
+        def n0:PptxShape (itemAt nodes 0)
+        def n1:PptxShape (itemAt nodes 1)
+        c.eqStr("chevrons" n0.preset "chevron")
+        c.near("overlapping by a tenth of a width" (((n0.x + n0.width) - n1.x) / n0.width) 0.1)
+        c.near("0.4 as tall as wide" (n0.height / n0.width) 0.4)
+    }
+
+    sfn testVList:void (c:SaKit) {
+        print "-- vList2 --"
+        SaEngineTest.common(c "vList2" "parentText" true 0.0)
+        def r:SaResult (SaEngineTest.draw((SaKit.twoLevels("vList2" 3 2))))
+        def heads:[PptxShape] (SaKit.shapes(r "parentText"))
+        def bodies:[PptxShape] (SaKit.shapes(r "childText"))
+        c.eqInt("a bar per item" (array_length heads) 3)
+        c.eqInt("and a bullet box per item with points" (array_length bodies) 3)
+        def b0:PptxShape (itemAt bodies 0)
+        def h0:PptxShape (itemAt heads 0)
+        def h1:PptxShape (itemAt heads 1)
+        c.ok("under its bar, above the next" ((b0.y >= (h0.y + h0.height)) && ((b0.y + b0.height) <= h1.y)))
+        c.eqStr("holding the item's points" (b0.text.plainText()) "Item 1.1\nItem 1.2")
+        def bp:PptxParagraph (itemAt b0.text.paragraphs 0)
+        c.ok("as bullets" bp.hasBullet)
+        c.eqStr("left aligned" bp.align "l")
+        c.ok("drawn as text only" (b0.noFill && b0.noLine))
+        c.ok("no larger than the bars' text" ((SaKit.sizeOf(b0)) <= (SaKit.sizeOf(h0))))
+        def hp:PptxParagraph (itemAt h0.text.paragraphs 0)
+        c.eqStr("a bar's text is left aligned" hp.align "l")
+        c.ok("without a bullet" (hp.hasBullet == false))
+        ; items without points: no bullet boxes
+        def r2:SaResult (SaEngineTest.draw((SaKit.flat("vList2" 3))))
+        c.eqInt("no points, no bullet boxes" (array_length (SaKit.shapes(r2 "childText"))) 0)
+    }
+
+    sfn testHList:void (c:SaKit) {
+        print "-- hList1 --"
+        SaEngineTest.common(c "hList1" "parTx" false 0.0)
+        def r:SaResult (SaEngineTest.draw((SaKit.twoLevels("hList1" 3 2))))
+        def heads:[PptxShape] (SaKit.shapes(r "parTx"))
+        def bodies:[PptxShape] (SaKit.shapes(r "desTx"))
+        c.eqInt("a column per item" (array_length heads) 3)
+        c.eqInt("each with its body" (array_length bodies) 3)
+        def h0:PptxShape (itemAt heads 0)
+        def b0:PptxShape (itemAt bodies 0)
+        c.near("the body right under the head" b0.y (h0.y + h0.height))
+        c.near("as wide" b0.width h0.width)
+        c.near("the column the full height" (h0.height + b0.height) 270.0)
+        c.near("the head a quarter of it" (h0.height / 270.0) 0.25)
+        c.eqStr("the body holds the points" (b0.text.plainText()) "Item 1.1\nItem 1.2")
+        c.ok("in a lighter fill" (b0.fill.tint > 0.0))
+        def b1:PptxShape (itemAt bodies 1)
+        c.ok("every body the same size type" ((SaKit.sizeOf(b0)) == (SaKit.sizeOf(b1))))
+    }
+
+    sfn testGroup:void (c:SaKit) {
+        print "-- the group --"
+        def r:SaResult (SaEngineTest.draw((SaKit.twoLevels("process1" 2 1))))
+        def g:PptxShape r.shape
+        c.ok("a group" (g.kind == (PptxShapeKind.group())))
+        c.ok("that is a diagram" g.isDiagram)
+        c.ok("in its own box: the frame" (((g.chW == 480.0) && (g.chH == 270.0)) && ((g.chX == 0.0) && (g.chY == 0.0))))
+        c.eqStr("with the data's text for a screen reader" g.diagramText "Item 1\n  Item 1.1\nItem 2\n  Item 2.1\n")
+        def nodes:[PptxShape] (SaKit.shapes(r "node"))
+        def n0:PptxShape (itemAt nodes 0)
+        c.eqStr("a node shows its points too" (n0.text.plainText()) "Item 1\nItem 1.1")
+        def p0:PptxParagraph (itemAt n0.text.paragraphs 0)
+        def r0:PptxTextRun (itemAt p0.runs 0)
+        c.ok("its text in the theme's light colour" (r0.color.isScheme && (r0.color.scheme == "lt1")))
+        c.ok("stated" r0.colorStated)
+        c.ok("its fill the first accent" (n0.fill.isScheme && (n0.fill.scheme == "accent1")))
+        c.ok("its text centred in it" (n0.text.anchor == "ctr"))
+        ; nothing at all
+        def r2:SaResult (SaEngineTest.draw((SaKit.data("process1" "" ""))))
+        c.ok("a diagram with no items is drawn" r2.ok)
+        c.eqInt("as nothing" (array_length r2.shape.children) 0)
+    }
+
+    sfn testOptions:void (c:SaKit) {
+        print "-- what the Markdown can say --"
+        def o (new SaOptions())
+        o.layout = "chevron1"
+        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) o 480.0 270.0))
+        c.eqStr("another layout than the file's" r.layoutUsed "chevron1")
+        def o2 (new SaOptions())
+        o2.colors = "colorful1"
+        def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 6)) o2 480.0 270.0))
+        def nodes:[PptxShape] (SaKit.shapes(r2 "node"))
+        def n0:PptxShape (itemAt nodes 0)
+        def n4:PptxShape (itemAt nodes 4)
+        def n5:PptxShape (itemAt nodes 5)
+        c.eqStr("colorful1 starts at accent2" n0.fill.scheme "accent2")
+        c.eqStr("and goes to accent6" n4.fill.scheme "accent6")
+        c.eqStr("then round again" n5.fill.scheme "accent2")
+        c.eqInt("with nothing to warn about" (array_length r2.warnings) 0)
+        def o3 (new SaOptions())
+        o3.colors = "accent4_2"
+        def r3:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o3 480.0 270.0))
+        def m0:PptxShape (itemAt (SaKit.shapes(r3 "node")) 0)
+        c.eqStr("accent4_2: the fourth accent" m0.fill.scheme "accent4")
+        def o4 (new SaOptions())
+        o4.colors = "gradient9"
+        def r4:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o4 480.0 270.0))
+        c.eqInt("a colour set it does not know: a warning" (array_length r4.warnings) 1)
+        def k0:PptxShape (itemAt (SaKit.shapes(r4 "node")) 0)
+        c.eqStr("and the default colours" k0.fill.scheme "accent1")
+        ; a layout it does not have
+        def r5:SaResult (SaEngineTest.draw((SaKit.flat("cycle2" 3))))
+        c.ok("a layout it does not have is still drawn" r5.ok)
+        c.eqStr("as vList2" r5.layoutUsed "vList2")
+        c.ok("and it says which, and what it has" (((indexOf (itemAt r5.warnings 0) "cycle2") >= 0) && ((indexOf (itemAt r5.warnings 0) "process1") >= 0)))
+        ; no layout named at all: vList2, without a warning
+        def r6:SaResult (SaEngineTest.draw((SaKit.flat("" 2))))
+        c.eqStr("no layout named: vList2" r6.layoutUsed "vList2")
+        c.eqInt("quietly" (array_length r6.warnings) 0)
+        ; a whole definition passed in
+        def o7 (new SaOptions())
+        o7.layoutXml = "<dgm:layoutDef xmlns:dgm=\"x\" uniqueId=\"mine\"><dgm:layoutNode name=\"r\"><dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/></dgm:alg><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"n\" styleLbl=\"node1\"><dgm:shape type=\"ellipse\"/><dgm:presOf axis=\"self\"/></dgm:layoutNode><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"a\" styleLbl=\"sibTrans2D1\"><dgm:alg type=\"conn\"/><dgm:shape type=\"conn\"/></dgm:layoutNode></dgm:forEach></dgm:forEach></dgm:layoutNode></dgm:layoutDef>"
+        def r7:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o7 480.0 270.0))
+        c.eqStr("a definition passed in is the one used" r7.layoutUsed "mine")
+        def e0:PptxShape (itemAt (SaKit.shapes(r7 "n")) 0)
+        c.eqStr("its shapes" e0.preset "ellipse")
+        def a0:PptxShape (itemAt (SaKit.shapes(r7 "a")) 0)
+        c.eqStr("a connector in a column points down" a0.preset "downArrow")
+        def o8 (new SaOptions())
+        o8.layoutXml = "<dgm:nope/>"
+        def r8:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o8 480.0 270.0))
+        c.ok(("a bad definition is an error (" + r8.error + ")") ((r8.ok == false) && ((indexOf r8.error "the layout definition") >= 0)))
+        ; bad data is the reader's error
+        def r9:SaResult (SaEngineTest.draw("<dgm:dataModel/>"))
+        c.ok(("bad data is refused (" + r9.error + ")") ((r9.ok == false) && ((indexOf r9.error "ptLst") >= 0)))
+        ; the frame's shape changes the drawing, not the content
+        def r10:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) (new SaOptions()) 200.0 400.0))
+        def tall:[PptxShape] (SaKit.shapes(r10 "node"))
+        c.ok("a narrow frame still holds all of it" (((itemAt tall 2).x + (itemAt tall 2).width) <= 200.01))
+    }
+
+    sfn sig:string (r:SaResult) {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def s:PptxShape (itemAt r.shape.children i)
+            out = (out + s.name + ":" + (to_string s.x) + "," + (to_string s.y) + "," + (to_string s.width) + "," + (to_string s.height) + "," + (to_string (SaKit.sizeOf(s))) + ";")
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testDeterministic:void (c:SaKit) {
+        print "-- the same every time --"
+        def xml:string (SaKit.twoLevels("hList1" 4 3))
+        def a:string (SaEngineTest.sig((SaEngineTest.draw(xml))))
+        def b:string (SaEngineTest.sig((SaEngineTest.draw(xml))))
+        c.ok("two runs, one drawing" (a == b))
+        c.ok("and it is not empty" ((strlen a) > 0))
+    }
+
+    sfn testStyle:void (c:SaKit) {
+        print "-- colours --"
+        c.eqStr("node1 is a node" (SaStyle.family("node1")) "node")
+        c.eqStr("sibTrans2D1 an arrow" (SaStyle.family("sibTrans2D1")) "arrow")
+        c.eqStr("parChTrans1D2 a line" (SaStyle.family("parChTrans1D2")) "line")
+        c.eqStr("alignAccFollowNode1 light" (SaStyle.family("alignAccFollowNode1")) "light")
+        c.eqStr("fgAcc1 outlined" (SaStyle.family("fgAcc1")) "outlined")
+        c.eqStr("revTx text" (SaStyle.family("revTx")) "text")
+        c.eqStr("no label is text" (SaStyle.family("")) "text")
+        c.eqStr("an unknown label is a node" (SaStyle.family("whatever3")) "node")
+        def arrow:SaPaint (SaStyle.paintFor("sibTrans2D1" "" 0))
+        c.ok("an arrow is a tint of the accent, with no line" ((arrow.fill.tint == 0.6) && arrow.noLine))
+        def line:SaPaint (SaStyle.paintFor("sibTrans1D1" "" 0))
+        c.ok("a line has no fill" (line.noFill && (line.line.scheme == "accent1")))
+        def outl:SaPaint (SaStyle.paintFor("fgAcc1" "" 0))
+        c.ok("outlined: light fill, accent line, dark text" (((outl.fill.scheme == "lt1") && (outl.line.scheme == "accent1")) && (outl.text.scheme == "tx1")))
+        c.eqStr("colorful2 starts at accent1" (SaStyle.accentFor("urn:microsoft.com/office/officeart/2005/8/colors/colorful2" 0)) "accent1")
+        c.eqStr("and wraps after accent6" (SaStyle.accentFor("colorful2" 6)) "accent1")
+        c.eqStr("accent9_2 is no accent: accent1" (SaStyle.accentFor("accent9_2" 0)) "accent1")
+        c.ok("known sets" (((SaStyle.knownColors("accent1_2")) && (SaStyle.knownColors("colorful1"))) && (SaStyle.knownColors(""))))
+        c.ok("unknown ones" (((SaStyle.knownColors("gradient9")) == false) && ((SaStyle.knownColors("accent1_20")) == false)))
+    }
+
+    sfn main:void () {
+        print "== SaEngineTest =="
+        def c (new SaKit())
+        SaEngineTest.testProcess(c)
+        SaEngineTest.testChevron(c)
+        SaEngineTest.testVList(c)
+        SaEngineTest.testHList(c)
+        SaEngineTest.testGroup(c)
+        SaEngineTest.testOptions(c)
+        SaEngineTest.testDeterministic(c)
+        SaEngineTest.testStyle(c)
+        c.finish("SaEngineTest")
+    }
+}
