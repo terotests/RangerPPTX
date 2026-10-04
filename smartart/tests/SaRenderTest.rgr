@@ -86,6 +86,73 @@ class SaRenderTest {
         c.near("the group sits where it was put" r.shape.x 100.0)
     }
 
+    ; the text a shape's paragraphs draw as, piece by piece
+    sfn texts:[EVGDrawCmd] (out:EVGDisplayList) {
+        def r:[EVGDrawCmd]
+        def i:int 0
+        while (i < (array_length out.cmds)) {
+            def cmd:EVGDrawCmd (itemAt out.cmds i)
+            if ((cmd.kind == 3) && ((strlen cmd.text) > 0)) {
+                push r cmd
+            }
+            i = (i + 1)
+        }
+        return r
+    }
+
+    sfn testHostFonts:void (c:SaKit) {
+        print "-- measured and drawn in the host's font --"
+        def data:string (SaKit.data("vList2" (SaKit.pt("a" "alpha beta gamma delta epsilon zeta eta theta")) (SaKit.cx("0" "a"))))
+        def o (new SaOptions())
+        o.measure = (SaMeasure.over((new SaWideHost()) "Wide"))
+        def r:SaResult (SaEngine.layout(data o 300.0 200.0))
+        c.ok("laid out" r.ok)
+        c.ok("the result keeps the measure" r.measure.hasHost)
+        def sh:PptxShape (itemAt r.shape.children 0)
+        def para:PptxParagraph (itemAt sh.text.paragraphs 0)
+        def run:PptxTextRun (itemAt para.runs 0)
+        c.eqStr("the run names the family it was measured in" run.fontFamily "Wide")
+        def plain:SaResult (SaEngine.layout(data (new SaOptions()) 300.0 200.0))
+        def psh:PptxShape (itemAt plain.shape.children 0)
+        def ppara:PptxParagraph (itemAt psh.text.paragraphs 0)
+        def prun:PptxTextRun (itemAt ppara.runs 0)
+        c.eqStr("with the guess it names none" prun.fontFamily "")
+        c.ok(("a font twice the guess's width is set smaller (" + (to_string run.fontSizePt) + " < " + (to_string prun.fontSizePt) + ")") (run.fontSizePt < prun.fontSizePt))
+        def out (new EVGDisplayList())
+        SaRender.resolveAll(r.shape (SaRenderTest.palette()))
+        SaRender.drawWith(out r.shape 0.0 0.0 r.measure)
+        def cmds:[EVGDrawCmd] (SaRenderTest.texts(out))
+        c.ok("text is drawn" ((array_length cmds) > 0))
+        def fams:boolean true
+        def widest:double 0.0
+        def i:int 0
+        while (i < (array_length cmds)) {
+            def cmd:EVGDrawCmd (itemAt cmds i)
+            if (cmd.fontFamily != "Wide") {
+                fams = false
+            }
+            def w:double ((to_double (EVGCodepoint.charCount(cmd.text))) * cmd.fontSize)
+            if (w > widest) {
+                widest = w
+            }
+            i = (i + 1)
+        }
+        c.ok("every piece is drawn in it" fams)
+        def inner:double ((sh.width - sh.text.insetL) - sh.text.insetR)
+        c.ok(("no line is wider, in that font, than the box (" + (to_string widest) + " <= " + (to_string inner) + ")") (widest <= (inner + 0.01)))
+        ; the painter broke the lines where the engine counted them
+        def t (new SaText())
+        t.measure = r.measure
+        def lines:int (t.wrapOne(run.text run.fontSizePt inner false))
+        c.eqInt("as many lines as the engine fitted" (array_length cmds) lines)
+        ; the painter with no host measures as before
+        def conv:PptxToEvg (SaRender.painter())
+        c.near("the plain painter guesses" (conv.measure.widthOf("abcd" 10.0 false false)) 20.8)
+        def hc:PptxToEvg (SaRender.painterWith(r.measure))
+        c.near("the host painter asks the host" (hc.measure.widthOf("abcd" 10.0 false false)) 40.0)
+        c.eqStr("and names its family" (hc.measure.drawnFamily("" false false)) "Wide")
+    }
+
     sfn testFile:void (c:SaKit) {
         print "-- a file in a deck --"
         def xml:string (SaKit.flat("process1" 2))
@@ -136,6 +203,7 @@ class SaRenderTest {
         SaRenderTest.testPalette(c)
         SaRenderTest.testResolve(c)
         SaRenderTest.testPaint(c)
+        SaRenderTest.testHostFonts(c)
         SaRenderTest.testFile(c)
         SaRenderTest.testPresets(c)
         c.finish("SaRenderTest")

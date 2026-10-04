@@ -300,9 +300,17 @@ C++'s `buffer_from_string` read its argument twice. Not fixed: the C++
 writer stops on a subclass with no constructor of its own (SaText says so
 where a host would hit it).
 
-Not done in phase 1: a measurer with the host's real fonts (the engine
-guesses 0.52 em per character, so on a slide the text may come out a little
-smaller or larger than it needs); the oracle comparison (no corpus yet).
+Not done in phase 1: the oracle comparison (no corpus yet).
+
+Text is measured with the host's fonts (added after phase 1):
+`SaMeasure.over(measurer family)` takes the host's `EVGTextMeasurer` (in
+Sliqtly the deck's TTF measurer, in the editor and in the MCP server alike)
+and the family; every run names that family, and the painter breaks lines
+with the same widths (`SaRender.drawWith`, `SaPaintMeasure`), counting a
+word's trailing space as `PptxTextLayout` does. With no host measurer it is
+still the 0.52 em guess. Tests: `SaTextTest` (host widths, bold cut, sizes
+fitted per font, the trailing space), `SaRenderTest` (family on every run
+and every drawn piece, the painter's line count equal to the engine's).
 
 ## Phases
 

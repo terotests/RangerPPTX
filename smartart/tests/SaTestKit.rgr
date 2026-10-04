@@ -5,6 +5,27 @@
 
 Import "../SaEngine.rgr"
 
+; a host's measurer: every character `size` wide in "Wide", twice that in
+; its bold cut "Wide-Bold", half that in anything else
+class SaWideHost extends EVGTextMeasurer {
+    def asked:[string]
+
+    Constructor () {
+    }
+
+    fn measureTextWidth@(override):double (text:string fontFamily:string fontSize:double) {
+        push asked fontFamily
+        def n:double (to_double (EVGCodepoint.charCount(text)))
+        if (fontFamily == "Wide") {
+            return (n * fontSize)
+        }
+        if (fontFamily == "Wide-Bold") {
+            return (n * fontSize * 2.0)
+        }
+        return (n * fontSize * 0.5)
+    }
+}
+
 class SaKit {
     def passed:int 0
     def failed:int 0

@@ -50,6 +50,9 @@ class SaResult {
     ; the layout that was used, by its short name
     def layoutUsed:string ""
     def ptree:SaPresTree (new SaPresTree())
+    ; what the text was measured with, which the painter must break its lines
+    ; with too (SaRender.drawWith)
+    def measure:SaMeasure (new SaMeasure())
 
     Constructor () {
     }
@@ -123,6 +126,7 @@ class SaEngine {
         }
         ptree.numberByName()
         res.ptree = ptree
+        res.measure = opts.measure
         def cons:SaConstraints (SaConstraints.resolve(ptree w h))
         def algs:SaAlgorithms (SaAlgorithms.run(cons))
         def text:SaText (SaText.fit(cons opts.measure))
@@ -303,6 +307,9 @@ class SaEngine {
                 run.boldSet = ln.bold
                 run.color = paint.text
                 run.colorStated = true
+                if text.measure.hasHost {
+                    run.fontFamily = text.measure.family
+                }
                 push para.runs run
                 push body.paragraphs para
                 k = (k + 1)

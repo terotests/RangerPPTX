@@ -14,23 +14,55 @@
 ; `primFontSz` rule allows (its `val` is the floor). Shapes whose font size
 ; was made one by an `equ` constraint then all take the smallest of them.
 ;
-; Width is measured by an SaMeasure. The one here is the average-width guess
-; (0.52 em per character, counted as characters, not bytes) that a headless
-; run uses; a host with real fonts passes a subclass that asks them. Give the
-; subclass a `Constructor () {}` of its own: without one the C++ writer stops
-; with "Cannot read properties of undefined (reading 'params')".
+; Width is measured by an SaMeasure. A host with fonts hands it the measurer
+; its own text is laid out with and the family the diagram is drawn in
+; (`SaMeasure.over`): the engine fits the text with those widths, the painter
+; breaks the lines with them (SaRender) and every run names that family, so
+; what was measured is what is drawn. With no host measurer it is the
+; average-width guess, 0.52 em per character (counted as characters, not
+; bytes), which is what a headless test has. A subclass needs a
+; `Constructor () {}` of its own: without one the C++ writer stops with
+; "Cannot read properties of undefined (reading 'params')".
 ; ==============================================================================
 
 Import "SaAlgorithms.rgr"
 Import "pkg:evg/EVGCodepoint.rgr"
+Import "pkg:evg/EVGTextMeasurer.rgr"
 
 class SaMeasure {
     def em:double 0.52
+    ; the host's measurer and the family it measures in; unset, the guess
+    def hasHost:boolean false
+    def host:EVGTextMeasurer (new EVGTextMeasurer())
+    def family:string ""
 
     Constructor () {
     }
 
+    ; widths from `m`, in `fam` (its bold cut is `fam-Bold`, the name EVG's
+    ; layout and the slide's own text use)
+    sfn over:SaMeasure (m:EVGTextMeasurer fam:string) {
+        def r (new SaMeasure())
+        r.host = m
+        r.family = fam
+        r.hasHost = true
+        return r
+    }
+
+    fn faceOf:string (bold:boolean) {
+        if bold {
+            return (family + "-Bold")
+        }
+        return family
+    }
+
     fn widthOf:double (text:string sizePt:double bold:boolean) {
+        if hasHost {
+            if ((strlen text) == 0) {
+                return 0.0
+            }
+            return (host.measureTextWidth(text (this.faceOf(bold)) sizePt))
+        }
         def n:double (to_double (EVGCodepoint.charCount(text)))
         def f:double em
         if bold {
@@ -168,20 +200,28 @@ class SaText {
         def count:int 1
         def cur:double 0.0
         def space:double (measure.widthOf(" " size bold))
+        ; as the painter breaks a line (PptxTextLayout.layoutFlow): a word
+        ; and the space after it go on the line together, so the space counts
+        ; against the room; the last word of the paragraph has none
+        def last:int ((array_length words) - 1)
         def i:int 0
         while (i < (array_length words)) {
             def ww:double (measure.widthOf((itemAt words i) size bold))
             if (ww > w) {
                 return -1
             }
+            def chunk:double ww
+            if (i < last) {
+                chunk = (ww + space)
+            }
             if (cur == 0.0) {
-                cur = ww
+                cur = chunk
             } {
-                if (((cur + space) + ww) <= w) {
-                    cur = ((cur + space) + ww)
+                if ((cur + chunk) <= w) {
+                    cur = (cur + chunk)
                 } {
                     count = (count + 1)
-                    cur = ww
+                    cur = chunk
                 }
             }
             i = (i + 1)

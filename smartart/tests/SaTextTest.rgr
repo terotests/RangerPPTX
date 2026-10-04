@@ -58,6 +58,31 @@ class SaTextTest {
         c.eqInt("words" (array_length (SaText.words("  a bb\nccc  "))) 3)
     }
 
+    sfn testHost:void (c:SaKit) {
+        print "-- the host's fonts --"
+        def host (new SaWideHost())
+        def m:SaMeasure (SaMeasure.over(host "Wide"))
+        c.ok("it says it has a host" m.hasHost)
+        c.eqStr("and the family" m.family "Wide")
+        c.near("widths are the host's" (m.widthOf("abc" 10.0 false)) 30.0)
+        c.eqStr("asked in the family" (itemAt host.asked 0) "Wide")
+        c.near("bold is the bold cut's" (m.widthOf("abc" 10.0 true)) 60.0)
+        c.eqStr("named family-Bold" (itemAt host.asked 1) "Wide-Bold")
+        c.near("nothing is nothing, unasked" (m.widthOf("" 10.0 false)) 0.0)
+        c.eqInt("the host was not asked about nothing" (array_length host.asked) 2)
+        def other:SaMeasure (SaMeasure.over(host "Narrow"))
+        c.near("another family, its widths" (other.widthOf("abcd" 10.0 false)) 20.0)
+        c.ok("the guess has no host" ((new SaMeasure()).hasHost == false))
+        ; a box 100 wide, no margins: "abcdefghij" is ten characters
+        def data:string (SaTextTest.one("abcdefghij"))
+        def guess:SaText (SaTextTest.fitOne(data 100.0 400.0 "<dgm:presOf axis=\"self\"/>" (SaTextTest.noMarg()) "<dgm:rule type=\"primFontSz\" val=\"5\"/>" (new SaMeasure())))
+        def wide:SaText (SaTextTest.fitOne(data 100.0 400.0 "<dgm:presOf axis=\"self\"/>" (SaTextTest.noMarg()) "<dgm:rule type=\"primFontSz\" val=\"5\"/>" (SaMeasure.over((new SaWideHost()) "Wide"))))
+        def narrow:SaText (SaTextTest.fitOne(data 100.0 400.0 "<dgm:presOf axis=\"self\"/>" (SaTextTest.noMarg()) "<dgm:rule type=\"primFontSz\" val=\"5\"/>" (SaMeasure.over((new SaWideHost()) "Narrow"))))
+        c.near("the guess: 100 / (10 x 0.52), on the half-point grid" (SaTextTest.size(guess 0)) 19.0)
+        c.near("a font one em wide: 10 pt" (SaTextTest.size(wide 0)) 10.0)
+        c.near("a font half an em wide: 20 pt" (SaTextTest.size(narrow 0)) 20.0)
+    }
+
     sfn testWrap:void (c:SaKit) {
         print "-- wrapping (each character as wide as the size) --"
         def t (new SaText())
@@ -67,6 +92,10 @@ class SaTextTest {
         c.eqInt("three words, two lines" (t.wrapOne("ab cd ef" 10.0 50.0 false)) 2)
         c.eqInt("a word wider than the box: -1" (t.wrapOne("abcdefg" 10.0 50.0 false)) -1)
         c.eqInt("an empty line is one line" (t.wrapOne("" 10.0 50.0 false)) 1)
+        ; the space after a word counts against the room, as the painter
+        ; counts it: "ab cd " is 60, so "cd" starts the second line
+        c.eqInt("a word's space goes with it" (t.wrapOne("ab cd ef gh" 10.0 55.0 false)) 3)
+        c.eqInt("the last word has none" (t.wrapOne("abcd ef" 10.0 70.0 false)) 1)
     }
 
     sfn testFit:void (c:SaKit) {
@@ -153,6 +182,7 @@ class SaTextTest {
         print "== SaTextTest =="
         def c (new SaKit())
         SaTextTest.testMeasure(c)
+        SaTextTest.testHost(c)
         SaTextTest.testWrap(c)
         SaTextTest.testFit(c)
         SaTextTest.testGroups(c)

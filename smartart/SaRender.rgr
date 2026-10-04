@@ -14,6 +14,10 @@
 ;   def pal (new SaPalette())
 ;   pal.set("accent1" "#1F6FEB")  ...
 ;   SaRender.paint(out res.shape pal x y)
+;
+; A host that measured with its fonts (SaMeasure.over) draws with
+; `drawWith(out res.shape x y res.measure)`, so the lines break where the
+; engine measured them.
 ; ==============================================================================
 
 Import "SaEngine.rgr"
@@ -72,6 +76,35 @@ class SaPalette {
     }
 }
 
+; The painter's text measurer, answering with the engine's SaMeasure: the
+; painter breaks a shape's lines with the widths the engine fitted its size
+; with, and names the family they were measured in. Without a host measurer
+; it is the painter's own (the same 0.52 em guess).
+class SaPaintMeasure extends OfficeTextMeasure {
+    def sa:SaMeasure (new SaMeasure())
+
+    Constructor () {
+    }
+
+    fn hasFamily@(override):boolean (fam:string) {
+        return true
+    }
+
+    fn drawnFamily@(override):string (named:string bold:boolean italic:boolean) {
+        if ((strlen named) > 0) {
+            return named
+        }
+        if sa.hasHost {
+            return sa.family
+        }
+        return family
+    }
+
+    fn widthOfIn@(override):double (text:string sizePx:double bold:boolean italic:boolean named:string) {
+        return (sa.widthOf(text sizePx bold))
+    }
+}
+
 class SaRender {
 
     sfn resolve:void (c:PptxColor pal:SaPalette) {
@@ -113,7 +146,18 @@ class SaRender {
     ; preset geometries the layouts use are loaded from SaPresets, never from
     ; a file (a browser and the Go server have none to read).
     sfn painter:PptxToEvg () {
+        return (SaRender.painterWith((new SaMeasure())))
+    }
+
+    ; …measuring text as `m` does
+    sfn painterWith:PptxToEvg (m:SaMeasure) {
         def conv (new PptxToEvg())
+        if m.hasHost {
+            def pm (new SaPaintMeasure())
+            pm.sa = m
+            pm.family = m.family
+            conv.measure = pm
+        }
         ; ptToPx is pt × 96/72 × scale: 0.75 makes it the identity
         conv.setScale(0.75)
         conv.loadPresets((SaPresets.text()))
@@ -129,7 +173,13 @@ class SaRender {
 
     ; the group drawn as it is: its colours already resolved
     sfn draw:void (out:EVGDisplayList g:PptxShape x:double y:double) {
-        def conv:PptxToEvg (SaRender.painter())
+        SaRender.drawWith(out g x y (new SaMeasure()))
+    }
+
+    ; …its lines broken with `m`, the measure the engine fitted it with
+    ; (SaResult.measure)
+    sfn drawWith:void (out:EVGDisplayList g:PptxShape x:double y:double m:SaMeasure) {
+        def conv:PptxToEvg (SaRender.painterWith(m))
         g.x = x
         g.y = y
         conv.emitShape(out g 0.0 0.0)
