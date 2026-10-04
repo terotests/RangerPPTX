@@ -1,7 +1,8 @@
 # PLAN_SMARTART — a SmartArt layout engine
 
-Status: phase 0 done (2026-10-04): the data model, and drawing a diagram
-PowerPoint saved. Phases 1–4 not started. The engine lives in this repository
+Status (2026-10-04): phases 0 and 1 done. Phase 1's layouts are the four
+list and process layouts; `default` moved to phase 2 with the `snake`
+algorithm it needs. Phases 2–4 not started. The engine lives in this repository
 under `smartart/`; terotests/RangerSmartArt is not used.
 
 ## Why
@@ -17,8 +18,12 @@ In Sliqtly a SmartArt is **a file in the deck**, referenced from the Markdown
 like a picture and placed with the same attributes:
 
 ```markdown
-![The release process](media/release.xml){width=80% layout=process1 colors=colorful1}
+![The release process](media/release.xml)
+{width=80% layout=process1 colors=colorful1}
 ```
+
+(Block attributes go on their own line under the block — the Markdown
+module's `{…}` syntax, as for lists and fences.)
 
 The Markdown module does not know what SmartArt is. It lays the reference out
 as a picture box; Sliqtly draws the diagram into that box.
@@ -163,9 +168,9 @@ A file names its layout by `uniqueId`. We write the definitions ourselves in
 the layoutDef language, from the specification and from what PowerPoint draws
 (the oracle), not copied from Office. In order:
 
-1. `default` (PowerPoint's own fallback), `vList2`, `hList1`, `process1`,
-   `chevron1`
-2. `cycle2`, `radial1`, `hierarchy1`, `orgChart1`, `pyramid1`
+1. `vList2`, `hList1`, `process1`, `chevron1` (built)
+2. `default` (needs `snake`), `cycle2`, `radial1`, `hierarchy1`,
+   `orgChart1`, `pyramid1`
 3. `venn1`, `matrix1`, `target1`, `funnel1`, `gear1`, `arrow2`, `bList2`,
    `hProcess9`, `lProcess2`, `cycle4`
 
@@ -174,8 +179,9 @@ sets (`accent1_2`, `colorful1`…): data in `SaStyle`. Short names for the
 Markdown attributes (`layout=process1`, `colors=colorful1`, `style=simple3`)
 are the uniqueId's last segment, so there is no second table to keep in step.
 
-An unknown layout id: the file's drawing part when there is one (phase 4),
-otherwise `default`, with a warning naming the id.
+An unknown layout id: the file's drawing part when there is one (a deck
+PowerPoint saved), otherwise `vList2` until `default` exists, with a warning
+naming the id.
 
 ## Sliqtly
 
@@ -259,6 +265,44 @@ The parser and writer are not verified on Go: `OpcPackage` does not build on
 Go with the current compiler (`indexOf` with a start argument named `idx`
 expands to a closure that shadows it, `compiler/Lang.rgr`). The data-model
 layer, which has no `OpcPackage`, passes on Go.
+
+## Phase 1, as built
+
+| Piece | File | Tests (each on JavaScript, C++ and Go) |
+| --- | --- | --- |
+| Layout definitions read, refused by name when they use what the specification does not define | `smartart/SaLayoutDef.rgr`, `SaLayoutReader.rgr` | `SaLayoutTest` 81 |
+| The program run against the data: every axis, point type, st/cnt/step, hideLastTrans, choose/if (cnt pos revPos posEven posOdd var depth maxDepth), ref, presOf, inherited variables | `SaPresTree.rgr` | `SaPresTreeTest` 77 |
+| Constraints: self/ch/des, forName, ptType, references and factors, equ/gte/lte, defaults, what each value was derived from | `SaConstraints.rgr` | `SaConstraintTest` 43 |
+| lin (shrink to fit, tied sizes, alignment, all four directions), composite, sp, tx, conn in a line | `SaAlgorithms.rgr` | `SaAlgorithmTest` 31 |
+| Text: which points a shape shows, bullet levels, fitting on the half-point grid, rule floors, equ groups, a host's measurer | `SaText.rgr` | `SaTextTest` 36 |
+| Colours by style label and colour set (accentN_2, colorful1, colorful2) | `SaStyle.rgr` | in `SaEngineTest` |
+| The engine: a PptxShape group; overrides; unknown layout → vList2 with a warning | `SaEngine.rgr` | `SaEngineTest` 221 |
+| process1, chevron1, vList2, hList1 | `builtin/*.xml` → `SaBuiltins.rgr` (generated) | in `SaEngineTest`: each at 1, 2, 3, 5, 8 items |
+| The preset geometries those layouts draw with, so a host with no files draws them | `SaPresets.rgr` (generated from `presets.txt`) | in `SaRenderTest` |
+| A host's palette, drawing into a display list; a SmartArt file as a host meets it | `SaRender.rgr`, `SaFile.rgr` | `SaRenderTest` 34 |
+| A diagram with no drawing part in a .pptx is laid out by the engine | `PptxParser.layoutDiagram` | `PptxSmartArtTest` 64 |
+
+`npm run pptx:smartart:test` runs them all (633 checks per target) and fails
+while a generated file is stale. Every other pptx suite and the C++ check
+pass.
+
+Sliqtly (its own branch): `src/PresSmartArt.rgr`; `PresDeck.addImage`,
+`readSmartArt`, `smartArtOf`, `smartArtNotes`, the `slideList` hook;
+`PresApp.stillSmartArt` for the PowerPoint export; the MCP server accepts
+`.xml`, warns with the engine's messages and reports a SmartArt as a
+diagram; the web page hands the file over undecoded; the guide documents
+it. PresCheck 17 checks, a Go test in `mcp-go/smartart_test.go`.
+
+Found on the way, and fixed in terotests/Ranger (`compiler/Lang.rgr`): Go's
+`indexOfFrom` hid a caller's `idx` and Go lost the elements a callee pushed
+onto an array parameter (both ported from claude/nifty-dijkstra-vq2qit);
+C++'s `buffer_from_string` read its argument twice. Not fixed: the C++
+writer stops on a subclass with no constructor of its own (SaText says so
+where a host would hit it).
+
+Not done in phase 1: a measurer with the host's real fonts (the engine
+guesses 0.52 em per character, so on a slide the text may come out a little
+smaller or larger than it needs); the oracle comparison (no corpus yet).
 
 ## Phases
 
