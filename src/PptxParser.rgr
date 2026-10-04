@@ -13,6 +13,7 @@ Import "../../ooxml/OpcPackage.rgr"
 Import "../../xml/XmlCore.rgr"
 Import "PptxModel.rgr"
 Import "PptxGeom.rgr"
+Import "../smartart/SaDataReader.rgr"
 
 class PptxParser {
     def pkg:OpcPackage (new OpcPackage())
@@ -1648,8 +1649,99 @@ class PptxParser {
             def hit2@(optional):PptxShape shape
             return hit2
         }
+        ; SmartArt: `dgm:relIds` names the data, layout, style and colours
+        def relIds@(optional):XmlNode (gf.find("relIds"))
+        if (!null? relIds) {
+            def frame (new PptxShape())
+            frame.name = frameName
+            frame.altText = frameAlt
+            frame.shapeId = frameId
+            frame.x = x
+            frame.y = y
+            frame.width = w
+            frame.height = h
+            return (this.parseDiagram(gf (unwrap relIds) slidePart frame))
+        }
         def __missing@(optional):PptxShape
         return __missing
+    }
+
+    ; A SmartArt diagram, drawn from the drawing part PowerPoint saved with it.
+    ;
+    ; The data part's `dsp:dataModelExt/@relId` names, from the SLIDE, the
+    ; drawing part: PowerPoint's own last layout of the diagram, as ordinary
+    ; DrawingML shapes in the frame's coordinate space. Those shapes are read
+    ; by the same code as a slide's (`dsp:sp` has the same children as `p:sp`)
+    ; and become the children of a group whose child space is the frame.
+    ;
+    ; A diagram with no drawing part — what anything but PowerPoint writes —
+    ; comes back as nothing here and stays an opaque element, kept and not
+    ; drawn, until the layout engine can draw it (PLAN_SMARTART.md, phase 1).
+    fn parseDiagram@(optional):PptxShape (gf:XmlNode rel:XmlNode slidePart:string frame:PptxShape) {
+        def none@(optional):PptxShape
+        def dm:string (rel.attr("r:dm"))
+        if ((strlen dm) == 0) {
+            return none
+        }
+        def dataPart:string (pkg.resolveRelationship(slidePart dm))
+        if ((strlen dataPart) == 0) {
+            return none
+        }
+        def read:SaReadResult (SaDataReader.read((pkg.readXml(dataPart))))
+        if (read.ok == false) {
+            return none
+        }
+        def model:SaModel read.model
+        if ((strlen model.drawingRelId) == 0) {
+            return none
+        }
+        def drawPart:string (pkg.resolveRelationship(slidePart model.drawingRelId))
+        if ((strlen drawPart) == 0) {
+            return none
+        }
+        def rootOpt@(optional):XmlNode (xmlParser.parse((pkg.readXml(drawPart))))
+        if (null? rootOpt) {
+            return none
+        }
+        def treeOpt@(optional):XmlNode ((unwrap rootOpt).firstChild("spTree"))
+        if (null? treeOpt) {
+            return none
+        }
+        def tree:XmlNode (unwrap treeOpt)
+        def shape:PptxShape frame
+        shape.kind = (PptxShapeKind.group())
+        shape.isDiagram = true
+        if ((strlen shape.name) == 0) {
+            shape.name = "Diagram"
+        }
+        shape.hasXfrm = true
+        shape.hasOff = true
+        shape.hasExt = ((shape.width > 0.0) && (shape.height > 0.0))
+        shape.chX = 0.0
+        shape.chY = 0.0
+        shape.chW = shape.width
+        shape.chH = shape.height
+        def i:int 0
+        while (i < (tree.childCount())) {
+            def child:XmlNode (tree.childAt(i))
+            if (child.isText == false) {
+                if ((child.name != "nvGrpSpPr") && (child.name != "grpSpPr")) {
+                    def parsed@(optional):PptxShape (this.parseTreeChild(child drawPart))
+                    if (!null? parsed) {
+                        push shape.children (unwrap parsed)
+                    }
+                }
+            }
+            i = (i + 1)
+        }
+        if ((array_length shape.children) == 0) {
+            return none
+        }
+        shape.diagramFrame.set(slidePart gf.srcStart gf.srcEnd)
+        shape.diagramText = (model.outline())
+        shape.diagramSig = (shape.diagramSignature())
+        def hit@(optional):PptxShape shape
+        return hit
     }
 
     fn parseTreeChild@(optional):PptxShape (node:XmlNode slidePart:string) {

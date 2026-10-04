@@ -56,6 +56,7 @@
     "pptx:seam:scan": "node gallery/pptx/tools/seam_scan.mjs",
     "pptx:seam:test": "bash scripts/rgr-suite.sh ./gallery/pptx/tests/PptxSeamTest.rgr ./gallery/pptx/bin PptxSeamTest.js",
     "pptx:shapes:sheet": "bash scripts/rgr-suite.sh ./gallery/pptx/src/pptx_shape_sheet.rgr ./gallery/pptx/bin pptx_shape_sheet.js",
+    "pptx:smartart:deck:test": "bash scripts/rgr-suite.sh ./gallery/pptx/tests/PptxSmartArtTest.rgr ./gallery/pptx/bin PptxSmartArtTest.js",
     "pptx:smartart:test": "bash gallery/pptx/smartart/tools/run_tests.sh",
     "pptx:test": "bash scripts/rgr-suite.sh ./gallery/pptx/tests/PptxTest.rgr ./gallery/pptx/bin PptxTest.js",
     "pptx:text:test": "bash scripts/rgr-suite.sh ./gallery/pptx/tests/PptxTextEditTest.rgr ./gallery/pptx/bin PptxTextEditTest.js",

@@ -1,0 +1,291 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; PptxSmartArtTest — a SmartArt diagram read from its drawing, drawn, and saved
+; ==============================================================================
+;
+;   npm run pptx:smartart:deck:test
+;
+; Fixture 38 holds two diagrams. "Process" has the drawing part PowerPoint
+; saves beside a diagram's data: three steps and two arrows, which this reader
+; draws as a group. "NoDrawing" has only its data, as anything but PowerPoint
+; writes it, and stays an opaque element until the layout engine exists.
+;
+; What a save has to do with the drawn one: put the SmartArt back as SmartArt
+; (its own graphicFrame, with the relationships it names), restate only where
+; it is, and — once its text was edited here — write it as the shapes it now
+; is rather than a SmartArt that would contradict them.
+; ==============================================================================
+
+Import "../src/PptxModel.rgr"
+Import "../src/PptxParser.rgr"
+Import "../src/PptxResolver.rgr"
+Import "../src/PptxEdit.rgr"
+Import "../src/PptxWriter.rgr"
+Import "../src/PptxToEvg.rgr"
+Import "../../ooxml/OpcPackage.rgr"
+Import "pkg:evg/EVGDisplayList.rgr"
+
+class SmartArtCheck {
+    def passed:int 0
+    def failed:int 0
+
+    Constructor () {
+    }
+
+    fn ok:void (name:string cond:boolean) {
+        if cond {
+            passed = (passed + 1)
+            print ("  PASS " + name)
+        } {
+            failed = (failed + 1)
+            print ("  FAIL " + name)
+        }
+    }
+
+    fn eqStr:void (name:string got:string want:string) {
+        this.ok((name + " (got '" + got + "' want '" + want + "')") (got == want))
+    }
+
+    fn eqInt:void (name:string got:int want:int) {
+        this.ok((name + " (got " + (to_string got) + " want " + (to_string want) + ")") (got == want))
+    }
+
+    fn near:void (name:string got:double want:double) {
+        def d:double (got - want)
+        if (d < 0.0) {
+            d = (0.0 - d)
+        }
+        this.ok((name + " (got " + (to_string got) + " want " + (to_string want) + ")") (d < 0.05))
+    }
+}
+
+class PptxSmartArtTest {
+
+    sfn countOf:int (hay:string needle:string) {
+        def n:int 0
+        def from:int 0
+        def rest:string hay
+        def at:int (indexOf rest needle)
+        while (at >= 0) {
+            n = (n + 1)
+            from = (at + (strlen needle))
+            rest = (substring rest from (strlen rest))
+            at = (indexOf rest needle)
+        }
+        return n
+    }
+
+    sfn byName:PptxShape (shapes:[PptxShape] name:string) {
+        def i:int 0
+        while (i < (array_length shapes)) {
+            def s:PptxShape (itemAt shapes i)
+            if (s.name == name) {
+                return s
+            }
+            i = (i + 1)
+        }
+        return (new PptxShape())
+    }
+
+    sfn open:PptxParser () {
+        def parser (new PptxParser())
+        parser.openParts("gallery/pptx/fixtures" "38-smartart-drawing.pptx")
+        return parser
+    }
+
+    sfn testRead:void (c:SmartArtCheck) {
+        print "-- read --"
+        def parser:PptxParser (PptxSmartArtTest.open())
+        def raw:PptxPresentation (parser.parsePresentation())
+        c.eqInt("one slide" (raw.slideCount()) 1)
+        def slide:PptxSlide (itemAt raw.slides 0)
+        c.eqInt("the heading and the drawn diagram are shapes" (array_length slide.shapes) 2)
+        def d:PptxShape (PptxSmartArtTest.byName(slide.shapes "Process"))
+        c.ok("the diagram is one" d.isDiagram)
+        c.ok("drawn as a group" (d.kind == (PptxShapeKind.group())))
+        c.near("at the frame's left (1524000 EMU)" d.x 120.0)
+        c.near("at the frame's top" d.y (1600000.0 / 12700.0))
+        c.near("the frame's width" d.width (6096000.0 / 12700.0))
+        c.near("its child space is the frame: width" d.chW d.width)
+        c.near("height" d.chH d.height)
+        c.near("from 0,0" (d.chX + d.chY) 0.0)
+        c.eqInt("five shapes from the drawing" (array_length d.children) 5)
+        def first:PptxShape (itemAt d.children 0)
+        def arrow:PptxShape (itemAt d.children 1)
+        def last:PptxShape (itemAt d.children 4)
+        c.eqStr("a step is a rounded rectangle" first.preset "roundRect")
+        c.eqStr("between steps an arrow" arrow.preset "rightArrow")
+        c.eqStr("the first step's text" (first.text.plainText()) "Plan")
+        c.eqStr("the last step's text" (last.text.plainText()) "Ship")
+        c.near("children are in the frame's space: the first at 0" first.x 0.0)
+        c.near("the last at 4496000 EMU" last.x (4496000.0 / 12700.0))
+        c.ok("an arrow has no text" ((arrow.text.plainText()) == ""))
+        c.eqStr("the diagram's text, from its data" d.diagramText "Plan\nBuild\nShip\n")
+        c.ok("its signature was taken" ((strlen d.diagramSig) > 0))
+        c.eqStr("which is what it says now" d.diagramSig (d.diagramSignature()))
+        c.ok("its frame's span is known" d.diagramFrame.known)
+        c.eqStr("in the slide part" d.diagramFrame.part "ppt/slides/slide1.xml")
+        ; the one with no drawing: kept, not drawn
+        c.eqInt("the diagram with no drawing is kept as an element" (array_length slide.opaque) 1)
+        if ((array_length slide.opaque) == 1) {
+            def op:PptxOpaque (itemAt slide.opaque 0)
+            c.eqStr("a graphicFrame" op.name "graphicFrame")
+            c.eqInt("after both shapes" op.afterShapes 2)
+        }
+    }
+
+    sfn testDraw:void (c:SmartArtCheck) {
+        print "-- drawn --"
+        def parser:PptxParser (PptxSmartArtTest.open())
+        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def slide:PptxSlide (itemAt pres.slides 0)
+        def d:PptxShape (PptxSmartArtTest.byName(slide.shapes "Process"))
+        c.ok("the resolver keeps it a diagram" d.isDiagram)
+        c.eqStr("and keeps its signature" d.diagramSig (d.diagramSignature()))
+        def conv (new PptxToEvg())
+        def dl:EVGDisplayList (conv.slideToDisplayList(slide))
+        def planX:double -1.0
+        def shipX:double -1.0
+        def headingY:double -1.0
+        def planY:double -1.0
+        def i:int 0
+        while (i < (array_length dl.cmds)) {
+            def cmd:EVGDrawCmd (itemAt dl.cmds i)
+            if (cmd.text == "Plan") {
+                planX = cmd.x
+                planY = cmd.y
+            }
+            if (cmd.text == "Ship") {
+                shipX = cmd.x
+            }
+            if (cmd.text == "SmartArt") {
+                headingY = cmd.y
+            }
+            i = (i + 1)
+        }
+        c.ok("the first step's text is drawn" (planX >= 0.0))
+        c.ok("the last step's too" (shipX >= 0.0))
+        c.ok("left to right" (shipX > planX))
+        c.ok("under the heading" (planY > headingY))
+        ; frame at 120 pt; a drawing read in slide space instead of the frame's
+        ; would put the first step's text at the slide's left edge
+        def leftPx:double (conv.ptToPx(120.0))
+        c.ok("inside the frame, not at the slide's edge" (planX > leftPx))
+    }
+
+    sfn save:string (pres:PptxPresentation parser:PptxParser name:string) {
+        def writer (new PptxWriter())
+        writer.saveOver(pres parser.pkg "gallery/pptx/bin" name)
+        def out (new OpcPackage())
+        if ((out.openParts("gallery/pptx/bin" name)) == false) {
+            return ""
+        }
+        return (out.readXml("ppt/slides/slide1.xml"))
+    }
+
+    sfn edited:PptxPresentation (parser:PptxParser) {
+        return ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+    }
+
+    sfn testSaveMoved:void (c:SmartArtCheck) {
+        print "-- saved after it was moved --"
+        def parser:PptxParser (PptxSmartArtTest.open())
+        def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
+        def ed (new PptxEditor())
+        ed.attach(pres)
+        ed.gotoSlide(0)
+        def shapes:[PptxShape] (ed.editableShapes())
+        def target:PptxShape (PptxSmartArtTest.byName(shapes "Process"))
+        c.ok("the editor sees the diagram" target.isDiagram)
+        ed.select(target.editId)
+        ed.moveSelection(10.0 20.0)
+        ; undo and redo go through the editor's copy of the shape
+        ed.undo()
+        ed.redo()
+        def slide:PptxSlide (itemAt pres.slides 0)
+        c.ok("the move marked the slide" slide.dirty)
+        def moved:PptxShape (PptxSmartArtTest.byName(slide.shapes "Process"))
+        c.ok("still a diagram after undo and redo" moved.isDiagram)
+        def after:string (PptxSmartArtTest.save(pres parser "smartart-moved.pptx"))
+        c.ok("the deck was written" ((strlen after) > 0))
+        c.eqInt("both diagrams are SmartArt frames" (PptxSmartArtTest.countOf(after "<dgm:relIds")) 2)
+        c.ok("the drawn one still names its data" ((indexOf after "r:dm=\"rId10\"") >= 0))
+        c.ok("and the other one its own" ((indexOf after "r:dm=\"rId15\"") >= 0))
+        c.ok("no shapes from the drawing were written" ((indexOf after "rightArrow") < 0))
+        ; 120 pt + 10 pt = 130 pt = 1651000 EMU
+        c.ok("at its new place" ((indexOf after "<a:off x=\"1651000\" y=\"1854000\"/>") >= 0))
+        c.ok("its size restated" ((indexOf after "<a:ext cx=\"6096000\" cy=\"1500000\"/>") >= 0))
+        c.eqInt("one xfrm in the frame, not two" (PptxSmartArtTest.countOf(after "<p:xfrm>")) 2)
+        def out (new OpcPackage())
+        out.openParts("gallery/pptx/bin" "smartart-moved.pptx")
+        def rels:string (out.readXml("ppt/slides/_rels/slide1.xml.rels"))
+        c.ok("the diagram's relationships came through, the drawing's too"
+            (((indexOf rels "rId10") >= 0) && ((indexOf rels "rId14") >= 0)))
+        c.ok("and the parts are in the package"
+            ((out.hasPart("ppt/diagrams/data1.xml")) && (out.hasPart("ppt/diagrams/drawing1.xml"))))
+        ; and it reads back as the same diagram, where it was put
+        def again (new PptxParser())
+        again.openParts("gallery/pptx/bin" "smartart-moved.pptx")
+        def raw2:PptxPresentation (again.parsePresentation())
+        def s2:PptxSlide (itemAt raw2.slides 0)
+        def d2:PptxShape (PptxSmartArtTest.byName(s2.shapes "Process"))
+        c.ok("read back, it is a diagram" d2.isDiagram)
+        c.near("at its new place" d2.x 130.0)
+        c.eqInt("with its five shapes" (array_length d2.children) 5)
+        c.eqInt("the other is still kept, not drawn" (array_length s2.opaque) 1)
+        ; ids are numbered again on a write: no two shapes share one
+        c.eqInt("the frame got a fresh id, not its old 3 twice" (PptxSmartArtTest.countOf(after "id=\"3\"")) 1)
+    }
+
+    sfn testSaveEdited:void (c:SmartArtCheck) {
+        print "-- saved after its text was edited --"
+        def parser:PptxParser (PptxSmartArtTest.open())
+        def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
+        def slide:PptxSlide (itemAt pres.slides 0)
+        def d:PptxShape (PptxSmartArtTest.byName(slide.shapes "Process"))
+        def build:PptxShape (itemAt d.children 2)
+        def para:PptxParagraph (itemAt build.text.paragraphs 0)
+        def run:PptxTextRun (itemAt para.runs 0)
+        run.text = "Build it"
+        slide.dirty = true
+        c.ok("an edit inside changes the signature" (d.diagramSig != (d.diagramSignature())))
+        def after:string (PptxSmartArtTest.save(pres parser "smartart-edited.pptx"))
+        c.ok("the edit was written" ((indexOf after "Build it") >= 0))
+        c.eqInt("only the diagram with no drawing is still SmartArt" (PptxSmartArtTest.countOf(after "<dgm:relIds")) 1)
+        c.ok("the edited one is a group of shapes" ((indexOf after "<p:grpSp>") >= 0))
+        c.ok("with its arrows" ((indexOf after "rightArrow") >= 0))
+    }
+
+    sfn testNewFile:void (c:SmartArtCheck) {
+        print "-- written as a new file --"
+        def parser:PptxParser (PptxSmartArtTest.open())
+        def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
+        def writer (new PptxWriter())
+        writer.save(pres "gallery/pptx/bin" "smartart-new.pptx")
+        def out (new OpcPackage())
+        def ok:boolean (out.openParts("gallery/pptx/bin" "smartart-new.pptx"))
+        c.ok("a new file is written" ok)
+        def xml:string (out.readXml("ppt/slides/slide1.xml"))
+        ; a new package has none of the diagram's parts, so a frame naming
+        ; them would name nothing: the drawing goes as shapes
+        c.eqInt("no SmartArt frame in a new file" (PptxSmartArtTest.countOf(xml "<dgm:relIds")) 0)
+        c.ok("the drawn diagram is there as shapes" ((indexOf xml "Plan") >= 0))
+    }
+
+    sfn main:void () {
+        print "== PptxSmartArtTest =="
+        def c (new SmartArtCheck())
+        PptxSmartArtTest.testRead(c)
+        PptxSmartArtTest.testDraw(c)
+        PptxSmartArtTest.testSaveMoved(c)
+        PptxSmartArtTest.testSaveEdited(c)
+        PptxSmartArtTest.testNewFile(c)
+        print ""
+        print ("passed = " + (to_string c.passed) + "  failed = " + (to_string c.failed))
+        if (c.failed == 0) {
+            print "ALL PASS"
+        } {
+            print "FAILURES"
+        }
+    }
+}

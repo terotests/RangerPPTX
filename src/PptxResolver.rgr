@@ -210,6 +210,10 @@ class PptxResolver {
         out.chY = shape.chY
         out.chW = shape.chW
         out.chH = shape.chH
+        out.isDiagram = shape.isDiagram
+        out.diagramFrame.copyFrom(shape.diagramFrame)
+        out.diagramSig = shape.diagramSig
+        out.diagramText = shape.diagramText
         def i:int 0
         while (i < (array_length shape.children)) {
             push out.children (this.cloneShape((itemAt shape.children i)))

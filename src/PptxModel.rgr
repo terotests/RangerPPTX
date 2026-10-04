@@ -965,6 +965,21 @@ class PptxShape {
     def chY:double 0.0
     def chW:double 0.0
     def chH:double 0.0
+    ; A SmartArt diagram (`graphicFrame` holding `dgm:relIds`), drawn from the
+    ; drawing part PowerPoint saved beside its data. It is a GROUP to everything
+    ; that draws, selects and moves shapes — its children are the drawing's
+    ; shapes in the frame's own space (chOff 0,0, chExt = the frame) — and a
+    ; FRAME to the writer: saved over its own file, the original `graphicFrame`
+    ; goes back byte for byte with only its position and size restated, so
+    ; PowerPoint opens it as the SmartArt it was. `diagramSig` is what the
+    ; children said when they were read; a diagram whose text was edited here
+    ; no longer matches it and is written as the shapes it now is.
+    def isDiagram:boolean false
+    def diagramFrame:SourceRef (new SourceRef())
+    def diagramSig:string ""
+    ; the diagram's text, one line per node, indented by level — what a screen
+    ; reader is given when the author wrote no alt text
+    def diagramText:string ""
 
     Constructor () {
         def c:[PptxShape]
@@ -985,6 +1000,30 @@ class PptxShape {
         pathUnit = pu
         def pe:[int]
         pathEnds = pe
+    }
+
+    ; What a diagram's shapes say and where they are, to a tenth of a point:
+    ; equal to `diagramSig` while nothing inside the diagram was changed.
+    fn diagramSignature:string () {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length children)) {
+            def c:PptxShape (itemAt children i)
+            out = (out + c.preset + "|" + (c.text.plainText()) + "|" + (PptxShape.tenths(c.x)) + "," + (PptxShape.tenths(c.y)) + "," + (PptxShape.tenths(c.width)) + "," + (PptxShape.tenths(c.height)) + ";")
+            if ((array_length c.children) > 0) {
+                out = (out + "{" + (c.diagramSignature()) + "}")
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn tenths:string (v:double) {
+        def t:int (to_int ((v * 10.0) + 0.5))
+        if (v < 0.0) {
+            t = (to_int ((v * 10.0) - 0.5))
+        }
+        return (to_string t)
     }
 }
 

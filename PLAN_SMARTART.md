@@ -1,7 +1,8 @@
 # PLAN_SMARTART — a SmartArt layout engine
 
-Status: plan. Nothing below "What exists" is built yet. The engine lives in
-this repository under `smartart/`; terotests/RangerSmartArt is not used.
+Status: phase 0 done (2026-10-04): the data model, and drawing a diagram
+PowerPoint saved. Phases 1–4 not started. The engine lives in this repository
+under `smartart/`; terotests/RangerSmartArt is not used.
 
 ## Why
 
@@ -93,13 +94,9 @@ RangerPPTX/
     alg/SaTx.rgr   alg/SaConn.rgr   alg/SaComposite.rgr   (sp is a no-op)
     SaText.rgr           text fit, shared font size (OfficeTextMeasure)
     SaStyle.rgr          quick styles and colour sets, resolved against a theme
-    SaShape.rgr          the output: preset + adjusts or path, box, rotation, flip,
-                         text, font size, fill/line/effect, z, the point it presents
-    SaEngine.rgr         the facade: layout(xml, overrides, w, h, theme) → SaResult
-                         (shapes, warnings, preferred aspect)
-    SaToEvg.rgr          SaShape → display-list commands in a box
-    SaToPptx.rgr         SaShape → PptxShape group (phase 1 export)
-    SaDrawing.rgr        drawing part read (phase 0) and written (phase 3)
+    SaEngine.rgr         the facade: layout(xml, overrides, w, h, theme) → a PptxShape
+                         group (isDiagram) plus warnings and a preferred aspect
+    SaDrawing.rgr        drawing part written (phase 3); it is READ by PptxParser
     builtin/*.xml        our own layout definitions, written in the layoutDef language
     SaBuiltins.rgr       generated from builtin/ by tools/embed_layouts.mjs — no file
                          I/O at run time, so the Go MCP binary and the browser get them
@@ -110,8 +107,12 @@ RangerPPTX/
 
 Constraints on the code:
 
-- It imports `gallery/xml/XmlCore`, `gallery/office` and `lib/evg` only, and
-  nothing from `src/` except in `SaToPptx` and `SaDrawing`. `XmlCore`, not
+- Its output is a `PptxShape` group (`isDiagram`, children in the frame's own
+  space), the same thing `PptxParser` makes from PowerPoint's drawing part.
+  So one representation is drawn (`PptxToEvg`), exported (`PptxWriter`) and
+  edited, whether PowerPoint or the engine laid the diagram out; there is no
+  second shape type to convert. The data-model layer (`SaModel`,
+  `SaDataReader`, `SaDataWriter`) imports `gallery/xml/XmlCore` only. `XmlCore`, not
   `XmlLite`: the MCP build already cannot put both in one compile.
 - It compiles to Go, C++ and JavaScript. Sliqtly's MCP server is the editor's
   deck model compiled to Go, and it must lay out, check and render SmartArt
@@ -192,12 +193,12 @@ All of it in Ranger code (`src/`), so the editor and the MCP server share it.
    node's attributes, found by the box's `srcStart` (the key `MdToPptx`
    already uses to find a picture's box).
 3. **On the slide.** `PresDeck.slideList` replaces a kind-2 command whose
-   `src` is a SmartArt with `SaToEvg`'s commands for that box, laid out at the
+   `src` is a SmartArt with the engine's group drawn by `PptxToEvg` into that box, laid out at the
    box's size with the slide's theme. Cached by path, size, overrides and
    theme. Tagged `smartart:<path>:<modelId>` per shape, for the layout report
    and a later node-by-node reveal.
 4. **PPTX.** `PresApp.stillSmartArt`, beside `stillDiagrams`, replaces the
-   picture shape whose `imagePart` is the SmartArt with `SaToPptx`'s group
+   picture shape whose `imagePart` is the SmartArt with the engine's group
    (phase 1) or a native SmartArt frame and its parts (phase 3). The XML must
    never reach the deck as a picture part.
 5. **Web host.** `web/picture.js` / `web/main.js`: a SmartArt file is passed
@@ -240,6 +241,24 @@ to it. A corpus saved by PowerPoint — every built-in layout above with the nod
 counts and depths of the Layouts suite — gives each layout test its expected
 boxes. Producing it needs PowerPoint once (a macro that inserts each layout,
 fills it and saves); the files then live in `smartart/oracle/`.
+
+## Phase 0, as built
+
+| Piece | File | Tests |
+| --- | --- | --- |
+| Data model | `smartart/SaModel.rgr` | |
+| Reader: PowerPoint's form and the short form; refusals with element and reason | `smartart/SaDataReader.rgr` | `smartart/tests/SaDataTest.rgr`: 110 checks, JavaScript, C++ and Go (`npm run pptx:smartart:test`) |
+| Writer | `smartart/SaDataWriter.rgr` | (same suite: round trips) |
+| A diagram with a drawing part drawn as a group; saved over its file as the same SmartArt frame (position and id restated); written as shapes once its text was edited, in a new file, or on another slide | `src/PptxParser.rgr` `parseDiagram`, `src/PptxWriter.rgr` `diagramFrameXml`, `PptxShape.isDiagram`/`diagramFrame`/`diagramSig`/`diagramText`, copied in `PptxEdit` and `PptxResolver` | `tests/PptxSmartArtTest.rgr`: 59 checks (`npm run pptx:smartart:deck:test`); fixture `38-smartart-drawing.pptx` |
+| Oracle corpus macro | `smartart/oracle/make_corpus.bas`, `oracle/README.md` | not run yet: needs PowerPoint |
+
+The other pptx suites (test, writer, editor, text, chrome, seam, frame, css,
+a11y, editor host, evg, office shapes) and the C++ check pass unchanged.
+
+The parser and writer are not verified on Go: `OpcPackage` does not build on
+Go with the current compiler (`indexOf` with a start argument named `idx`
+expands to a closure that shadows it, `compiler/Lang.rgr`). The data-model
+layer, which has no `OpcPackage`, passes on Go.
 
 ## Phases
 

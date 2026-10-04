@@ -81,6 +81,9 @@ class PptxWriter {
     ; dropping it.
     def overPkg:OpcPackage (new OpcPackage())
     def keepOpaque:boolean false
+    ; the slide part being written over, while one is: a SmartArt frame is
+    ; kept only on the slide whose relationships it names
+    def writingPart:string ""
     ; part path → its text. One slide asks for the same part once per opaque
     ; element it holds, and a part is not cheap to decode twice.
     def opaqueParts:[string:string]
@@ -944,6 +947,12 @@ class PptxWriter {
     }
 
     fn shapeXml:string (shape:PptxShape) {
+        if shape.isDiagram {
+            def kept:string (this.diagramFrameXml(shape))
+            if ((strlen kept) > 0) {
+                return kept
+            }
+        }
         if (shape.kind == (PptxShapeKind.group())) {
             return (this.groupXml(shape))
         }
@@ -1891,6 +1900,55 @@ class PptxWriter {
     ; normally points at an embedded workbook for its data, and a deck written
     ; here has none, so the cache is the data. Every reader looks there first —
     ; it is what makes a chart draw before the workbook is opened.
+    ; A SmartArt diagram, saved over the file it came from: its own
+    ; `graphicFrame`, byte for byte, with the id this write gave it and the
+    ; position and size it has now. The relationships it names (data, layout,
+    ; style, colours, drawing) are kept with the slide's, so it is the same
+    ; SmartArt when PowerPoint opens it.
+    ;
+    ; Empty when that cannot be done — a new file, or a diagram whose shapes
+    ; were edited here — and the diagram is written as the group it is drawn
+    ; as. Shapes, not SmartArt: what was edited is kept, and the diagram stops
+    ; being one PowerPoint can lay out again.
+    fn diagramFrameXml:string (shape:PptxShape) {
+        if (shape.diagramSig != (shape.diagramSignature())) {
+            return ""
+        }
+        ; only on the slide it came from: that slide's relationships are the
+        ; ones its frame names, and a copy on another slide would point at
+        ; nothing
+        if (shape.diagramFrame.part != writingPart) {
+            return ""
+        }
+        def frame:string (this.opaqueText(shape.diagramFrame))
+        if ((strlen frame) == 0) {
+            return ""
+        }
+        def xs:int (indexOf frame "<p:xfrm")
+        def xe:int (indexOf frame "</p:xfrm>")
+        if ((xs < 0) || (xe < xs)) {
+            return ""
+        }
+        def xfrm:string ("<p:xfrm><a:off x=\"" + (PptxWriter.emu(shape.x)) + "\" y=\"" + (PptxWriter.emu(shape.y)) + "\"/><a:ext cx=\"" + (PptxWriter.emu(shape.width)) + "\" cy=\"" + (PptxWriter.emu(shape.height)) + "\"/></p:xfrm>")
+        def out:string ((substring frame 0 xs) + xfrm + (substring frame (xe + (strlen "</p:xfrm>")) (strlen frame)))
+        ; the id: every shape is numbered again on a write
+        def cs:int (indexOf out "<p:cNvPr")
+        if (cs >= 0) {
+            def rest:string (substring out cs (strlen out))
+            def ia:int (indexOf rest " id=\"")
+            if (ia >= 0) {
+                def vs:int ((cs + ia) + 5)
+                def tail:string (substring out vs (strlen out))
+                def q:int (indexOf tail "\"")
+                if (q >= 0) {
+                    def id:int (this.idFor(shape))
+                    out = ((substring out 0 vs) + (to_string id) + (substring out (vs + q) (strlen out)))
+                }
+            }
+        }
+        return out
+    }
+
     fn chartFrameXml:string (shape:PptxShape) {
         push charts (PptxWriter.chartXml(shape.chart))
         def taken:[string:boolean]
@@ -2272,7 +2330,12 @@ class PptxWriter {
                 rewrite = true
             }
             if rewrite {
+                writingPart = ""
+                if (isNew == false) {
+                    writingPart = path2
+                }
                 def body:string (this.slideXml(slide2))
+                writingPart = ""
                 def notesPath:string slide2.notesPart
                 if ((strlen (slide2.notesText())) > 0) {
                     if ((strlen notesPath) == 0) {

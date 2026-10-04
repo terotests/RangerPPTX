@@ -1179,6 +1179,136 @@ def gradient_png(w: int = 120, h: int = 80) -> bytes:
     return buf.getvalue()
 
 
+# --- 38: SmartArt with the drawing PowerPoint saved beside it --------------
+#
+# A SmartArt diagram is a graphicFrame naming four parts (data, layout, quick
+# style, colours) and, when PowerPoint wrote the file, a fifth: the drawing,
+# PowerPoint's own last layout of the diagram as ordinary DrawingML shapes in
+# the frame's coordinate space. The data part names it, from the SLIDE's
+# relationships, in `dsp:dataModelExt/@relId`.
+#
+# Two diagrams on one slide. "Process" has a drawing: three steps and two
+# arrows, which a reader can draw without a layout engine. "NoDrawing" has
+# only its data, as anything but PowerPoint writes it; until the engine lays
+# it out it is kept and not drawn. The layout, style and colour parts are
+# empty definitions: nothing reads them yet, and both frames must survive a
+# save with the five relationships they name.
+
+DGM_NS = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+DSP_NS = "http://schemas.microsoft.com/office/drawing/2008/diagram"
+
+
+def smartart_frame(sid: int, name: str, x: int, y: int, cx: int, cy: int,
+                   dm: str, lo: str, qs: str, cs: str) -> str:
+    return f"""      <p:graphicFrame>
+        <p:nvGraphicFramePr>
+          <p:cNvPr id="{sid}" name="{name}"/>
+          <p:cNvGraphicFramePr/>
+          <p:nvPr/>
+        </p:nvGraphicFramePr>
+        <p:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></p:xfrm>
+        <a:graphic>
+          <a:graphicData uri="{DGM_NS}">
+            <dgm:relIds xmlns:dgm="{DGM_NS}"
+             xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+             r:dm="{dm}" r:lo="{lo}" r:qs="{qs}" r:cs="{cs}"/>
+          </a:graphicData>
+        </a:graphic>
+      </p:graphicFrame>"""
+
+
+def smartart_data(texts: list[str], drawing_rel: str | None) -> str:
+    pts = ['<dgm:pt modelId="{D}" type="doc"><dgm:prSet loTypeId="urn:microsoft.com/office/officeart/2005/8/layout/process1" '
+           'qsTypeId="urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1" '
+           'csTypeId="urn:microsoft.com/office/officeart/2005/8/colors/accent1_2"/><dgm:spPr/>'
+           '<dgm:t><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr lang="en-US"/></a:p></dgm:t></dgm:pt>']
+    cxns = []
+    for i, t in enumerate(texts):
+        pts.append(f'<dgm:pt modelId="{{N{i}}}"><dgm:prSet phldrT="[Text]"/><dgm:spPr/><dgm:t><a:bodyPr/><a:lstStyle/>'
+                   f'<a:p><a:r><a:rPr lang="en-US"/><a:t>{t}</a:t></a:r></a:p></dgm:t></dgm:pt>')
+        pts.append(f'<dgm:pt modelId="{{P{i}}}" type="parTrans" cxnId="{{C{i}}}"><dgm:prSet/><dgm:spPr/></dgm:pt>')
+        pts.append(f'<dgm:pt modelId="{{S{i}}}" type="sibTrans" cxnId="{{C{i}}}"><dgm:prSet/><dgm:spPr/></dgm:pt>')
+        cxns.append(f'<dgm:cxn modelId="{{C{i}}}" srcId="{{D}}" destId="{{N{i}}}" srcOrd="{i}" destOrd="0" '
+                    f'parTransId="{{P{i}}}" sibTransId="{{S{i}}}"/>')
+    ext = ""
+    if drawing_rel:
+        ext = (f'<dgm:extLst><a:ext uri="{DSP_NS}"><dsp:dataModelExt xmlns:dsp="{DSP_NS}" '
+               f'relId="{drawing_rel}" minVer="{DGM_NS}"/></a:ext></dgm:extLst>')
+    return ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            f'<dgm:dataModel xmlns:dgm="{DGM_NS}" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            f'<dgm:ptLst>{"".join(pts)}</dgm:ptLst><dgm:cxnLst>{"".join(cxns)}</dgm:cxnLst>'
+            f'<dgm:bg/><dgm:whole/>{ext}</dgm:dataModel>\n')
+
+
+def dsp_shape(model: str, x: int, y: int, cx: int, cy: int, prst: str, text: str) -> str:
+    body = ""
+    if text:
+        body = ('<dsp:txBody><a:bodyPr spcFirstLastPara="0" vert="horz" wrap="square" lIns="68580" tIns="68580" '
+                'rIns="68580" bIns="68580" numCol="1" spcCol="1270" anchor="ctr" anchorCtr="0"><a:noAutofit/></a:bodyPr>'
+                '<a:lstStyle/><a:p><a:pPr marL="0" lvl="0" indent="0" algn="ctr" defTabSz="800100">'
+                '<a:lnSpc><a:spcPct val="90000"/></a:lnSpc><a:spcBef><a:spcPct val="0"/></a:spcBef>'
+                '<a:spcAft><a:spcPct val="35000"/></a:spcAft></a:pPr>'
+                f'<a:r><a:rPr lang="en-US" sz="1800" kern="1200"/><a:t>{text}</a:t></a:r></a:p></dsp:txBody>')
+    return (f'<dsp:sp modelId="{model}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr>'
+            f'<dsp:spPr><a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+            f'<a:prstGeom prst="{prst}"><a:avLst/></a:prstGeom>'
+            '<a:solidFill><a:schemeClr val="accent1"/></a:solidFill>'
+            '<a:ln w="12700"><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:ln></dsp:spPr>'
+            '<dsp:style><a:lnRef idx="2"><a:scrgbClr r="0" g="0" b="0"/></a:lnRef>'
+            '<a:fillRef idx="1"><a:scrgbClr r="0" g="0" b="0"/></a:fillRef>'
+            '<a:effectRef idx="0"><a:scrgbClr r="0" g="0" b="0"/></a:effectRef>'
+            '<a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></dsp:style>'
+            f'{body}</dsp:sp>')
+
+
+def smartart_drawing() -> str:
+    shapes = [
+        dsp_shape("{R0}", 0, 270000, 1600000, 960000, "roundRect", "Plan"),
+        dsp_shape("{A0}", 1754000, 550000, 340000, 400000, "rightArrow", ""),
+        dsp_shape("{R1}", 2248000, 270000, 1600000, 960000, "roundRect", "Build"),
+        dsp_shape("{A1}", 4002000, 550000, 340000, 400000, "rightArrow", ""),
+        dsp_shape("{R2}", 4496000, 270000, 1600000, 960000, "roundRect", "Ship"),
+    ]
+    return ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+            f'<dsp:drawing xmlns:dgm="{DGM_NS}" xmlns:dsp="{DSP_NS}" '
+            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            '<dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>'
+            f'{"".join(shapes)}</dsp:spTree></dsp:drawing>\n')
+
+
+def smartart_fixture() -> None:
+    dgm = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagram"
+    rels = [
+        f'<Relationship Id="rId10" Type="{dgm}Data" Target="../diagrams/data1.xml"/>',
+        f'<Relationship Id="rId11" Type="{dgm}Layout" Target="../diagrams/layout1.xml"/>',
+        f'<Relationship Id="rId12" Type="{dgm}QuickStyle" Target="../diagrams/quickStyle1.xml"/>',
+        f'<Relationship Id="rId13" Type="{dgm}Colors" Target="../diagrams/colors1.xml"/>',
+        '<Relationship Id="rId14" Type="http://schemas.microsoft.com/office/2007/relationships/diagramDrawing" Target="../diagrams/drawing1.xml"/>',
+        f'<Relationship Id="rId15" Type="{dgm}Data" Target="../diagrams/data2.xml"/>',
+        f'<Relationship Id="rId16" Type="{dgm}Layout" Target="../diagrams/layout1.xml"/>',
+        f'<Relationship Id="rId17" Type="{dgm}QuickStyle" Target="../diagrams/quickStyle1.xml"/>',
+        f'<Relationship Id="rId18" Type="{dgm}Colors" Target="../diagrams/colors1.xml"/>',
+    ]
+    body = sp_tree(
+        text_shape(2, "Heading", 457200, 300000, 8000000, 800000, "SmartArt"),
+        smartart_frame(3, "Process", 1524000, 1600000, 6096000, 1500000, "rId10", "rId11", "rId12", "rId13"),
+        smartart_frame(4, "NoDrawing", 1524000, 3600000, 6096000, 1500000, "rId15", "rId16", "rId17", "rId18"),
+    )
+    empty = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<dgm:{0} xmlns:dgm="' + DGM_NS + '"/>\n'
+    write_pptx(
+        "38-smartart-drawing.pptx",
+        [(slide_xml(body), slide_rels(extra=rels))],
+        extra_parts={
+            "ppt/diagrams/data1.xml": smartart_data(["Plan", "Build", "Ship"], "rId14"),
+            "ppt/diagrams/data2.xml": smartart_data(["Ask", "Answer"], None),
+            "ppt/diagrams/layout1.xml": empty.format("layoutDef"),
+            "ppt/diagrams/quickStyle1.xml": empty.format("styleDef"),
+            "ppt/diagrams/colors1.xml": empty.format("colorsDef"),
+            "ppt/diagrams/drawing1.xml": smartart_drawing(),
+        },
+    )
+
+
 def loose_geometry_fixture() -> None:
     """37 — a deck that does not say how big its text boxes are.
 
@@ -3090,6 +3220,7 @@ def main() -> None:
     )
 
     loose_geometry_fixture()
+    smartart_fixture()
 
     print("fixtures ready")
 
