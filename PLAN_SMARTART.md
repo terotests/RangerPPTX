@@ -1,7 +1,9 @@
 # PLAN_SMARTART — a SmartArt layout engine
 
-Status (2026-10-04): phases 0, 1 and 2 done: every algorithm the
-specification names, and ten layouts. Phases 3 and 4 not started. The engine lives in this repository
+Status (2026-10-04): phases 0–3 done: every algorithm the specification
+names, ten layouts, SmartArt PowerPoint can edit in the files written here,
+and the editor laying a diagram out again when its text changes. Phase 4
+not started. The engine lives in this repository
 under `smartart/`; terotests/RangerSmartArt is not used.
 
 ## Why
@@ -337,6 +339,33 @@ pyramid's accent text (`pyraAcct*`), curved connector routes (`curve`,
 `longCurve` are drawn straight). The layouts are written from the
 specification and checked for their properties; the oracle decks will say
 how close their boxes are to PowerPoint's.
+
+## Phase 3, as built
+
+| Piece | File | Tests |
+| --- | --- | --- |
+| The engine's group says what it was made from: the data model, the layout definition and its id, the quick style and colour set ids; each shape, per paragraph, the data point its text is | `SaEngine`, `PptxShape.diagramModelXml` … `diagramParaPts` | `SaPackageTest`, `SaEditTest` |
+| Saved as SmartArt: a `graphicFrame` naming data, layout, quick style and colour parts, and a drawing part (the shapes as drawn here) named from the data through `dsp:dataModelExt`; ids renumbered (ST_ModelId is an int or a GUID); relationship ids made from part names, so a save over a file never reuses one | `PptxWriter.smartArtXml`, `diagramDrawingXml`; `SaPackage` (data, `styleDef`, `colorsDef`) | `PptxSmartArtTest` 141, `SaPackageTest` 45 |
+| Which diagrams: one laid out here (made here, read from a file without a drawing, or laid out again) is written whole; PowerPoint's own, untouched, keeps its frame and parts; one whose shapes were moved by hand is written as those shapes | `PptxWriter.shapeXml`, `diagramHadDrawing` | `PptxSmartArtTest` |
+| The editor lays a diagram out again when a text edit inside it ends (or `setShapeText` changes it): the text goes back to the data points, the engine runs at the diagram's size, and the result replaces the edit's undo step | `SaEdit`, `PptxEditor.endTextEdit` / `relayoutDiagramOf` | `PptxSmartArtTest`, `SaEditTest` 27 |
+| A diagram read from PowerPoint's drawing part gets its data and a layout definition (the engine's for its id, else the file's), and its shapes are mapped to data points through their presentation points, so it can be edited the same way | `PptxParser.parseDiagram`, `paraPtsOf` | `PptxSmartArtTest` |
+| Sliqtly's PowerPoint export is SmartArt (it hands the writer the engine's group) | Sliqtly `PresApp.stillSmartArt` | Sliqtly `check:web` |
+
+Found on the way and fixed: a save over an opened file dropped the
+presentation part's content type, so LibreOffice could not open any deck
+saved that way (`PptxWriterTest` checks it now).
+
+Checked by opening the written decks in LibreOffice Impress, which draws
+SmartArt from the drawing part. Not checked: PowerPoint itself (none here).
+The phase-3 question — does PowerPoint open a diagram whose layout part is
+our own definition of a built-in id — is answered by the file opening in
+PowerPoint; the owner checks that.
+
+Not done in phase 3: the file's own quick style and colour parts are not
+carried through a re-layout (ours are written, by the same ids); adding or
+removing nodes in the editor; text measured with the editor's fonts when it
+lays a diagram out again (the engine's estimate is used there; Sliqtly
+measures with its own fonts).
 
 ## Phases
 
