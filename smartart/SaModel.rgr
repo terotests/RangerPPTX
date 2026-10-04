@@ -1,0 +1,348 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaModel — a SmartArt diagram's data: the points and how they are connected
+; ==============================================================================
+;
+; `dgm:dataModel` is a graph, not a tree. Its points are the document, the
+; nodes a person typed, assistants, and three kinds the person never sees:
+; a parent transition and a sibling transition for every parent-of connection
+; (the connector shapes are drawn FOR them), and presentation points (one per
+; shape the layout made). Its connections say which node is under which
+; (`parOf`), and which shape presents which point (`presOf`, `presParOf`).
+;
+; A file written by PowerPoint has all of that. A file written by anyone else
+; usually has the document, the nodes and the parent-of connections, and
+; nothing more — so `complete` makes the transitions a file left out, with ids
+; derived from the connection's own, never random: the same file gives the
+; same model on every target and every run.
+;
+; Presentation points are the layout's business (phase 1). They are kept when
+; a file has them and never made here.
+; ==============================================================================
+
+; One run of text: what `a:r` says, as much of it as a diagram needs.
+class SaRun {
+    def text:string ""
+    def bold:boolean false
+    def italic:boolean false
+    def underline:boolean false
+    ; points, 0 when the run does not say
+    def sizePt:double 0.0
+    ; `RRGGBB` from `a:solidFill/a:srgbClr`, "" when the run does not say
+    def color:string ""
+
+    Constructor () {
+    }
+}
+
+; One paragraph of a point's text. `level` is `a:pPr/@lvl`: a bullet under the
+; node's first line in the layouts that show sub-points inside the shape.
+class SaPara {
+    def runs:[SaRun]
+    def level:int 0
+
+    Constructor () {
+    }
+
+    fn plainText:string () {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length runs)) {
+            def r:SaRun (itemAt runs i)
+            out = (out + r.text)
+            i = (i + 1)
+        }
+        return out
+    }
+}
+
+class SaPoint {
+    def id:string ""
+    ; doc node asst parTrans sibTrans pres
+    def type:string "node"
+    ; for a transition: the parent-of connection it belongs to
+    def cxnId:string ""
+    def paras:[SaPara]
+    ; `dgm:t` was there at all — an empty node and a node with no text
+    ; element are written back the way they came
+    def hasText:boolean false
+
+    ; prSet. On the document point the three ids name the diagram's layout,
+    ; quick style and colours; on a presentation point the rest say which
+    ; layout node it was made by.
+    def layoutId:string ""
+    def styleId:string ""
+    def colorsId:string ""
+    def presName:string ""
+    def presStyleLbl:string ""
+    def presStyleIdx:int -1
+    def presStyleCnt:int -1
+    def presAssocId:string ""
+
+    Constructor () {
+    }
+
+    fn plainText:string () {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length paras)) {
+            def p:SaPara (itemAt paras i)
+            if (i > 0) {
+                out = (out + "\n")
+            }
+            out = (out + (p.plainText()))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; A point a person typed: the document's children and theirs.
+    fn isContent:boolean () {
+        return ((type == "node") || (type == "asst"))
+    }
+}
+
+class SaCxn {
+    def id:string ""
+    ; parOf presOf presParOf
+    def type:string "parOf"
+    def srcId:string ""
+    def destId:string ""
+    def srcOrd:int 0
+    def destOrd:int 0
+    ; for parOf: the transition points drawn for it
+    def parTransId:string ""
+    def sibTransId:string ""
+    ; for presOf/presParOf
+    def presId:string ""
+
+    Constructor () {
+    }
+}
+
+class SaModel {
+    def points:[SaPoint]
+    def cxns:[SaCxn]
+    ; `dgm:extLst/a:ext/dsp:dataModelExt/@relId`: the relationship, from the
+    ; SLIDE, to the drawing part PowerPoint last drew this diagram into
+    def drawingRelId:string ""
+
+    Constructor () {
+    }
+
+    fn pointById@(optional):SaPoint (id:string) {
+        def i:int 0
+        while (i < (array_length points)) {
+            def p:SaPoint (itemAt points i)
+            if (p.id == id) {
+                def hit@(optional):SaPoint p
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaPoint
+        return none
+    }
+
+    fn has:boolean (id:string) {
+        def p@(optional):SaPoint (this.pointById(id))
+        return (!null? p)
+    }
+
+    fn cxnById@(optional):SaCxn (id:string) {
+        def i:int 0
+        while (i < (array_length cxns)) {
+            def c:SaCxn (itemAt cxns i)
+            if (c.id == id) {
+                def hit@(optional):SaCxn c
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaCxn
+        return none
+    }
+
+    fn doc:SaPoint () {
+        def i:int 0
+        while (i < (array_length points)) {
+            def p:SaPoint (itemAt points i)
+            if (p.type == "doc") {
+                return p
+            }
+            i = (i + 1)
+        }
+        return (new SaPoint())
+    }
+
+    fn layoutId:string () {
+        def d:SaPoint (this.doc())
+        return d.layoutId
+    }
+
+    ; The parent-of connections out of `id`, in `srcOrd` order.
+    fn childCxns:[SaCxn] (id:string) {
+        def out:[SaCxn]
+        def i:int 0
+        while (i < (array_length cxns)) {
+            def c:SaCxn (itemAt cxns i)
+            if ((c.type == "parOf") && (c.srcId == id)) {
+                ; insertion by srcOrd; equal orders keep file order
+                def at:int (array_length out)
+                def moving:boolean true
+                while (moving && (at > 0)) {
+                    def before:SaCxn (itemAt out (at - 1))
+                    if (before.srcOrd > c.srcOrd) {
+                        at = (at - 1)
+                    } {
+                        moving = false
+                    }
+                }
+                insert out at c
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; The points under `id` (nodes and assistants), in order.
+    fn children:[SaPoint] (id:string) {
+        def out:[SaPoint]
+        def cs:[SaCxn] (this.childCxns(id))
+        def i:int 0
+        while (i < (array_length cs)) {
+            def c:SaCxn (itemAt cs i)
+            def p@(optional):SaPoint (this.pointById(c.destId))
+            if (!null? p) {
+                push out (unwrap p)
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; The parent-of connection INTO `id`, if there is one.
+    fn parentCxn@(optional):SaCxn (id:string) {
+        def i:int 0
+        while (i < (array_length cxns)) {
+            def c:SaCxn (itemAt cxns i)
+            if ((c.type == "parOf") && (c.destId == id)) {
+                def hit@(optional):SaCxn c
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaCxn
+        return none
+    }
+
+    ; How deep `id` is: the document 0, its children 1.
+    fn depthOf:int (id:string) {
+        def d:int 0
+        def at:string id
+        def guard:int 0
+        while (guard < (array_length points)) {
+            def c@(optional):SaCxn (this.parentCxn(at))
+            if (null? c) {
+                return d
+            }
+            d = (d + 1)
+            at = c.srcId
+            guard = (guard + 1)
+        }
+        return d
+    }
+
+    ; The text tree, one line per content point, indented two spaces per
+    ; level: what a test or a diagnostic compares.
+    fn outline:string () {
+        def out:string ""
+        def d:SaPoint (this.doc())
+        out = (this.outlineUnder(d.id 0 out))
+        return out
+    }
+
+    fn outlineUnder:string (id:string level:int acc:string) {
+        def out:string acc
+        def kids:[SaPoint] (this.children(id))
+        def i:int 0
+        while (i < (array_length kids)) {
+            def k:SaPoint (itemAt kids i)
+            def pad:string ""
+            def j:int 0
+            while (j < level) {
+                pad = (pad + "  ")
+                j = (j + 1)
+            }
+            out = (out + pad + (k.plainText()) + "\n")
+            out = (this.outlineUnder(k.id (level + 1) out))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    fn countOf:int (type:string) {
+        def n:int 0
+        def i:int 0
+        while (i < (array_length points)) {
+            def p:SaPoint (itemAt points i)
+            if (p.type == type) {
+                n = (n + 1)
+            }
+            i = (i + 1)
+        }
+        return n
+    }
+
+    ; Makes what a file may leave out: connection ids, and the parent and
+    ; sibling transition of every parent-of connection. Ids are derived from
+    ; the connection's, so `complete` twice is `complete` once.
+    fn complete:void () {
+        def i:int 0
+        while (i < (array_length cxns)) {
+            def c:SaCxn (itemAt cxns i)
+            if ((strlen c.id) == 0) {
+                c.id = (this.freeId(("cxn-" + c.srcId + "-" + c.destId)))
+            }
+            i = (i + 1)
+        }
+        i = 0
+        while (i < (array_length cxns)) {
+            def c2:SaCxn (itemAt cxns i)
+            if (c2.type == "parOf") {
+                if ((strlen c2.parTransId) == 0) {
+                    c2.parTransId = (this.addTransition(c2 "parTrans"))
+                }
+                if ((strlen c2.sibTransId) == 0) {
+                    c2.sibTransId = (this.addTransition(c2 "sibTrans"))
+                }
+            }
+            i = (i + 1)
+        }
+    }
+
+    fn addTransition:string (c:SaCxn type:string) {
+        def t (new SaPoint())
+        t.id = (this.freeId((c.id + "-" + type)))
+        t.type = type
+        t.cxnId = c.id
+        push points t
+        return t.id
+    }
+
+    ; `want`, or `want-2`, `want-3`… whichever no point or connection has.
+    fn freeId:string (want:string) {
+        def id:string want
+        def n:int 1
+        while ((this.has(id)) || (this.cxnTaken(id))) {
+            n = (n + 1)
+            id = (want + "-" + (to_string n))
+        }
+        return id
+    }
+
+    fn cxnTaken:boolean (id:string) {
+        def c@(optional):SaCxn (this.cxnById(id))
+        return (!null? c)
+    }
+}

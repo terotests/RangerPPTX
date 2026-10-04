@@ -1,0 +1,395 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaDataReader — `dgm:dataModel` XML into an SaModel, or the reason it is not
+; ==============================================================================
+;
+; Two kinds of file arrive here and both are read as they are. One PowerPoint
+; saved: every point and connection, model ids that are GUIDs, presentation
+; points. One an assistant wrote: a document point, the nodes and the parent-of
+; connections, nothing else. The schema's defaults are what make the second
+; one short — a point is a `node` and a connection a `parOf` unless they say
+; otherwise — and this reads them.
+;
+; What it does not do is guess. A file that cannot be a diagram is REFUSED,
+; and the refusal names the element and says why, because the reader of the
+; message is usually a model that will write the file again:
+;
+;   point 3: type "nod" is not one of doc, node, asst, parTrans, sibTrans, pres
+;   connection 7: destId "9" names no point
+;   point 4 has two parents (1 and 2)
+;
+; A refusal is a value (`SaReadResult.error`), never an exception: the editor
+; draws it in the diagram's place and the MCP server returns it to the caller.
+; ==============================================================================
+
+Import "../../xml/XmlCore.rgr"
+Import "SaModel.rgr"
+
+class SaReadResult {
+    def ok:boolean false
+    def error:string ""
+    def model:SaModel (new SaModel())
+
+    Constructor () {
+    }
+}
+
+class SaDataReader {
+
+    sfn read:SaReadResult (xml:string) {
+        def res (new SaReadResult())
+        def parser (new XmlParser())
+        def rootOpt@(optional):XmlNode (parser.parse(xml))
+        if (null? rootOpt) {
+            res.error = "not XML: no element could be read"
+            return res
+        }
+        def root:XmlNode (unwrap rootOpt)
+        if parser.aborted {
+            res.error = "the file is too large or too deeply nested to be a diagram"
+            return res
+        }
+        if (root.name != "dataModel") {
+            res.error = ("the root element is <" + root.name + ">, not <dgm:dataModel>")
+            return res
+        }
+        def model:SaModel res.model
+        def ptLst@(optional):XmlNode (root.firstChild("ptLst"))
+        if (null? ptLst) {
+            res.error = "<dgm:ptLst> is missing: a diagram needs at least its document point"
+            return res
+        }
+        def pts:[XmlNode] ((unwrap ptLst).childrenNamed("pt"))
+        def i:int 0
+        while (i < (array_length pts)) {
+            def pn:XmlNode (itemAt pts i)
+            def err:string (SaDataReader.readPoint(pn model (i + 1)))
+            if ((strlen err) > 0) {
+                res.error = err
+                return res
+            }
+            i = (i + 1)
+        }
+        def cxnLst@(optional):XmlNode (root.firstChild("cxnLst"))
+        if (!null? cxnLst) {
+            def cs:[XmlNode] ((unwrap cxnLst).childrenNamed("cxn"))
+            def j:int 0
+            while (j < (array_length cs)) {
+                def cn:XmlNode (itemAt cs j)
+                def cerr:string (SaDataReader.readCxn(cn model (j + 1)))
+                if ((strlen cerr) > 0) {
+                    res.error = cerr
+                    return res
+                }
+                j = (j + 1)
+            }
+        }
+        SaDataReader.readDrawingRel(root model)
+        def serr:string (SaDataReader.checkShape(model))
+        if ((strlen serr) > 0) {
+            res.error = serr
+            return res
+        }
+        res.ok = true
+        return res
+    }
+
+    sfn validType:boolean (t:string) {
+        if (t == "doc") { return true }
+        if (t == "node") { return true }
+        if (t == "asst") { return true }
+        if (t == "parTrans") { return true }
+        if (t == "sibTrans") { return true }
+        if (t == "pres") { return true }
+        return false
+    }
+
+    sfn validCxnType:boolean (t:string) {
+        if (t == "parOf") { return true }
+        if (t == "presOf") { return true }
+        if (t == "presParOf") { return true }
+        return false
+    }
+
+    ; An attribute that must be an integer when it is there. `fallback` when it
+    ; is not; `ok` false when it is there and is not a number.
+    sfn intAttr:int (n:XmlNode name:string fallback:int) {
+        def s:string (trim (n.attr(name)))
+        if ((strlen s) == 0) {
+            return fallback
+        }
+        def v@(optional):int (str2int s)
+        return (?? v fallback)
+    }
+
+    sfn badInt:boolean (n:XmlNode name:string) {
+        def s:string (trim (n.attr(name)))
+        if ((strlen s) == 0) {
+            return false
+        }
+        def v@(optional):int (str2int s)
+        return (null? v)
+    }
+
+    sfn readPoint:string (pn:XmlNode model:SaModel ordinal:int) {
+        def where:string ("point " + (to_string ordinal))
+        if ((pn.hasAttr("modelId")) == false) {
+            return (where + ": modelId is missing")
+        }
+        def id:string (trim (pn.attr("modelId")))
+        if ((strlen id) == 0) {
+            return (where + ": modelId is empty")
+        }
+        where = ("point " + id)
+        if (model.has(id)) {
+            return (where + ": modelId is used twice")
+        }
+        def p (new SaPoint())
+        p.id = id
+        def t:string (pn.attrOr("type" "node"))
+        if ((SaDataReader.validType(t)) == false) {
+            return (where + ": type \"" + t + "\" is not one of doc, node, asst, parTrans, sibTrans, pres")
+        }
+        p.type = t
+        p.cxnId = (pn.attr("cxnId"))
+        if (((t == "parTrans") || (t == "sibTrans")) && ((strlen p.cxnId) == 0)) {
+            return (where + ": a " + t + " point needs cxnId, the connection it belongs to")
+        }
+        def prSet@(optional):XmlNode (pn.firstChild("prSet"))
+        if (!null? prSet) {
+            def ps:XmlNode (unwrap prSet)
+            p.layoutId = (ps.attr("loTypeId"))
+            p.styleId = (ps.attr("qsTypeId"))
+            p.colorsId = (ps.attr("csTypeId"))
+            p.presName = (ps.attr("presName"))
+            p.presStyleLbl = (ps.attr("presStyleLbl"))
+            p.presAssocId = (ps.attr("presAssocID"))
+            if (SaDataReader.badInt(ps "presStyleIdx")) {
+                return (where + ": presStyleIdx is not a whole number")
+            }
+            if (SaDataReader.badInt(ps "presStyleCnt")) {
+                return (where + ": presStyleCnt is not a whole number")
+            }
+            p.presStyleIdx = (SaDataReader.intAttr(ps "presStyleIdx" -1))
+            p.presStyleCnt = (SaDataReader.intAttr(ps "presStyleCnt" -1))
+        }
+        def tNode@(optional):XmlNode (pn.firstChild("t"))
+        if (!null? tNode) {
+            p.hasText = true
+            SaDataReader.readText((unwrap tNode) p)
+        }
+        push model.points p
+        return ""
+    }
+
+    ; `dgm:t` is a text body: `a:p` paragraphs of `a:r` runs. Line breaks
+    ; (`a:br`) end a run; fields (`a:fld`) are read as their text.
+    sfn readText:void (t:XmlNode p:SaPoint) {
+        def paras:[XmlNode] (t.childrenNamed("p"))
+        def i:int 0
+        while (i < (array_length paras)) {
+            def pn:XmlNode (itemAt paras i)
+            def para (new SaPara())
+            def pPr@(optional):XmlNode (pn.firstChild("pPr"))
+            if (!null? pPr) {
+                para.level = (SaDataReader.intAttr((unwrap pPr) "lvl" 0))
+            }
+            def k:int 0
+            while (k < (pn.childCount())) {
+                def rn:XmlNode (pn.childAt(k))
+                if ((rn.name == "r") || (rn.name == "fld")) {
+                    push para.runs (SaDataReader.readRun(rn))
+                }
+                if (rn.name == "br") {
+                    def br (new SaRun())
+                    br.text = "\n"
+                    push para.runs br
+                }
+                k = (k + 1)
+            }
+            push p.paras para
+            i = (i + 1)
+        }
+    }
+
+    sfn readRun:SaRun (rn:XmlNode) {
+        def run (new SaRun())
+        def tx@(optional):XmlNode (rn.firstChild("t"))
+        if (!null? tx) {
+            run.text = ((unwrap tx).textContent())
+        }
+        def rPr@(optional):XmlNode (rn.firstChild("rPr"))
+        if (!null? rPr) {
+            def rp:XmlNode (unwrap rPr)
+            run.bold = ((rp.attr("b") == "1") || (rp.attr("b") == "true"))
+            run.italic = ((rp.attr("i") == "1") || (rp.attr("i") == "true"))
+            def u:string (rp.attr("u"))
+            run.underline = (((strlen u) > 0) && (u != "none"))
+            def sz:string (trim (rp.attr("sz")))
+            if ((strlen sz) > 0) {
+                def szv@(optional):int (str2int sz)
+                run.sizePt = ((to_double (?? szv 0)) / 100.0)
+            }
+            def fill@(optional):XmlNode (rp.firstChild("solidFill"))
+            if (!null? fill) {
+                def rgb@(optional):XmlNode ((unwrap fill).firstChild("srgbClr"))
+                if (!null? rgb) {
+                    run.color = (to_uppercase ((unwrap rgb).attr("val")))
+                }
+            }
+        }
+        return run
+    }
+
+    sfn readCxn:string (cn:XmlNode model:SaModel ordinal:int) {
+        def c (new SaCxn())
+        c.id = (trim (cn.attr("modelId")))
+        def where:string ("connection " + (to_string ordinal))
+        if ((strlen c.id) > 0) {
+            where = ("connection " + c.id)
+            if (model.cxnTaken(c.id)) {
+                return (where + ": modelId is used twice")
+            }
+            if (model.has(c.id)) {
+                return (where + ": modelId is also a point's")
+            }
+        }
+        def t:string (cn.attrOr("type" "parOf"))
+        if ((SaDataReader.validCxnType(t)) == false) {
+            return (where + ": type \"" + t + "\" is not one of parOf, presOf, presParOf")
+        }
+        c.type = t
+        c.srcId = (trim (cn.attr("srcId")))
+        c.destId = (trim (cn.attr("destId")))
+        if ((strlen c.srcId) == 0) {
+            return (where + ": srcId is missing")
+        }
+        if ((strlen c.destId) == 0) {
+            return (where + ": destId is missing")
+        }
+        if ((model.has(c.srcId)) == false) {
+            return (where + ": srcId \"" + c.srcId + "\" names no point")
+        }
+        if ((model.has(c.destId)) == false) {
+            return (where + ": destId \"" + c.destId + "\" names no point")
+        }
+        if (c.srcId == c.destId) {
+            return (where + ": a point cannot be connected to itself")
+        }
+        if (SaDataReader.badInt(cn "srcOrd")) {
+            return (where + ": srcOrd is not a whole number")
+        }
+        if (SaDataReader.badInt(cn "destOrd")) {
+            return (where + ": destOrd is not a whole number")
+        }
+        ; Left out, the order is the order of the file: the n-th connection
+        ; out of a point is its n-th child.
+        def given:int (SaDataReader.intAttr(cn "srcOrd" -1))
+        if (given < 0) {
+            given = (array_length (model.childCxns(c.srcId)))
+        }
+        c.srcOrd = given
+        c.destOrd = (SaDataReader.intAttr(cn "destOrd" 0))
+        c.parTransId = (trim (cn.attr("parTransId")))
+        c.sibTransId = (trim (cn.attr("sibTransId")))
+        c.presId = (cn.attr("presId"))
+        push model.cxns c
+        return ""
+    }
+
+    sfn readDrawingRel:void (root:XmlNode model:SaModel) {
+        def ext@(optional):XmlNode (root.find("dataModelExt"))
+        if (!null? ext) {
+            def e:XmlNode (unwrap ext)
+            model.drawingRelId = (e.attr("relId"))
+        }
+    }
+
+    ; The graph as a whole: one document, every content point reachable from
+    ; it by parent-of connections, none with two parents, and parent-of only
+    ; between the points that can have it.
+    sfn checkShape:string (model:SaModel) {
+        def docs:int (model.countOf("doc"))
+        if (docs == 0) {
+            return "there is no document point (a <dgm:pt type=\"doc\">): the diagram has nothing to hang from"
+        }
+        if (docs > 1) {
+            return ("there are " + (to_string docs) + " document points; a diagram has one")
+        }
+        def i:int 0
+        while (i < (array_length model.cxns)) {
+            def c:SaCxn (itemAt model.cxns i)
+            if (c.type == "parOf") {
+                def s:SaPoint (unwrap (model.pointById(c.srcId)))
+                def d:SaPoint (unwrap (model.pointById(c.destId)))
+                if (((s.type != "doc") && (s.isContent() == false))) {
+                    return ("connection " + c.id + ": a " + s.type + " point cannot be a parent")
+                }
+                if ((d.isContent()) == false) {
+                    return ("connection " + c.id + ": a " + d.type + " point cannot be a child")
+                }
+            }
+            i = (i + 1)
+        }
+        ; two parents
+        i = 0
+        while (i < (array_length model.points)) {
+            def p:SaPoint (itemAt model.points i)
+            def parents:[string]
+            def k:int 0
+            while (k < (array_length model.cxns)) {
+                def c2:SaCxn (itemAt model.cxns k)
+                if ((c2.type == "parOf") && (c2.destId == p.id)) {
+                    push parents c2.srcId
+                }
+                k = (k + 1)
+            }
+            if ((array_length parents) > 1) {
+                return ("point " + p.id + " has two parents (" + (itemAt parents 0) + " and " + (itemAt parents 1) + ")")
+            }
+            i = (i + 1)
+        }
+        ; reachable from the document, which also rules out a cycle: a point
+        ; on a cycle has its one parent on the cycle and never meets the root
+        def d0:SaPoint (model.doc())
+        i = 0
+        while (i < (array_length model.points)) {
+            def q:SaPoint (itemAt model.points i)
+            if (q.isContent()) {
+                if ((SaDataReader.reaches(model q.id d0.id)) == false) {
+                    return ("point " + q.id + " is not under the document: connect it with a parOf from the document or from another node")
+                }
+            }
+            i = (i + 1)
+        }
+        ; transitions name a connection that exists
+        i = 0
+        while (i < (array_length model.points)) {
+            def tp:SaPoint (itemAt model.points i)
+            if ((tp.type == "parTrans") || (tp.type == "sibTrans")) {
+                if ((model.cxnTaken(tp.cxnId)) == false) {
+                    return ("point " + tp.id + ": cxnId \"" + tp.cxnId + "\" names no connection")
+                }
+            }
+            i = (i + 1)
+        }
+        return ""
+    }
+
+    sfn reaches:boolean (model:SaModel from:string root:string) {
+        def at:string from
+        def steps:int 0
+        while (steps <= (array_length model.points)) {
+            if (at == root) {
+                return true
+            }
+            def c@(optional):SaCxn (model.parentCxn(at))
+            if (null? c) {
+                return false
+            }
+            at = c.srcId
+            steps = (steps + 1)
+        }
+        return false
+    }
+}

@@ -1,0 +1,164 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaDataWriter — an SaModel as `dgm:dataModel` XML
+; ==============================================================================
+;
+; The output is what PowerPoint itself writes into `ppt/diagrams/dataN.xml`:
+; every point with its type stated unless it is a `node`, every connection
+; with its type stated unless it is a `parOf`, and the attributes in the
+; schema's order. It is written from the model alone, so what the model does
+; not hold (bodyPr details, run properties beyond the ones `SaRun` carries) is
+; not written; a deck saved over its own file keeps the original part instead
+; (`PptxWriter`'s pass-through), so that loss only applies to a diagram this
+; code made.
+;
+; `read(write(m))` gives back `m`: that round trip is the test.
+; ==============================================================================
+
+Import "SaModel.rgr"
+
+class SaDataWriter {
+
+    sfn esc:string (s:string) {
+        def out:string ""
+        def i:int 0
+        def n:int (strlen s)
+        def from:int 0
+        while (i < n) {
+            def c:int (charAt s i)
+            def rep:string ""
+            if (c == 38) { rep = "&amp;" }
+            if (c == 60) { rep = "&lt;" }
+            if (c == 62) { rep = "&gt;" }
+            if (c == 34) { rep = "&quot;" }
+            if ((strlen rep) > 0) {
+                out = (out + (substring s from i) + rep)
+                from = (i + 1)
+            }
+            i = (i + 1)
+        }
+        return (out + (substring s from n))
+    }
+
+    sfn attr:string (name:string value:string) {
+        if ((strlen value) == 0) {
+            return ""
+        }
+        return (" " + name + "=\"" + (SaDataWriter.esc(value)) + "\"")
+    }
+
+    sfn write:string (m:SaModel) {
+        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+        out = (out + "<dgm:dataModel xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">")
+        out = (out + "<dgm:ptLst>")
+        def i:int 0
+        while (i < (array_length m.points)) {
+            out = (out + (SaDataWriter.pointXml((itemAt m.points i))))
+            i = (i + 1)
+        }
+        out = (out + "</dgm:ptLst>")
+        if ((array_length m.cxns) > 0) {
+            out = (out + "<dgm:cxnLst>")
+            i = 0
+            while (i < (array_length m.cxns)) {
+                out = (out + (SaDataWriter.cxnXml((itemAt m.cxns i))))
+                i = (i + 1)
+            }
+            out = (out + "</dgm:cxnLst>")
+        }
+        out = (out + "<dgm:bg/><dgm:whole/>")
+        if ((strlen m.drawingRelId) > 0) {
+            out = (out + "<dgm:extLst><a:ext uri=\"http://schemas.microsoft.com/office/drawing/2008/diagram\"><dsp:dataModelExt xmlns:dsp=\"http://schemas.microsoft.com/office/drawing/2008/diagram\"" + (SaDataWriter.attr("relId" m.drawingRelId)) + " minVer=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\"/></a:ext></dgm:extLst>")
+        }
+        return (out + "</dgm:dataModel>")
+    }
+
+    sfn pointXml:string (p:SaPoint) {
+        def out:string ("<dgm:pt" + (SaDataWriter.attr("modelId" p.id)))
+        if (p.type != "node") {
+            out = (out + (SaDataWriter.attr("type" p.type)))
+        }
+        out = (out + (SaDataWriter.attr("cxnId" p.cxnId)) + ">")
+        def ps:string ""
+        ps = (ps + (SaDataWriter.attr("loTypeId" p.layoutId)))
+        ps = (ps + (SaDataWriter.attr("qsTypeId" p.styleId)))
+        ps = (ps + (SaDataWriter.attr("csTypeId" p.colorsId)))
+        ps = (ps + (SaDataWriter.attr("presAssocID" p.presAssocId)))
+        ps = (ps + (SaDataWriter.attr("presName" p.presName)))
+        ps = (ps + (SaDataWriter.attr("presStyleLbl" p.presStyleLbl)))
+        if (p.presStyleIdx >= 0) {
+            ps = (ps + (SaDataWriter.attr("presStyleIdx" (to_string p.presStyleIdx))))
+        }
+        if (p.presStyleCnt >= 0) {
+            ps = (ps + (SaDataWriter.attr("presStyleCnt" (to_string p.presStyleCnt))))
+        }
+        out = (out + "<dgm:prSet" + ps + "/><dgm:spPr/>")
+        if p.hasText {
+            out = (out + (SaDataWriter.textXml(p)))
+        }
+        return (out + "</dgm:pt>")
+    }
+
+    sfn textXml:string (p:SaPoint) {
+        def out:string "<dgm:t><a:bodyPr/><a:lstStyle/>"
+        if ((array_length p.paras) == 0) {
+            out = (out + "<a:p><a:endParaRPr lang=\"en-US\"/></a:p>")
+        }
+        def i:int 0
+        while (i < (array_length p.paras)) {
+            def para:SaPara (itemAt p.paras i)
+            out = (out + "<a:p>")
+            if (para.level > 0) {
+                out = (out + "<a:pPr lvl=\"" + (to_string para.level) + "\"/>")
+            }
+            def k:int 0
+            while (k < (array_length para.runs)) {
+                out = (out + (SaDataWriter.runXml((itemAt para.runs k))))
+                k = (k + 1)
+            }
+            out = (out + "</a:p>")
+            i = (i + 1)
+        }
+        return (out + "</dgm:t>")
+    }
+
+    sfn runXml:string (r:SaRun) {
+        if (r.text == "\n") {
+            return "<a:br><a:rPr lang=\"en-US\"/></a:br>"
+        }
+        def rp:string " lang=\"en-US\""
+        if (r.sizePt > 0.0) {
+            def hundredths:int (to_int ((r.sizePt * 100.0) + 0.5))
+            rp = (rp + " sz=\"" + (to_string hundredths) + "\"")
+        }
+        if r.bold {
+            rp = (rp + " b=\"1\"")
+        }
+        if r.italic {
+            rp = (rp + " i=\"1\"")
+        }
+        if r.underline {
+            rp = (rp + " u=\"sng\"")
+        }
+        def inner:string ""
+        if ((strlen r.color) > 0) {
+            inner = ("<a:solidFill><a:srgbClr val=\"" + (SaDataWriter.esc(r.color)) + "\"/></a:solidFill>")
+        }
+        def rpr:string ("<a:rPr" + rp + "/>")
+        if ((strlen inner) > 0) {
+            rpr = ("<a:rPr" + rp + ">" + inner + "</a:rPr>")
+        }
+        return ("<a:r>" + rpr + "<a:t>" + (SaDataWriter.esc(r.text)) + "</a:t></a:r>")
+    }
+
+    sfn cxnXml:string (c:SaCxn) {
+        def out:string ("<dgm:cxn" + (SaDataWriter.attr("modelId" c.id)))
+        if (c.type != "parOf") {
+            out = (out + (SaDataWriter.attr("type" c.type)))
+        }
+        out = (out + (SaDataWriter.attr("srcId" c.srcId)) + (SaDataWriter.attr("destId" c.destId)))
+        out = (out + " srcOrd=\"" + (to_string c.srcOrd) + "\" destOrd=\"" + (to_string c.destOrd) + "\"")
+        out = (out + (SaDataWriter.attr("parTransId" c.parTransId)) + (SaDataWriter.attr("sibTransId" c.sibTransId)) + (SaDataWriter.attr("presId" c.presId)))
+        return (out + "/>")
+    }
+}
