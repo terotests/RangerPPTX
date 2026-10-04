@@ -1030,6 +1030,10 @@ class PptxWriterTest {
         if (opened == false) {
             return
         }
+        ; the main part keeps its content type: without it no reader can tell
+        ; which part is the presentation (LibreOffice does not open the file)
+        def types:string (out.readXml("[Content_Types].xml"))
+        this.check("the presentation's content type is kept" ((indexOf types "PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"") >= 0))
         ; Every part of the original is still there.
         def missing:int 0
         def srcParts:[string] (parser.pkg.listParts())

@@ -23,6 +23,7 @@
 
 Import "SaModel.rgr"
 Import "SaDataReader.rgr"
+Import "SaDataWriter.rgr"
 Import "SaLayoutReader.rgr"
 Import "SaText.rgr"
 Import "SaStyle.rgr"
@@ -83,6 +84,7 @@ class SaEngine {
         model.complete()
         ; which layout
         def lo (new SaLayoutDef())
+        def loXml:string opts.layoutXml
         if ((strlen opts.layoutXml) > 0) {
             def lr:SaLayoutReadResult (SaLayoutReader.read(opts.layoutXml))
             if (lr.ok == false) {
@@ -109,6 +111,7 @@ class SaEngine {
                 return res
             }
             lo = lr2.layout
+            loXml = xml
         }
         res.layoutUsed = (lo.shortId())
         def colors:string ((model.doc()).colorsId)
@@ -158,6 +161,28 @@ class SaEngine {
         g.chW = w
         g.chH = h
         g.diagramText = (model.outline())
+        ; what it was made from, with the ids it was drawn with, so the writer
+        ; can save it as SmartArt and the editor can lay it out again
+        def style:string ((model.doc()).styleId)
+        if ((strlen opts.style) > 0) {
+            style = (SaEngine.fullId(opts.style "quickstyle"))
+        }
+        if ((strlen style) == 0) {
+            style = (SaEngine.fullId("simple1" "quickstyle"))
+        }
+        def colorsUsed:string colors
+        if ((strlen colorsUsed) == 0) {
+            colorsUsed = (SaEngine.fullId("accent1_2" "colors"))
+        }
+        def d:SaPoint (model.doc())
+        d.layoutId = lo.uniqueId
+        d.styleId = style
+        d.colorsId = colorsUsed
+        g.diagramModelXml = (SaDataWriter.write(model))
+        g.diagramLayoutXml = loXml
+        g.diagramLayoutId = lo.uniqueId
+        g.diagramStyleId = style
+        g.diagramColorsId = colorsUsed
         def every:[SaInst] (ptree.all())
         def i:int 0
         while (i < (array_length every)) {
@@ -172,6 +197,9 @@ class SaEngine {
             }
             i = (i + 1)
         }
+        ; what the shapes say now: a diagram whose shapes were changed by
+        ; hand no longer matches it, and is saved as those shapes
+        g.diagramSig = (g.diagramSignature())
         res.shape = g
         res.ok = true
         return res

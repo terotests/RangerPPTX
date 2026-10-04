@@ -1,0 +1,261 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaPackage — the parts a SmartArt diagram is saved as
+; ==============================================================================
+;
+; A diagram in a .pptx is a `graphicFrame` naming four parts by relationship
+; (data, layout, quick style, colours) and, through the data part's
+; `dsp:dataModelExt`, a fifth: the drawing, the shapes as they were last laid
+; out. PowerPoint lays the diagram out again from the first four; every other
+; reader draws the fifth. PptxWriter writes the frame, the relationships and
+; the drawing; this file writes the rest:
+;
+;   dataXml     the data model, every id a number (the schema's ST_ModelId
+;               is an int or a GUID, and the ids a hand-written file uses —
+;               "n1", "cxn-0-n1" — are neither), the document point naming
+;               the layout, style and colours it was drawn with, and the
+;               relationship id of its drawing
+;   styleDefXml a quick style: for each style label, the theme's line, fill,
+;               effect and font references (simple1 — flat, no 3-D)
+;   colorsDefXml
+;               a colour set: for each style label, the fill, line and text
+;               colours, as SaStyle draws them (accent1_2 … accent6_2,
+;               colorful1, colorful2)
+;
+; The layout part is the layout definition the engine ran (SaBuiltins, or
+; the one read from the file), as it is.
+; ==============================================================================
+
+Import "SaDataReader.rgr"
+Import "SaDataWriter.rgr"
+Import "SaStyle.rgr"
+
+class SaPackage {
+
+    sfn dgmNs:string () {
+        return "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+    }
+
+    sfn aNs:string () {
+        return "http://schemas.openxmlformats.org/drawingml/2006/main"
+    }
+
+    ; the style labels the parts describe: every label the built-in layouts
+    ; use, and the ones PowerPoint's own layouts commonly name
+    sfn labels:[string] () {
+        return ([] _:string ("node0" "node1" "lnNode1" "vennNode1" "alignNode1" "trAlignAcc1" "alignAcc1" "bgAcc1" "fgAcc1" "solidFgAcc1" "bgShp" "dkBgShp" "trBgShp" "fgShp" "revTx" "sibTrans2D1" "sibTrans1D1" "callout" "asst0" "asst1" "parChTrans1D1" "parChTrans1D2" "parChTrans2D1" "fgAccFollowNode1" "bgAccFollowNode1"))
+    }
+
+    ; --- the data part -------------------------------------------------------
+
+    ; `modelXml` (SaDataWriter's output, or any data model) with every id a
+    ; number and its drawing named by `drawingRelId`; empty when it does not
+    ; read
+    sfn dataXml:string (modelXml:string drawingRelId:string) {
+        def r:SaReadResult (SaDataReader.read(modelXml))
+        if (r.ok == false) {
+            return ""
+        }
+        def m:SaModel r.model
+        m.complete()
+        def from:[string]
+        def to:[string]
+        def n:int 0
+        def i:int 0
+        while (i < (array_length m.points)) {
+            def p:SaPoint (itemAt m.points i)
+            push from p.id
+            push to (to_string n)
+            n = (n + 1)
+            i = (i + 1)
+        }
+        i = 0
+        while (i < (array_length m.cxns)) {
+            def c:SaCxn (itemAt m.cxns i)
+            push from c.id
+            push to (to_string n)
+            n = (n + 1)
+            i = (i + 1)
+        }
+        i = 0
+        while (i < (array_length m.points)) {
+            def p2:SaPoint (itemAt m.points i)
+            p2.id = (SaPackage.mapped(from to p2.id))
+            p2.cxnId = (SaPackage.mapped(from to p2.cxnId))
+            p2.presAssocId = (SaPackage.mapped(from to p2.presAssocId))
+            i = (i + 1)
+        }
+        i = 0
+        while (i < (array_length m.cxns)) {
+            def c2:SaCxn (itemAt m.cxns i)
+            c2.id = (SaPackage.mapped(from to c2.id))
+            c2.srcId = (SaPackage.mapped(from to c2.srcId))
+            c2.destId = (SaPackage.mapped(from to c2.destId))
+            c2.parTransId = (SaPackage.mapped(from to c2.parTransId))
+            c2.sibTransId = (SaPackage.mapped(from to c2.sibTransId))
+            c2.presId = (SaPackage.mapped(from to c2.presId))
+            i = (i + 1)
+        }
+        m.drawingRelId = drawingRelId
+        return (SaDataWriter.write(m))
+    }
+
+    sfn mapped:string (from:[string] to:[string] id:string) {
+        if ((strlen id) == 0) {
+            return ""
+        }
+        def i:int 0
+        while (i < (array_length from)) {
+            if ((itemAt from i) == id) {
+                return (itemAt to i)
+            }
+            i = (i + 1)
+        }
+        return id
+    }
+
+    ; A drawing shape's model id: a GUID made from its index, so the same
+    ; diagram writes the same ids every time.
+    sfn shapeModelId:string (i:int) {
+        def hex:string "0123456789ABCDEF"
+        def tail:string ""
+        def v:int i
+        def k:int 0
+        while (k < 12) {
+            def d:int (v % 16)
+            tail = ((substring hex d (d + 1)) + tail)
+            v = (to_int ((to_double v) / 16.0))
+            k = (k + 1)
+        }
+        return ("{5A0D0000-0000-4000-8000-" + tail + "}")
+    }
+
+    ; --- the quick style -----------------------------------------------------
+
+    sfn styleDefXml:string (styleId:string) {
+        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+        out = (out + "<dgm:styleDef xmlns:dgm=\"" + (SaPackage.dgmNs()) + "\" xmlns:a=\"" + (SaPackage.aNs()) + "\" uniqueId=\"" + (SaDataWriter.esc(styleId)) + "\">")
+        out = (out + "<dgm:title val=\"\"/><dgm:desc val=\"\"/><dgm:catLst><dgm:cat type=\"simple\" pri=\"10100\"/></dgm:catLst>")
+        out = (out + (SaPackage.scene()) + "<dgm:styleLbl name=\"node0\">" + (SaPackage.scene()) + "<dgm:sp3d/><dgm:txPr/>" + (SaPackage.refs("2" "1" "lt1")) + "</dgm:styleLbl>")
+        def ls:[string] (SaPackage.labels())
+        def i:int 1
+        while (i < (array_length ls)) {
+            def lbl:string (itemAt ls i)
+            def fam:string (SaStyle.family(lbl))
+            def ln:string "2"
+            def fill:string "1"
+            def font:string "lt1"
+            if (fam == "line") {
+                fill = "0"
+                ln = "1"
+                font = "tx1"
+            }
+            if (fam == "arrow") {
+                ln = "0"
+            }
+            if (fam == "text") {
+                ln = "0"
+                fill = "0"
+                font = "tx1"
+            }
+            if ((fam == "light") || (fam == "outlined")) {
+                font = "tx1"
+            }
+            out = (out + "<dgm:styleLbl name=\"" + lbl + "\">" + (SaPackage.scene()) + "<dgm:sp3d/><dgm:txPr/>" + (SaPackage.refs(ln fill font)) + "</dgm:styleLbl>")
+            i = (i + 1)
+        }
+        return (out + "</dgm:styleDef>")
+    }
+
+    sfn scene:string () {
+        return "<dgm:scene3d><a:camera prst=\"orthographicFront\"/><a:lightRig rig=\"threePt\" dir=\"t\"/></dgm:scene3d>"
+    }
+
+    sfn refs:string (ln:string fill:string font:string) {
+        def zero:string "<a:scrgbClr r=\"0\" g=\"0\" b=\"0\"/>"
+        return ("<dgm:style><a:lnRef idx=\"" + ln + "\">" + zero + "</a:lnRef><a:fillRef idx=\"" + fill + "\">" + zero + "</a:fillRef><a:effectRef idx=\"0\">" + zero + "</a:effectRef><a:fontRef idx=\"minor\"><a:schemeClr val=\"" + font + "\"/></a:fontRef></dgm:style>")
+    }
+
+    ; --- the colour set ------------------------------------------------------
+
+    sfn colorsDefXml:string (colorsId:string) {
+        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+        out = (out + "<dgm:colorsDef xmlns:dgm=\"" + (SaPackage.dgmNs()) + "\" xmlns:a=\"" + (SaPackage.aNs()) + "\" uniqueId=\"" + (SaDataWriter.esc(colorsId)) + "\">")
+        def short:string (SaStyle.short(colorsId))
+        def cat:string "accent1"
+        if ((indexOf short "colorful") == 0) {
+            cat = "colorful"
+        }
+        if (((indexOf short "accent") == 0) && ((strlen short) >= 7)) {
+            cat = (substring short 0 7)
+        }
+        out = (out + "<dgm:title val=\"\"/><dgm:desc val=\"\"/><dgm:catLst><dgm:cat type=\"" + cat + "\" pri=\"11200\"/></dgm:catLst>")
+        ; how many colours a label cycles through: one for an accent set, five
+        ; or six for the colourful ones
+        def k:int 1
+        if (short == "colorful1") {
+            k = 5
+        }
+        if (short == "colorful2") {
+            k = 6
+        }
+        def ls:[string] (SaPackage.labels())
+        def i:int 0
+        while (i < (array_length ls)) {
+            def lbl:string (itemAt ls i)
+            out = (out + (SaPackage.colorLbl(lbl colorsId k)))
+            i = (i + 1)
+        }
+        return (out + "</dgm:colorsDef>")
+    }
+
+    sfn colorLbl:string (lbl:string colorsId:string k:int) {
+        def fills:string ""
+        def lines:string ""
+        def texts:string ""
+        def anyFill:boolean false
+        def anyLine:boolean false
+        def i:int 0
+        while (i < k) {
+            def p:SaPaint (SaStyle.paintFor(lbl colorsId i))
+            if (p.noFill == false) {
+                fills = (fills + (SaPackage.clr(p.fill)))
+                anyFill = true
+            }
+            if (p.noLine == false) {
+                lines = (lines + (SaPackage.clr(p.line)))
+                anyLine = true
+            }
+            if (i == 0) {
+                texts = (SaPackage.clr(p.text))
+            }
+            i = (i + 1)
+        }
+        def out:string ("<dgm:styleLbl name=\"" + lbl + "\">")
+        if anyFill {
+            out = (out + "<dgm:fillClrLst meth=\"repeat\">" + fills + "</dgm:fillClrLst>")
+        } {
+            out = (out + "<dgm:fillClrLst/>")
+        }
+        if anyLine {
+            out = (out + "<dgm:linClrLst meth=\"repeat\">" + lines + "</dgm:linClrLst>")
+        } {
+            out = (out + "<dgm:linClrLst/>")
+        }
+        out = (out + "<dgm:effectClrLst/><dgm:txLinClrLst/><dgm:txFillClrLst meth=\"repeat\">" + texts + "</dgm:txFillClrLst><dgm:txEffectClrLst/>")
+        return (out + "</dgm:styleLbl>")
+    }
+
+    ; a theme colour with its tint, as DrawingML writes it
+    sfn clr:string (c:PptxColor) {
+        def name:string c.scheme
+        if ((strlen name) == 0) {
+            name = "accent1"
+        }
+        if (c.tint > 0.0) {
+            def t:int (to_int ((c.tint * 100000.0) + 0.5))
+            return ("<a:schemeClr val=\"" + name + "\"><a:tint val=\"" + (to_string t) + "\"/></a:schemeClr>")
+        }
+        return ("<a:schemeClr val=\"" + name + "\"/>")
+    }
+}

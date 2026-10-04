@@ -299,6 +299,11 @@ class PptxClone {
         s.diagramFrame.copyFrom(src.diagramFrame)
         s.diagramSig = src.diagramSig
         s.diagramText = src.diagramText
+        s.diagramModelXml = src.diagramModelXml
+        s.diagramLayoutXml = src.diagramLayoutXml
+        s.diagramLayoutId = src.diagramLayoutId
+        s.diagramStyleId = src.diagramStyleId
+        s.diagramColorsId = src.diagramColorsId
         def i:int 0
         while (i < (array_length src.children)) {
             def child:PptxShape (itemAt src.children i)

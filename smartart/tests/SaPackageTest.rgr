@@ -1,0 +1,116 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaPackageTest — the data, quick style and colour parts a diagram is saved as
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+Import "../SaPackage.rgr"
+
+class SaPackageTest {
+
+    sfn count:int (hay:string needle:string) {
+        def n:int 0
+        def rest:string hay
+        def at:int (indexOf rest needle)
+        while (at >= 0) {
+            n = (n + 1)
+            rest = (substring rest (at + (strlen needle)) (strlen rest))
+            at = (indexOf rest needle)
+        }
+        return n
+    }
+
+    sfn testData:void (c:SaKit) {
+        print "-- the data part --"
+        def xml:string (SaPackage.dataXml((SaKit.flat("process1" 2)) "rIdDgm-drawing1"))
+        c.ok("written" ((strlen xml) > 0))
+        ; doc, 2 nodes, 2 × (parTrans, sibTrans), 2 connections: 9 ids
+        c.ok("every id a number: the document 0" ((indexOf xml "<dgm:pt modelId=\"0\" type=\"doc\">") >= 0))
+        c.ok("no id the file had" (((indexOf xml "modelId=\"n1\"") < 0) && ((indexOf xml "cxn-") < 0)))
+        c.ok("the last connection 8" ((indexOf xml "<dgm:cxn modelId=\"8\"") >= 0))
+        c.eqInt("seven points" (SaPackageTest.count(xml "<dgm:pt ")) 7)
+        c.eqInt("two connections" (SaPackageTest.count(xml "<dgm:cxn ")) 2)
+        ; the first node is point 1, its connection 7: its transitions name 7
+        c.ok("a transition names its connection by its new id" ((indexOf xml "type=\"parTrans\" cxnId=\"7\"") >= 0))
+        c.ok("a connection its ends by theirs" ((indexOf xml "srcId=\"0\" destId=\"1\"") >= 0))
+        c.ok("and its transitions, numbered after the nodes" ((indexOf xml "parTransId=\"3\" sibTransId=\"4\"") >= 0))
+        c.ok("the drawing named" ((indexOf xml "<dsp:dataModelExt xmlns:dsp=\"http://schemas.microsoft.com/office/drawing/2008/diagram\" relId=\"rIdDgm-drawing1\"") >= 0))
+        c.ok("the text kept" (((indexOf xml ">Item 1<") >= 0) && ((indexOf xml ">Item 2<") >= 0)))
+        def back:SaReadResult (SaDataReader.read(xml))
+        c.ok("it reads back" back.ok)
+        c.eqStr("as the same outline" (back.model.outline()) ((SaKit.model((SaKit.flat("process1" 2)))).outline()))
+        c.eqStr("its drawing named" back.model.drawingRelId "rIdDgm-drawing1")
+        c.eqStr("not a data model: nothing" (SaPackage.dataXml("<x/>" "r")) "")
+        ; ids already numbers stay unique
+        def twice:string (SaPackage.dataXml(xml "rIdDgm-drawing2"))
+        c.eqInt("written twice: still seven points" (SaPackageTest.count(twice "<dgm:pt ")) 7)
+        c.ok("and one drawing" ((SaPackageTest.count(twice "dataModelExt")) == 1))
+        c.eqStr("a shape's id: a GUID" (SaPackage.shapeModelId(0)) "{5A0D0000-0000-4000-8000-000000000000}")
+        c.eqStr("from its index" (SaPackage.shapeModelId(255)) "{5A0D0000-0000-4000-8000-0000000000FF}")
+        c.eqInt("thirty-eight characters" (strlen (SaPackage.shapeModelId(4096))) 38)
+    }
+
+    sfn testStyle:void (c:SaKit) {
+        print "-- the quick style --"
+        def xml:string (SaPackage.styleDefXml("urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1"))
+        c.ok("a style definition with its id" ((indexOf xml "<dgm:styleDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1\">") >= 0))
+        c.eqInt("a label for each" (SaPackageTest.count(xml "<dgm:styleLbl ")) (array_length (SaPackage.labels())))
+        c.ok("a node: line 2, fill 1, light text" ((indexOf xml "<dgm:styleLbl name=\"node1\"><dgm:scene3d><a:camera prst=\"orthographicFront\"/><a:lightRig rig=\"threePt\" dir=\"t\"/></dgm:scene3d><dgm:sp3d/><dgm:txPr/><dgm:style><a:lnRef idx=\"2\">") >= 0))
+        c.ok("a line: no fill" ((indexOf xml "<dgm:styleLbl name=\"parChTrans1D2\">") >= 0))
+        def at:int (indexOf xml "<dgm:styleLbl name=\"parChTrans1D2\">")
+        def lineLbl:string (substring xml at (at + 500))
+        c.ok("its fill reference 0" ((indexOf lineLbl "<a:fillRef idx=\"0\">") >= 0))
+        def tx:int (indexOf xml "<dgm:styleLbl name=\"revTx\">")
+        def txLbl:string (substring xml tx (tx + 500))
+        c.ok("text on the page: dark" ((indexOf txLbl "<a:fontRef idx=\"minor\"><a:schemeClr val=\"tx1\"/>") >= 0))
+    }
+
+    sfn testColors:void (c:SaKit) {
+        print "-- the colour set --"
+        def a:string (SaPackage.colorsDefXml("urn:microsoft.com/office/officeart/2005/8/colors/accent2_2"))
+        c.ok("its id" ((indexOf a "uniqueId=\"urn:microsoft.com/office/officeart/2005/8/colors/accent2_2\"") >= 0))
+        c.ok("its category" ((indexOf a "<dgm:cat type=\"accent2\" pri=\"11200\"/>") >= 0))
+        c.ok("a node in the accent, light lines and text" ((indexOf a "<dgm:styleLbl name=\"node1\"><dgm:fillClrLst meth=\"repeat\"><a:schemeClr val=\"accent2\"/></dgm:fillClrLst><dgm:linClrLst meth=\"repeat\"><a:schemeClr val=\"lt1\"/></dgm:linClrLst><dgm:effectClrLst/><dgm:txLinClrLst/><dgm:txFillClrLst meth=\"repeat\"><a:schemeClr val=\"lt1\"/></dgm:txFillClrLst><dgm:txEffectClrLst/></dgm:styleLbl>") >= 0))
+        c.ok("an arrow tinted, no line" ((indexOf a "<dgm:styleLbl name=\"sibTrans2D1\"><dgm:fillClrLst meth=\"repeat\"><a:schemeClr val=\"accent2\"><a:tint val=\"60000\"/></a:schemeClr></dgm:fillClrLst><dgm:linClrLst/>") >= 0))
+        c.ok("a line not filled" ((indexOf a "<dgm:styleLbl name=\"parChTrans1D2\"><dgm:fillClrLst/><dgm:linClrLst meth=\"repeat\">") >= 0))
+        def f:string (SaPackage.colorsDefXml("urn:microsoft.com/office/officeart/2005/8/colors/colorful1"))
+        c.ok("colorful1: its category" ((indexOf f "<dgm:cat type=\"colorful\"") >= 0))
+        c.ok("the nodes through accent2 … accent6" ((indexOf f "<dgm:styleLbl name=\"node1\"><dgm:fillClrLst meth=\"repeat\"><a:schemeClr val=\"accent2\"/><a:schemeClr val=\"accent3\"/><a:schemeClr val=\"accent4\"/><a:schemeClr val=\"accent5\"/><a:schemeClr val=\"accent6\"/></dgm:fillClrLst>") >= 0))
+        def g:string (SaPackage.colorsDefXml("urn:microsoft.com/office/officeart/2005/8/colors/colorful2"))
+        c.ok("colorful2: accent1 … accent6" ((indexOf g "<a:schemeClr val=\"accent1\"/><a:schemeClr val=\"accent2\"/><a:schemeClr val=\"accent3\"/><a:schemeClr val=\"accent4\"/><a:schemeClr val=\"accent5\"/><a:schemeClr val=\"accent6\"/></dgm:fillClrLst>") >= 0))
+        c.eqInt("a label for each" (SaPackageTest.count(a "<dgm:styleLbl ")) (array_length (SaPackage.labels())))
+        c.ok("every label the built-in layouts use is described" (((((indexOf a "name=\"node0\"") >= 0) && ((indexOf a "name=\"revTx\"") >= 0)) && ((indexOf a "name=\"sibTrans2D1\"") >= 0)) && ((indexOf a "name=\"parChTrans1D2\"") >= 0)))
+    }
+
+    sfn testEngine:void (c:SaKit) {
+        print "-- what the engine says it was made from --"
+        def o (new SaOptions())
+        o.layout = "chevron1"
+        o.colors = "colorful1"
+        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o 480.0 270.0))
+        def g:PptxShape r.shape
+        c.eqStr("the layout it ran, by id" g.diagramLayoutId "urn:microsoft.com/office/officeart/2005/8/layout/chevron1")
+        c.ok("its definition" ((indexOf g.diagramLayoutXml "layout/chevron1\"") >= 0))
+        c.eqStr("the colours asked for" g.diagramColorsId "urn:microsoft.com/office/officeart/2005/8/colors/colorful1")
+        c.eqStr("the default style" g.diagramStyleId "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1")
+        c.ok("the model names them: what the Markdown asked for, not what the file said" ((indexOf g.diagramModelXml "loTypeId=\"urn:microsoft.com/office/officeart/2005/8/layout/chevron1\"") >= 0))
+        c.ok("and the colours" ((indexOf g.diagramModelXml "csTypeId=\"urn:microsoft.com/office/officeart/2005/8/colors/colorful1\"") >= 0))
+        c.ok("its shapes as made" (g.diagramSig == (g.diagramSignature())))
+        def o2 (new SaOptions())
+        o2.style = "simple3"
+        def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o2 480.0 270.0))
+        c.eqStr("a style asked for" r2.shape.diagramStyleId "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple3")
+        def r3:SaResult (SaEngine.layout((SaKit.flat("noSuchLayout9" 2)) (new SaOptions()) 480.0 270.0))
+        c.eqStr("an unknown layout: default's id, as drawn" r3.shape.diagramLayoutId "urn:microsoft.com/office/officeart/2005/8/layout/default")
+    }
+
+    sfn main:void () {
+        print "== SaPackageTest =="
+        def c (new SaKit())
+        SaPackageTest.testData(c)
+        SaPackageTest.testStyle(c)
+        SaPackageTest.testColors(c)
+        SaPackageTest.testEngine(c)
+        c.finish("SaPackageTest")
+    }
+}

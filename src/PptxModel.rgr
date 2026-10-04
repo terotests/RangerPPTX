@@ -980,6 +980,18 @@ class PptxShape {
     ; the diagram's text, one line per node, indented by level — what a screen
     ; reader is given when the author wrote no alt text
     def diagramText:string ""
+    ; What a diagram LAID OUT HERE (smartart/SaEngine) was made from: its data
+    ; model, complete, as `dgm:dataModel` XML; the layout definition it was
+    ; run with and that layout's id; the quick style and colour set ids. The
+    ; writer saves such a diagram as SmartArt PowerPoint can lay out again
+    ; (data, layout, style, colours and this drawing as its parts), and the
+    ; editor lays it out again when its text changes. Empty for a diagram
+    ; that was only read from a drawing part.
+    def diagramModelXml:string ""
+    def diagramLayoutXml:string ""
+    def diagramLayoutId:string ""
+    def diagramStyleId:string ""
+    def diagramColorsId:string ""
 
     Constructor () {
         def c:[PptxShape]

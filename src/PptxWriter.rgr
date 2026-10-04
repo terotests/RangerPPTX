@@ -31,6 +31,7 @@ Import "PptxModel.rgr"
 Import "../../zip/ZipWriter.rgr"
 Import "../../ooxml/OpcPackage.rgr"
 Import "../../office/assets/OfficeAsset.rgr"
+Import "../smartart/SaPackage.rgr"
 
 class PptxWriteMedia {
     def part:string ""          ; the model's package path
@@ -53,11 +54,20 @@ class PptxWriter {
     def media:[PptxWriteMedia]
     def charts:[string]
     def chartPaths:[string]
+    ; SmartArt laid out here, saved as SmartArt: five parts a diagram
+    ; (data, layout, quick style, colours, drawing), their paths and bodies in
+    ; that order, so diagram k's are at 5k … 5k+4
+    def diagramPaths:[string]
+    def diagramBodies:[string]
+    ; the slide's relationship id for each, made from the part's own name so
+    ; it cannot be one a slide written over still holds
+    def diagramRelIds:[string]
     def shapeId:int 1
     ; Which media and which charts the slide being written uses, so its
     ; relationship part names those and not every picture in the deck.
     def slideMediaUse:[int]
     def slideChartUse:[int]
+    def slideDiagramUse:[int]
     ; The notes part this slide will point at, if it has any notes.
     def slideNotesPath:string ""
     def notesPaths:[string]
@@ -728,6 +738,12 @@ class PptxWriter {
         charts = c
         def cp:[string]
         chartPaths = cp
+        def dp:[string]
+        diagramPaths = dp
+        def db:[string]
+        diagramBodies = db
+        def dri:[string]
+        diagramRelIds = dri
         def np:[string]
         notesPaths = np
         def nb:[string]
@@ -743,6 +759,8 @@ class PptxWriter {
         slideMediaUse = mu
         def cu:[int]
         slideChartUse = cu
+        def du:[int]
+        slideDiagramUse = du
         slideNotesPath = ""
     }
 
@@ -948,6 +966,14 @@ class PptxWriter {
 
     fn shapeXml:string (shape:PptxShape) {
         if shape.isDiagram {
+            ; laid out here — made here, or read from a file that had no
+            ; drawing for it: written whole, drawing included, so a reader
+            ; that cannot lay SmartArt out (anything but PowerPoint) still
+            ; draws it
+            def made:string (this.smartArtXml(shape))
+            if ((strlen made) > 0) {
+                return made
+            }
             def kept:string (this.diagramFrameXml(shape))
             if ((strlen kept) > 0) {
                 return kept
@@ -1891,6 +1917,18 @@ class PptxWriter {
             out = (out + "<Relationship Id=\"rIdChart" + (to_string (cidx + 1)) + "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"" + (PptxWriter.relTargetFrom("ppt/slides" cpath)) + "\"/>")
             j = (j + 1)
         }
+        def d:int 0
+        while (d < (array_length slideDiagramUse)) {
+            def didx:int (itemAt slideDiagramUse d)
+            def kinds:[string] (PptxWriter.diagramRelKinds())
+            def kk:int 0
+            while (kk < 5) {
+                def dpath:string (itemAt diagramPaths ((didx * 5) + kk))
+                out = (out + "<Relationship Id=\"" + (itemAt diagramRelIds ((didx * 5) + kk)) + "\" Type=\"" + (itemAt kinds kk) + "\" Target=\"" + (PptxWriter.relTargetFrom("ppt/slides" dpath)) + "\"/>")
+                kk = (kk + 1)
+            }
+            d = (d + 1)
+        }
         return (out + notesRel + "</Relationships>")
     }
 
@@ -1947,6 +1985,138 @@ class PptxWriter {
             }
         }
         return out
+    }
+
+    ; --- SmartArt laid out here ----------------------------------------------
+    ;
+    ; A diagram the engine laid out (smartart/SaEngine), its shapes untouched
+    ; since, saved as SmartArt: a `graphicFrame` naming its data, layout,
+    ; quick style and colour parts, and a drawing part with the shapes as
+    ; drawn here, which the data part names through `dsp:dataModelExt`.
+    ; PowerPoint lays it out again from the first four and it stays a diagram
+    ; there; other readers draw the fifth. Empty — and the diagram is written
+    ; as the group it is — when there is nothing to write it from.
+
+    sfn diagramRelKinds:[string] () {
+        def base:string "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagram"
+        return ([] _:string ((base + "Data") (base + "Layout") (base + "QuickStyle") (base + "Colors") "http://schemas.microsoft.com/office/2007/relationships/diagramDrawing"))
+    }
+
+    ; "ppt/diagrams/data3.xml" → "rIdDgm-data3"
+    sfn diagramRelId:string (path:string) {
+        def at:int (lastIndexOf path "/")
+        def base:string (substring path (at + 1) (strlen path))
+        def dot:int (lastIndexOf base ".")
+        if (dot > 0) {
+            base = (substring base 0 dot)
+        }
+        return ("rIdDgm-" + base)
+    }
+
+    fn smartArtXml:string (shape:PptxShape) {
+        if (((strlen shape.diagramModelXml) == 0) || ((strlen shape.diagramLayoutXml) == 0)) {
+            return ""
+        }
+        if (shape.diagramSig != (shape.diagramSignature())) {
+            return ""
+        }
+        def idx:int (to_int ((to_double (array_length diagramPaths)) / 5.0))
+        def taken:[string:boolean]
+        def ti:int 0
+        while (ti < (array_length diagramPaths)) {
+            set taken (itemAt diagramPaths ti) true
+            ti = (ti + 1)
+        }
+        def prefixes:[string] ([] _:string ("ppt/diagrams/data" "ppt/diagrams/layout" "ppt/diagrams/quickStyle" "ppt/diagrams/colors" "ppt/diagrams/drawing"))
+        def paths:[string]
+        def k:int 0
+        while (k < 5) {
+            def path:string ((itemAt prefixes k) + (to_string (idx + 1)) + ".xml")
+            if overMode {
+                path = (this.freePart((itemAt prefixes k) ".xml" taken))
+            }
+            set taken path true
+            push paths path
+            k = (k + 1)
+        }
+        def data:string (SaPackage.dataXml(shape.diagramModelXml (PptxWriter.diagramRelId((itemAt paths 4)))))
+        if ((strlen data) == 0) {
+            return ""
+        }
+        def bodies:[string]
+        push bodies data
+        push bodies shape.diagramLayoutXml
+        push bodies (SaPackage.styleDefXml(shape.diagramStyleId))
+        push bodies (SaPackage.colorsDefXml(shape.diagramColorsId))
+        push bodies (PptxWriter.diagramDrawingXml(shape))
+        k = 0
+        while (k < 5) {
+            push diagramPaths (itemAt paths k)
+            push diagramBodies (itemAt bodies k)
+            push diagramRelIds (PptxWriter.diagramRelId((itemAt paths k)))
+            k = (k + 1)
+        }
+        push slideDiagramUse idx
+        def id:int (this.idFor(shape))
+        def name:string shape.name
+        if ((strlen name) == 0) {
+            name = ("Diagram " + (to_string id))
+        }
+        def out:string ("<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id=\"" + (to_string id) + "\" name=\"" + (PptxWriter.esc(name)) + "\"" + (PptxWriter.descrAttr(shape)) + "/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>")
+        out = (out + "<p:xfrm><a:off x=\"" + (PptxWriter.emu(shape.x)) + "\" y=\"" + (PptxWriter.emu(shape.y)) + "\"/><a:ext cx=\"" + (PptxWriter.emu(shape.width)) + "\" cy=\"" + (PptxWriter.emu(shape.height)) + "\"/></p:xfrm>")
+        out = (out + "<a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\"><dgm:relIds xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" r:dm=\"" + (PptxWriter.diagramRelId((itemAt paths 0))) + "\" r:lo=\"" + (PptxWriter.diagramRelId((itemAt paths 1))) + "\" r:qs=\"" + (PptxWriter.diagramRelId((itemAt paths 2))) + "\" r:cs=\"" + (PptxWriter.diagramRelId((itemAt paths 3))) + "\"/></a:graphicData></a:graphic>")
+        return (out + "</p:graphicFrame>")
+    }
+
+    ; The drawing part: the group's shapes in the frame's own space, each a
+    ; `dsp:sp` with its geometry, fill, line and text as drawn here.
+    sfn diagramDrawingXml:string (g:PptxShape) {
+        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+        out = (out + "<dsp:drawing xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:dsp=\"http://schemas.microsoft.com/office/drawing/2008/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">")
+        out = (out + "<dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/>")
+        def i:int 0
+        while (i < (array_length g.children)) {
+            out = (out + (PptxWriter.dspSpXml((itemAt g.children i) i)))
+            i = (i + 1)
+        }
+        return (out + "</dsp:spTree></dsp:drawing>")
+    }
+
+    sfn dspSpXml:string (sh:PptxShape i:int) {
+        def out:string ("<dsp:sp modelId=\"" + (SaPackage.shapeModelId(i)) + "\"><dsp:nvSpPr><dsp:cNvPr id=\"0\" name=\"\"/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr>")
+        out = (out + (PptxWriter.xfrmXml(sh "a:xfrm" false)) + (PptxWriter.geomXml(sh)))
+        if sh.noFill {
+            out = (out + "<a:noFill/>")
+        } {
+            out = (out + (PptxWriter.fillXml(sh)))
+        }
+        if (sh.noLine || (sh.line.isSet == false)) {
+            out = (out + "<a:ln><a:noFill/></a:ln>")
+        } {
+            def w:double sh.lineWidthPt
+            if (w <= 0.0) {
+                w = 1.0
+            }
+            def ends:string ""
+            if ((strlen sh.tailEnd) > 0) {
+                ends = ("<a:tailEnd type=\"" + sh.tailEnd + "\"/>")
+            }
+            out = (out + "<a:ln w=\"" + (PptxWriter.emu(w)) + "\"><a:solidFill>" + (PptxWriter.colorXml(sh.line)) + "</a:solidFill>" + ends + "</a:ln>")
+        }
+        out = (out + "</dsp:spPr>")
+        if sh.hasText {
+            def body:string (PptxWriter.bodyXml(sh.text false false))
+            body = ("<dsp:txBody>" + (substring body (strlen "<p:txBody>") ((strlen body) - (strlen "</p:txBody>"))) + "</dsp:txBody>")
+            ; shrink on overflow: the size was fitted with the fonts here, and a
+            ; reader drawing with a wider one shrinks it rather than breaking
+            ; words (PowerPoint lays the diagram out again anyway)
+            def bp:int (indexOf body "/><a:lstStyle/>")
+            if (bp >= 0) {
+                body = ((substring body 0 bp) + "><a:normAutofit/></a:bodyPr><a:lstStyle/>" + (substring body (bp + (strlen "/><a:lstStyle/>")) (strlen body)))
+            }
+            out = (out + body)
+        }
+        return (out + "</dsp:sp>")
     }
 
     fn chartFrameXml:string (shape:PptxShape) {
@@ -2085,6 +2255,12 @@ class PptxWriter {
         while (j < (array_length charts)) {
             out = (out + "<Override PartName=\"/ppt/charts/chart" + (to_string (j + 1)) + ".xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>")
             j = (j + 1)
+        }
+        def dg:int 0
+        while (dg < (array_length diagramPaths)) {
+            def dgp:string (itemAt diagramPaths dg)
+            out = (out + "<Override PartName=\"/" + dgp + "\" ContentType=\"" + (PptxWriter.contentTypeOf(dgp)) + "\"/>")
+            dg = (dg + 1)
         }
         def n:int 0
         while (n < (array_length notesPaths)) {
@@ -2242,6 +2418,11 @@ class PptxWriter {
         while (c < (array_length charts)) {
             this.addXml((itemAt chartPaths c) (itemAt charts c))
             c = (c + 1)
+        }
+        def dgi:int 0
+        while (dgi < (array_length diagramPaths)) {
+            this.addXml((itemAt diagramPaths dgi) (itemAt diagramBodies dgi))
+            dgi = (dgi + 1)
         }
         def n:int 0
         while (n < (array_length notesPaths)) {
@@ -2542,12 +2723,26 @@ class PptxWriter {
             }
             chi = (chi + 1)
         }
+        def dgo:int 0
+        while (dgo < (array_length diagramPaths)) {
+            def dgpath:string (itemAt diagramPaths dgo)
+            this.addXml(dgpath (itemAt diagramBodies dgo))
+            set written dgpath true
+            push newParts dgpath
+            dgo = (dgo + 1)
+        }
 
         ; --- the three parts that have to agree with the slide list
         def presXml:string (pkg.readXml("ppt/presentation.xml"))
         this.addXml("ppt/presentation.xml" (PptxWriter.presentationWithDeck(presXml pres slidePaths)))
         def presRelsXml:string (pkg.readXml("ppt/_rels/presentation.xml.rels"))
         this.addXml("ppt/_rels/presentation.xml.rels" (PptxWriter.presentationRelsWith(pkg presRelsXml slidePaths)))
+        ; Written, so the content types keep their entries. The presentation's
+        ; Override used to be dropped here — the main part of the package with
+        ; no content type, which LibreOffice refuses to open at all and
+        ; PowerPoint offers to repair.
+        set written "ppt/presentation.xml" true
+        set written "ppt/_rels/presentation.xml.rels" true
         def ctXml:string (pkg.readXml("[Content_Types].xml"))
         this.addXml("[Content_Types].xml" (PptxWriter.contentTypesWith(ctXml written newParts)))
     }
@@ -2909,6 +3104,21 @@ class PptxWriter {
         }
         if ((indexOf part "ppt/notesSlides/notesSlide") == 0) {
             return "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"
+        }
+        if ((indexOf part "ppt/diagrams/data") == 0) {
+            return "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml"
+        }
+        if ((indexOf part "ppt/diagrams/layout") == 0) {
+            return "application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml"
+        }
+        if ((indexOf part "ppt/diagrams/quickStyle") == 0) {
+            return "application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml"
+        }
+        if ((indexOf part "ppt/diagrams/colors") == 0) {
+            return "application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml"
+        }
+        if ((indexOf part "ppt/diagrams/drawing") == 0) {
+            return "application/vnd.ms-office.drawingml.diagramDrawing+xml"
         }
         return ""
     }
