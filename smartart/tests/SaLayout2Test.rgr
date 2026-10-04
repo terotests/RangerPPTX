@@ -1,0 +1,451 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaLayout2Test — phase 2's built-in layouts, end to end
+; ==============================================================================
+;
+; default, cycle2, radial1, hierarchy1, orgChart1 and pyramid1, each at 1, 2,
+; 3, 5 and 8 items: drawn with the layout asked for, nothing to warn about,
+; every item's text, inside the frame, no two items on top of each other, one
+; type size. Then what each layout is for. The exact boxes are the oracle's
+; to judge (smartart/oracle); these are the properties any right answer has.
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+Import "../SaRender.rgr"
+
+class SaLayout2Test {
+
+    sfn draw:SaResult (xml:string) {
+        return (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+    }
+
+    sfn allInside:boolean (r:SaResult) {
+        def e:double 0.01
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def s:PptxShape (itemAt r.shape.children i)
+            if ((((s.x < (0.0 - e)) || (s.y < (0.0 - e))) || ((s.x + s.width) > (480.0 + e))) || ((s.y + s.height) > (270.0 + e))) {
+                return false
+            }
+            i = (i + 1)
+        }
+        return true
+    }
+
+    ; no two overlap by more than `slack` points either way
+    sfn apart:boolean (l:[PptxShape] slack:double) {
+        def i:int 0
+        while (i < (array_length l)) {
+            def a:PptxShape (itemAt l i)
+            def j:int (i + 1)
+            while (j < (array_length l)) {
+                def b:PptxShape (itemAt l j)
+                def ox:boolean ((((a.x + a.width) - slack) > b.x) && (((b.x + b.width) - slack) > a.x))
+                def oy:boolean ((((a.y + a.height) - slack) > b.y) && (((b.y + b.height) - slack) > a.y))
+                if (ox && oy) {
+                    return false
+                }
+                j = (j + 1)
+            }
+            i = (i + 1)
+        }
+        return true
+    }
+
+    sfn oneSize:boolean (l:[PptxShape]) {
+        if ((array_length l) == 0) {
+            return true
+        }
+        def first:double (SaKit.sizeOf((itemAt l 0)))
+        def i:int 0
+        while (i < (array_length l)) {
+            if ((SaKit.sizeOf((itemAt l i))) != first) {
+                return false
+            }
+            i = (i + 1)
+        }
+        return (first > 0.0)
+    }
+
+    sfn texts:string (l:[PptxShape]) {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length l)) {
+            def s:PptxShape (itemAt l i)
+            if (i > 0) {
+                out = (out + "|")
+            }
+            out = (out + (s.text.plainText()))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn expected:string (n:int) {
+        def out:string ""
+        def i:int 1
+        while (i <= n) {
+            if (i > 1) {
+                out = (out + "|")
+            }
+            out = (out + "Item " + (to_string i))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn presetsOf:string (l:[PptxShape]) {
+        def out:string ""
+        def i:int 0
+        while (i < (array_length l)) {
+            def s:PptxShape (itemAt l i)
+            if ((indexOf out s.preset) < 0) {
+                if ((strlen out) > 0) {
+                    out = (out + " ")
+                }
+                out = (out + s.preset)
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; the checks every layout gets at each count, for items given by `make`:
+    ; 0 flat, 1 a radial (a centre and the items round it)
+    sfn common:void (c:SaKit lay:string main:string make:int) {
+        def counts:[int] ([] _:int (1 2 3 5 8))
+        def i:int 0
+        while (i < (array_length counts)) {
+            def n:int (itemAt counts i)
+            def tag:string (lay + " × " + (to_string n))
+            def xml:string (SaKit.flat(lay n))
+            if (make == 1) {
+                xml = (SaLayout2Test.radial(n))
+            }
+            def r:SaResult (SaLayout2Test.draw(xml))
+            c.ok((tag + ": drawn") r.ok)
+            c.eqStr((tag + ": with the layout asked for") r.layoutUsed lay)
+            c.eqInt((tag + ": nothing to warn about") (array_length r.warnings) 0)
+            def items:[PptxShape] (SaKit.shapes(r main))
+            c.eqStr((tag + ": every item") (SaLayout2Test.texts(items)) (SaLayout2Test.expected(n)))
+            c.ok((tag + ": inside the frame") (SaLayout2Test.allInside(r)))
+            c.ok((tag + ": none on top of another") (SaLayout2Test.apart(items 0.5)))
+            c.ok((tag + ": one type size") (SaLayout2Test.oneSize(items)))
+            i = (i + 1)
+        }
+    }
+
+    ; a centre, "Centre", and n items under it, "Item 1" … "Item n"
+    sfn radial:string (n:int) {
+        def pts:string (SaKit.pt("c" "Centre"))
+        def cs:string (SaKit.cx("0" "c"))
+        def i:int 1
+        while (i <= n) {
+            def id:string ("r" + (to_string i))
+            pts = (pts + (SaKit.pt(id ("Item " + (to_string i)))))
+            cs = (cs + (SaKit.cx("c" id)))
+            i = (i + 1)
+        }
+        return (SaKit.data("radial1" pts cs))
+    }
+
+    ; a CEO, an assistant, three under the CEO, two under the first of them
+    sfn org:string (lay:string) {
+        def pts:string ((SaKit.pt("a" "CEO")) + (SaKit.asst("s" "Assistant")) + (SaKit.pt("b" "Sales")) + (SaKit.pt("c" "Product")) + (SaKit.pt("d" "Finance")) + (SaKit.pt("b1" "North")) + (SaKit.pt("b2" "South")))
+        def cs:string ((SaKit.cx("0" "a")) + (SaKit.cx("a" "s")) + (SaKit.cx("a" "b")) + (SaKit.cx("a" "c")) + (SaKit.cx("a" "d")) + (SaKit.cx("b" "b1")) + (SaKit.cx("b" "b2")))
+        return (SaKit.data(lay pts cs))
+    }
+
+    sfn byText@(optional):PptxShape (r:SaResult t:string) {
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def s:PptxShape (itemAt r.shape.children i)
+            if ((s.text.plainText()) == t) {
+                def hit@(optional):PptxShape s
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):PptxShape
+        return none
+    }
+
+    sfn cx:double (s:PptxShape) {
+        return (s.x + (s.width / 2.0))
+    }
+
+    sfn cy:double (s:PptxShape) {
+        return (s.y + (s.height / 2.0))
+    }
+
+    ; the checks themselves catch what they are for
+    sfn testKit:void (c:SaKit) {
+        print "-- the checks --"
+        def a (new PptxShape())
+        a.x = 0.0
+        a.y = 0.0
+        a.width = 10.0
+        a.height = 10.0
+        def b (new PptxShape())
+        b.x = 5.0
+        b.y = 5.0
+        b.width = 10.0
+        b.height = 10.0
+        def two:[PptxShape]
+        push two a
+        push two b
+        c.ok("two overlapping are not apart" ((SaLayout2Test.apart(two 0.5)) == false))
+        b.x = 10.0
+        c.ok("touching are" (SaLayout2Test.apart(two 0.5)))
+        b.x = 5.0
+        b.y = 20.0
+        c.ok("one under the other are" (SaLayout2Test.apart(two 0.5)))
+    }
+
+    sfn testDefault:void (c:SaKit) {
+        print "-- default --"
+        SaLayout2Test.common(c "default" "node" 0)
+        def r:SaResult (SaLayout2Test.draw((SaKit.flat("default" 5))))
+        def l:[PptxShape] (SaKit.shapes(r "node"))
+        def n0:PptxShape (itemAt l 0)
+        def n3:PptxShape (itemAt l 3)
+        def n4:PptxShape (itemAt l 4)
+        c.eqStr("blocks" n0.preset "rect")
+        c.near("0.6 as tall as wide" (n0.height / n0.width) 0.6)
+        c.near("five: three to the first row" n3.y n4.y)
+        c.ok("the fourth on the second" (n3.y > n0.y))
+        c.near("the short row centred" ((SaLayout2Test.cx(n3)) + (SaLayout2Test.cx(n4))) 480.0)
+        def r1:SaResult (SaLayout2Test.draw((SaKit.flat("default" 1))))
+        def one:PptxShape (itemAt (SaKit.shapes(r1 "node")) 0)
+        c.ok("one item: as large as fits" ((one.height > 269.0) || (one.width > 479.0)))
+        ; no layout named at all: default
+        def r0:SaResult (SaLayout2Test.draw((SaKit.flat("" 3))))
+        c.eqStr("no layout named: default" r0.layoutUsed "default")
+        ; the two levels as bullets in the block
+        def two:SaResult (SaLayout2Test.draw((SaKit.twoLevels("default" 2 2))))
+        def b0:PptxShape (itemAt (SaKit.shapes(two "node")) 0)
+        c.eqInt("an item and the points under it, in one block" (array_length b0.text.paragraphs) 3)
+    }
+
+    sfn testCycle:void (c:SaKit) {
+        print "-- cycle2 --"
+        SaLayout2Test.common(c "cycle2" "node" 0)
+        def r:SaResult (SaLayout2Test.draw((SaKit.flat("cycle2" 5))))
+        def l:[PptxShape] (SaKit.shapes(r "node"))
+        def n0:PptxShape (itemAt l 0)
+        def n1:PptxShape (itemAt l 1)
+        c.eqStr("circles" n0.preset "ellipse")
+        c.near("round" n0.width n0.height)
+        c.ok("the first at the top" (n0.y < n1.y))
+        c.ok("the second to its right" ((SaLayout2Test.cx(n1)) > (SaLayout2Test.cx(n0))))
+        def arrows:[PptxShape] (SaKit.shapes(r "sibTrans"))
+        c.eqInt("an arrow after every item, the last back to the first" (array_length arrows) 5)
+        def a0:PptxShape (itemAt arrows 0)
+        c.eqStr("right arrows, turned" a0.preset "rightArrow")
+        c.near("the first turned half a step (36°)" a0.rotation 36.0)
+        c.ok("between the first two" (((SaLayout2Test.cx(a0)) > (SaLayout2Test.cx(n0))) && ((SaLayout2Test.cx(a0)) < (SaLayout2Test.cx(n1)))))
+        def r1:SaResult (SaLayout2Test.draw((SaKit.flat("cycle2" 1))))
+        c.eqInt("one item: no arrow" (array_length (SaKit.shapes(r1 "sibTrans"))) 0)
+        ; all the same distance from the middle
+        def mx:double 0.0
+        def my:double 0.0
+        def i:int 0
+        while (i < (array_length l)) {
+            mx = (mx + (SaLayout2Test.cx((itemAt l i))))
+            my = (my + (SaLayout2Test.cy((itemAt l i))))
+            i = (i + 1)
+        }
+        mx = (mx / 5.0)
+        my = (my / 5.0)
+        def d0:double (sqrt (((SaLayout2Test.cx(n0)) - mx) * ((SaLayout2Test.cx(n0)) - mx)) + (((SaLayout2Test.cy(n0)) - my) * ((SaLayout2Test.cy(n0)) - my)))
+        def n3:PptxShape (itemAt l 3)
+        def d3:double (sqrt (((SaLayout2Test.cx(n3)) - mx) * ((SaLayout2Test.cx(n3)) - mx)) + (((SaLayout2Test.cy(n3)) - my) * ((SaLayout2Test.cy(n3)) - my)))
+        c.near("on one circle" d0 d3)
+    }
+
+    sfn testRadial:void (c:SaKit) {
+        print "-- radial1 --"
+        SaLayout2Test.common(c "radial1" "node" 1)
+        def r:SaResult (SaLayout2Test.draw((SaLayout2Test.radial(4))))
+        def ctrs:[PptxShape] (SaKit.shapes(r "centerShape"))
+        c.eqInt("one centre" (array_length ctrs) 1)
+        def ct:PptxShape (itemAt ctrs 0)
+        c.eqStr("its text" (ct.text.plainText()) "Centre")
+        c.near("in the middle across" (SaLayout2Test.cx(ct)) 240.0)
+        c.near("and down" (SaLayout2Test.cy(ct)) 135.0)
+        def l:[PptxShape] (SaKit.shapes(r "node"))
+        def n0:PptxShape (itemAt l 0)
+        c.ok("smaller than the centre" (n0.width < ct.width))
+        c.ok("the first above it" ((n0.y + n0.height) <= (ct.y + 0.01)))
+        def lines:[PptxShape] (SaKit.shapes(r "parTrans"))
+        c.eqInt("a line to each" (array_length lines) 4)
+        def l0:PptxShape (itemAt lines 0)
+        c.eqStr("lines" l0.preset "line")
+        c.eqStr("with no arrowhead" l0.tailEnd "")
+        c.ok("not filled" l0.noFill)
+        c.near("from the centre's edge" (l0.y + l0.height) ct.y)
+        c.near("to the item's" l0.y (n0.y + n0.height))
+        ; the items round it are apart from it too
+        def all:[PptxShape] (SaKit.shapes(r "node"))
+        push all ct
+        c.ok("none on top of the centre" (SaLayout2Test.apart(all 0.5)))
+        ; only the first top-level item is the centre
+        def extra:string (SaKit.data("radial1" ((SaKit.pt("c" "One")) + (SaKit.pt("d" "Two")) + (SaKit.pt("e" "Under"))) ((SaKit.cx("0" "c")) + (SaKit.cx("0" "d")) + (SaKit.cx("c" "e")))))
+        def rx:SaResult (SaLayout2Test.draw(extra))
+        c.eqInt("a second top-level item is not drawn" (array_length (SaKit.shapes(rx "centerShape"))) 1)
+        c.eqStr("the items round it are the first's" (SaLayout2Test.texts((SaKit.shapes(rx "node")))) "Under")
+    }
+
+    sfn testHierarchy:void (c:SaKit) {
+        print "-- hierarchy1 --"
+        SaLayout2Test.common(c "hierarchy1" "node" 0)
+        def r:SaResult (SaLayout2Test.draw((SaLayout2Test.org("hierarchy1"))))
+        c.eqInt("org data: nothing to warn about" (array_length r.warnings) 0)
+        c.ok("inside the frame" (SaLayout2Test.allInside(r)))
+        def boxes:[PptxShape] (SaKit.shapes(r "node"))
+        c.eqInt("a box for everyone" (array_length boxes) 7)
+        c.ok("none on top of another" (SaLayout2Test.apart(boxes 0.5)))
+        c.eqStr("rounded" (SaLayout2Test.presetsOf(boxes)) "roundRect")
+        def ceo@(optional):PptxShape (SaLayout2Test.byText(r "CEO"))
+        def sales@(optional):PptxShape (SaLayout2Test.byText(r "Sales"))
+        def north@(optional):PptxShape (SaLayout2Test.byText(r "North"))
+        def asst@(optional):PptxShape (SaLayout2Test.byText(r "Assistant"))
+        c.ok("all found" ((((!null? ceo) && (!null? sales)) && (!null? north)) && (!null? asst)))
+        if ((((null? ceo) || (null? sales)) || (null? north)) || (null? asst)) {
+            return
+        }
+        def top:PptxShape (unwrap ceo)
+        def s:PptxShape (unwrap sales)
+        def no:PptxShape (unwrap north)
+        def a:PptxShape (unwrap asst)
+        c.ok("the CEO on top" ((top.y + top.height) < s.y))
+        c.ok("Sales over North" ((s.y + s.height) < no.y))
+        c.near("an assistant is one of the row in a hierarchy" a.y s.y)
+        def lines:[PptxShape] (SaKit.shapes(r "line"))
+        c.ok(("elbow lines: three pieces for most (" + (to_string (array_length lines)) + ")") ((array_length lines) >= 12))
+        c.eqStr("lines only" (SaLayout2Test.presetsOf(lines)) "line")
+        ; every line ends on a box's top
+        def ends:int 0
+        def i:int 0
+        while (i < (array_length lines)) {
+            def ln:PptxShape (itemAt lines i)
+            def j:int 0
+            while (j < (array_length boxes)) {
+                def b:PptxShape (itemAt boxes j)
+                def bottomY:double (? ln.flipV ln.y (ln.y + ln.height))
+                if (((fabs (bottomY - b.y)) < 0.01) && (ln.width < 0.01)) {
+                    if ((fabs (ln.x - (SaLayout2Test.cx(b)))) < 0.01) {
+                        ends = (ends + 1)
+                    }
+                }
+                j = (j + 1)
+            }
+            i = (i + 1)
+        }
+        c.eqInt("a line comes down into the top middle of every box but the CEO's" ends 6)
+    }
+
+    sfn testOrgChart:void (c:SaKit) {
+        print "-- orgChart1 --"
+        SaLayout2Test.common(c "orgChart1" "node" 0)
+        def r:SaResult (SaLayout2Test.draw((SaLayout2Test.org("orgChart1"))))
+        c.eqInt("nothing to warn about" (array_length r.warnings) 0)
+        c.ok("inside the frame" (SaLayout2Test.allInside(r)))
+        def boxes:[PptxShape] (SaKit.shapes(r "node"))
+        c.eqInt("a box for everyone but the assistant" (array_length boxes) 6)
+        def ab:[PptxShape] (SaKit.shapes(r "asstNode"))
+        c.eqInt("the assistant's own" (array_length ab) 1)
+        c.eqStr("square boxes" (SaLayout2Test.presetsOf(boxes)) "rect")
+        def ceo@(optional):PptxShape (SaLayout2Test.byText(r "CEO"))
+        def sales@(optional):PptxShape (SaLayout2Test.byText(r "Sales"))
+        def south@(optional):PptxShape (SaLayout2Test.byText(r "South"))
+        def asst@(optional):PptxShape (SaLayout2Test.byText(r "Assistant"))
+        if ((((null? ceo) || (null? sales)) || (null? south)) || (null? asst)) {
+            c.ok("all found" false)
+            return
+        }
+        def top:PptxShape (unwrap ceo)
+        def s:PptxShape (unwrap sales)
+        def so:PptxShape (unwrap south)
+        def a:PptxShape (unwrap asst)
+        c.ok("the assistant under the CEO" (a.y > (top.y + top.height)))
+        c.ok("above the others" ((a.y + a.height) < s.y))
+        c.ok("to the right of the line down" (a.x > (SaLayout2Test.cx(top))))
+        c.ok("Sales over South" ((s.y + s.height) < so.y))
+        def all:[PptxShape] (SaKit.shapes(r "node"))
+        push all a
+        c.ok("none on top of another" (SaLayout2Test.apart(all 0.5)))
+        def al:[PptxShape] (SaKit.shapes(r "asstLine"))
+        c.eqInt("a line to the assistant: down and across" (array_length al) 2)
+        ; a branch of only assistants
+        def onlyA:string (SaKit.data("orgChart1" ((SaKit.pt("a" "Boss")) + (SaKit.asst("s" "Helper"))) ((SaKit.cx("0" "a")) + (SaKit.cx("a" "s")))))
+        def ro:SaResult (SaLayout2Test.draw(onlyA))
+        c.eqInt("only an assistant: drawn" (array_length (SaKit.shapes(ro "asstNode"))) 1)
+        c.ok("and inside" (SaLayout2Test.allInside(ro)))
+    }
+
+    sfn testPyramid:void (c:SaKit) {
+        print "-- pyramid1 --"
+        SaLayout2Test.common(c "pyramid1" "level" 0)
+        def r:SaResult (SaLayout2Test.draw((SaKit.flat("pyramid1" 3))))
+        def l:[PptxShape] (SaKit.shapes(r "level"))
+        def l0:PptxShape (itemAt l 0)
+        def l1:PptxShape (itemAt l 1)
+        def l2:PptxShape (itemAt l 2)
+        c.eqStr("trapezoids" (SaLayout2Test.presetsOf(l)) "trapezoid")
+        c.ok("the first at the apex" (l0.y < l1.y))
+        c.ok("each wider than the one above" ((l0.width < l1.width) && (l1.width < l2.width)))
+        c.near("one centre line" (SaLayout2Test.cx(l0)) (SaLayout2Test.cx(l2)))
+        c.near("levels the same height" l0.height l2.height)
+        c.near("the base 1.15 times the height" (l2.width / ((l2.y + l2.height) - l0.y)) 1.15)
+        c.eqStr("the slope as an adjustment" (itemAt l0.adjNames 0) "adj")
+        ; the apex's top corners meet: its inset is half its width
+        def inset0:double (((itemAt l0.adjValues 0) / 100000.0) * l0.height)
+        if (l0.width < l0.height) {
+            inset0 = (((itemAt l0.adjValues 0) / 100000.0) * l0.width)
+        }
+        c.near("the apex comes to a point" inset0 (l0.width / 2.0))
+        c.ok("text kept in from the slopes" (l1.text.insetL > (l1.width * 0.1)))
+        ; the painter draws the slopes: the level is a path, not a box
+        def out (new EVGDisplayList())
+        def pal (new SaPalette())
+        SaRender.paint(out r.shape pal 0.0 0.0)
+        def paths:int 0
+        def i:int 0
+        while (i < (array_length out.cmds)) {
+            def cmd:EVGDrawCmd (itemAt out.cmds i)
+            if (cmd.kind == 6) {
+                paths = (paths + 1)
+            }
+            i = (i + 1)
+        }
+        c.ok(("drawn as outlines (" + (to_string paths) + ")") (paths >= 3))
+    }
+
+    sfn testLinesDrawn:void (c:SaKit) {
+        print "-- lines in the painter --"
+        def r:SaResult (SaLayout2Test.draw((SaLayout2Test.radial(3))))
+        def out (new EVGDisplayList())
+        SaRender.paint(out r.shape (new SaPalette()) 0.0 0.0)
+        c.ok("the painter has the line preset" ((indexOf (SaPresets.names()) "line") >= 0))
+        def n:int (array_length out.cmds)
+        c.ok(("a radial draws something for its lines (" + (to_string n) + " commands)") (n > 6))
+        def lines:[PptxShape] (SaKit.shapes(r "parTrans"))
+        def l0:PptxShape (itemAt lines 0)
+        c.ok("a line's colour is its line, resolved" ((l0.line.isSet) && (l0.line.isScheme == false)))
+    }
+
+    sfn main:void () {
+        print "== SaLayout2Test =="
+        def c (new SaKit())
+        SaLayout2Test.testKit(c)
+        SaLayout2Test.testDefault(c)
+        SaLayout2Test.testCycle(c)
+        SaLayout2Test.testRadial(c)
+        SaLayout2Test.testHierarchy(c)
+        SaLayout2Test.testOrgChart(c)
+        SaLayout2Test.testPyramid(c)
+        SaLayout2Test.testLinesDrawn(c)
+        c.finish("SaLayout2Test")
+    }
+}

@@ -1,0 +1,489 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaHier — a tree: each shape over the shapes under it
+; ==============================================================================
+;
+; Two algorithms that only make sense together:
+;
+;   hierRoot   one branch: its first shape that is not a hierChild is the
+;              branch's own box; under it, its hierChild children — the
+;              assistants' (a hierChild whose branches are `asst` points)
+;              and the others'
+;   hierChild  a row of branches (hierRoot children) and the connectors to
+;              them: the k-th connector belongs to the k-th branch
+;
+; A layout writes it as a recursion (`forEach ref`):
+;
+;   forEach "branches" axis=ch ptType=node
+;     layoutNode hierRoot       box, then
+;       layoutNode hierChild    forEach axis=ch ptType=parTrans → conn
+;                               forEach ref="branches"
+;
+; The tree is laid out at once, from the outermost hierChild (or a hierRoot
+; with none around it): every branch is as wide as its box or the row under
+; it, whichever is wider, and its box is centred over that row (`hierAlign`
+; tCtr; the other alignments are drawn as tCtr). Rows are
+; `sibSp` of their hierChild apart (0.15 of a box when not given), levels
+; `sp` of the hierRoot (half a box's height when not given). Then the whole
+; tree is made smaller, everything with it, until it fits the box (never
+; larger), and centred in it.
+;
+; How a branch's children hang (the layout's `hierBranch` variable; a
+; point's own, from its presentation properties, is not read yet):
+;
+;   std (default)  in a row under it
+;   l / r          in a column, to the left / right of a line down from it
+;   hang           in two columns either side of that line
+;   init           as std
+;
+; Assistants (a row whose branches are all `asst` points) go on the line
+; down from the box, alternately right and left, above the row. A row with
+; no branches is drawn as nothing.
+;
+; Connectors are elbows: down from the box's bottom middle, across, down to
+; the top middle of the box under it; to a shape in a column or an
+; assistant, down and across to its side.
+; ==============================================================================
+
+Import "SaConn.rgr"
+
+class SaHier {
+
+    ; the branch's own box
+    sfn boxOf@(optional):SaInst (r:SaInst) {
+        def i:int 0
+        while (i < (array_length r.children)) {
+            def c:SaInst (itemAt r.children i)
+            if (((c.alg.type != "hierChild") && (SaConn.isCell(c))) && (c.alg.type != "hierRoot")) {
+                def hit@(optional):SaInst c
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaInst
+        return none
+    }
+
+    sfn branchesOf:[SaInst] (hc:SaInst) {
+        def out:[SaInst]
+        def i:int 0
+        while (i < (array_length hc.children)) {
+            def c:SaInst (itemAt hc.children i)
+            if (c.alg.type == "hierRoot") {
+                push out c
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn connsOf:[SaInst] (hc:SaInst) {
+        def out:[SaInst]
+        def i:int 0
+        while (i < (array_length hc.children)) {
+            def c:SaInst (itemAt hc.children i)
+            if (SaConn.isConn(c)) {
+                push out c
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; a hierChild whose branches are all assistants
+    sfn isAsstRow:boolean (hc:SaInst) {
+        def bs:[SaInst] (SaHier.branchesOf(hc))
+        if ((array_length bs) == 0) {
+            return false
+        }
+        def i:int 0
+        while (i < (array_length bs)) {
+            def b:SaInst (itemAt bs i)
+            if (b.ctxType != "asst") {
+                return false
+            }
+            i = (i + 1)
+        }
+        return true
+    }
+
+    sfn rowsOf:[SaInst] (r:SaInst) {
+        def out:[SaInst]
+        def i:int 0
+        while (i < (array_length r.children)) {
+            def c:SaInst (itemAt r.children i)
+            if (c.alg.type == "hierChild") {
+                push out c
+            }
+            i = (i + 1)
+        }
+        return out
+    }
+
+    ; The whole tree under `top` (a hierChild, or a lone hierRoot), laid out
+    ; and fitted to top's box.
+    sfn place:void (cons:SaConstraints top:SaInst) {
+        def all:[SaInst]
+        push all top
+        top.collect(all)
+        def keepX:double top.x
+        def keepY:double top.y
+        def keepW:double top.w
+        def keepH:double top.h
+        if (top.alg.type == "hierChild") {
+            SaHier.row(cons top)
+        } {
+            SaHier.branch(cons top)
+        }
+        ; everything was laid out with top's corner at 0, 0; fit it
+        def bw:double top.w
+        def bh:double top.h
+        def s:double 1.0
+        if ((bw > 0.0) && ((keepW / bw) < s)) {
+            s = (keepW / bw)
+        }
+        if ((bh > 0.0) && ((keepH / bh) < s)) {
+            s = (keepH / bh)
+        }
+        def ox:double (keepX + ((keepW - (bw * s)) / 2.0))
+        def oy:double (keepY + ((keepH - (bh * s)) / 2.0))
+        def i:int 0
+        while (i < (array_length all)) {
+            def a:SaInst (itemAt all i)
+            if (a != top) {
+                a.x = (ox + (a.x * s))
+                a.y = (oy + (a.y * s))
+                a.w = (a.w * s)
+                a.h = (a.h * s)
+                def k:int 0
+                while ((k + 1) < (array_length a.segs)) {
+                    set a.segs k (ox + ((itemAt a.segs k) * s))
+                    set a.segs (k + 1) (oy + ((itemAt a.segs (k + 1)) * s))
+                    k = (k + 2)
+                }
+                if ((a.alg.type == "hierRoot") || (a.alg.type == "hierChild")) {
+                    a.placed = true
+                }
+                if (SaConn.isConn(a)) {
+                    a.placed = true
+                }
+            }
+            i = (i + 1)
+        }
+        top.x = keepX
+        top.y = keepY
+        top.w = keepW
+        top.h = keepH
+        top.placed = true
+    }
+
+    ; how far apart a row's branches are
+    sfn hGap:double (cons:SaConstraints hc:SaInst boxW:double) {
+        if (hc.has("sibSp")) {
+            return (cons.get(hc "sibSp"))
+        }
+        return (boxW * 0.15)
+    }
+
+    ; how far a branch's box is above what hangs from it
+    sfn vGap:double (cons:SaConstraints r:SaInst boxH:double) {
+        if (r.has("sp")) {
+            return (cons.get(r "sp"))
+        }
+        return (boxH * 0.5)
+    }
+
+    sfn shift:void (s:SaInst dx:double dy:double) {
+        def all:[SaInst]
+        push all s
+        s.collect(all)
+        def i:int 0
+        while (i < (array_length all)) {
+            def a:SaInst (itemAt all i)
+            a.x = (a.x + dx)
+            a.y = (a.y + dy)
+            def k:int 0
+            while ((k + 1) < (array_length a.segs)) {
+                set a.segs k ((itemAt a.segs k) + dx)
+                set a.segs (k + 1) ((itemAt a.segs (k + 1)) + dy)
+                k = (k + 2)
+            }
+            i = (i + 1)
+        }
+    }
+
+    ; A row of branches side by side, tops level, at 0, 0; the row's box is
+    ; their bounds.
+    sfn row:void (cons:SaConstraints hc:SaInst) {
+        def bs:[SaInst] (SaHier.branchesOf(hc))
+        def n:int (array_length bs)
+        hc.x = 0.0
+        hc.y = 0.0
+        hc.w = 0.0
+        hc.h = 0.0
+        def cs:[SaInst] (SaHier.connsOf(hc))
+        def ci:int 0
+        while (ci < (array_length cs)) {
+            SaConn.hide((itemAt cs ci) hc)
+            ci = (ci + 1)
+        }
+        if (n == 0) {
+            return
+        }
+        def at:double 0.0
+        def gap:double 0.0
+        def tallest:double 0.0
+        def i:int 0
+        while (i < n) {
+            def b:SaInst (itemAt bs i)
+            SaHier.branch(cons b)
+            if (i == 0) {
+                def bx@(optional):SaInst (SaHier.boxOf(b))
+                def bw0:double 0.0
+                if (!null? bx) {
+                    def bxx:SaInst (unwrap bx)
+                    bw0 = bxx.w
+                }
+                gap = (SaHier.hGap(cons hc bw0))
+            }
+            SaHier.shift(b at 0.0)
+            at = ((at + b.w) + gap)
+            if (b.h > tallest) {
+                tallest = b.h
+            }
+            i = (i + 1)
+        }
+        hc.w = (at - gap)
+        hc.h = tallest
+    }
+
+    ; One branch at 0, 0: its box over what hangs from it. Its w and h are
+    ; the branch's bounds.
+    sfn branch:void (cons:SaConstraints r:SaInst) {
+        r.x = 0.0
+        r.y = 0.0
+        def bx@(optional):SaInst (SaHier.boxOf(r))
+        def bw:double 0.0
+        def bh:double 0.0
+        if (!null? bx) {
+            def b0:SaInst (unwrap bx)
+            bw = (cons.get(b0 "w"))
+            bh = (cons.get(b0 "h"))
+            b0.w = bw
+            b0.h = bh
+            b0.x = 0.0
+            b0.y = 0.0
+        }
+        def rows:[SaInst] (SaHier.rowsOf(r))
+        def kids@(optional):SaInst
+        def assts@(optional):SaInst
+        def i:int 0
+        while (i < (array_length rows)) {
+            def hc:SaInst (itemAt rows i)
+            def many:int (array_length (SaHier.branchesOf(hc)))
+            if (SaHier.isAsstRow(hc)) {
+                if (null? assts) {
+                    assts = hc
+                }
+            } {
+                if ((null? kids) && (many > 0)) {
+                    kids = hc
+                }
+            }
+            i = (i + 1)
+        }
+        ; rows other than the first of each kind are not drawn
+        i = 0
+        while (i < (array_length rows)) {
+            def hc2:SaInst (itemAt rows i)
+            def used:boolean false
+            if ((!null? kids) && (hc2 == (unwrap kids))) { used = true }
+            if ((!null? assts) && (hc2 == (unwrap assts))) { used = true }
+            if (used == false) {
+                SaHier.hideAll(hc2)
+            }
+            i = (i + 1)
+        }
+        def vgap:double (SaHier.vGap(cons r bh))
+        def mode:string (r.varValue("hierBranch" "std"))
+        ; trunk: the line down from the middle of the box
+        def trunkX:double (bw / 2.0)
+        def below:double (bh + vgap)
+        def minX:double 0.0
+        def maxX:double bw
+        def maxY:double bh
+        ; assistants, alternately right and left of the trunk
+        if (!null? assts) {
+            def ar:SaInst (unwrap assts)
+            def abs:[SaInst] (SaHier.branchesOf(ar))
+            def acs:[SaInst] (SaHier.connsOf(ar))
+            def gapA:double (SaHier.hGap(cons ar bw))
+            def rowTop:double below
+            def rowH:double 0.0
+            def k:int 0
+            while (k < (array_length abs)) {
+                def a:SaInst (itemAt abs k)
+                SaHier.branch(cons a)
+                def right:boolean ((k % 2) == 0)
+                def ax:double (trunkX + (gapA / 2.0))
+                if (right == false) {
+                    ax = ((trunkX - (gapA / 2.0)) - a.w)
+                }
+                SaHier.shift(a ax rowTop)
+                if (a.h > rowH) {
+                    rowH = a.h
+                }
+                if (a.x < minX) { minX = a.x }
+                if ((a.x + a.w) > maxX) { maxX = (a.x + a.w) }
+                if ((a.y + a.h) > maxY) { maxY = (a.y + a.h) }
+                if (k < (array_length acs)) {
+                    def ab@(optional):SaInst (SaHier.boxOf(a))
+                    if (!null? ab) {
+                        def abx:SaInst (unwrap ab)
+                        def sideX:double abx.x
+                        if (right == false) {
+                            sideX = (abx.x + abx.w)
+                        }
+                        SaConn.hang((itemAt acs k) trunkX bh sideX (abx.y + (abx.h / 2.0)))
+                    }
+                }
+                if (right == false) {
+                    rowTop = ((rowTop + rowH) + (vgap / 2.0))
+                    rowH = 0.0
+                }
+                k = (k + 1)
+            }
+            if (rowH > 0.0) {
+                rowTop = ((rowTop + rowH) + (vgap / 2.0))
+            }
+            below = (rowTop + (vgap / 2.0))
+            SaHier.boundsOf(ar)
+        }
+        if (!null? kids) {
+            def kr:SaInst (unwrap kids)
+            def bs:[SaInst] (SaHier.branchesOf(kr))
+            def cs:[SaInst] (SaHier.connsOf(kr))
+            if ((array_length bs) > 0) {
+                if ((mode == "l") || ((mode == "r") || (mode == "hang"))) {
+                    SaHier.column(cons kr bs cs mode trunkX bh below bw)
+                } {
+                    SaHier.row(cons kr)
+                    def rowX:double (trunkX - (kr.w / 2.0))
+                    SaHier.shift(kr rowX below)
+                    def midY:double (bh + ((below - bh) / 2.0))
+                    if (!null? assts) {
+                        midY = (below - (vgap / 2.0))
+                    }
+                    def k2:int 0
+                    while (k2 < (array_length bs)) {
+                        def b:SaInst (itemAt bs k2)
+                        if (k2 < (array_length cs)) {
+                            def bb@(optional):SaInst (SaHier.boxOf(b))
+                            if (!null? bb) {
+                                def bbx:SaInst (unwrap bb)
+                                SaConn.elbow((itemAt cs k2) trunkX bh (bbx.x + (bbx.w / 2.0)) bbx.y midY)
+                            }
+                        }
+                        k2 = (k2 + 1)
+                    }
+                }
+                SaHier.boundsOf(kr)
+                if (kr.x < minX) { minX = kr.x }
+                if ((kr.x + kr.w) > maxX) { maxX = (kr.x + kr.w) }
+                if ((kr.y + kr.h) > maxY) { maxY = (kr.y + kr.h) }
+            } {
+                SaHier.hideAll(kr)
+            }
+        }
+        ; the branch's corner at 0, 0
+        r.w = (maxX - minX)
+        r.h = maxY
+        if (minX < 0.0) {
+            SaHier.shift(r (0.0 - minX) 0.0)
+        }
+        r.x = 0.0
+        r.y = 0.0
+    }
+
+    ; branches in a column (l, r) or two (hang) beside the trunk
+    sfn column:void (cons:SaConstraints kr:SaInst bs:[SaInst] cs:[SaInst] mode:string trunkX:double top:double below:double bw:double) {
+        def gap:double (SaHier.hGap(cons kr bw))
+        def rowGap:double ((below - top) / 2.0)
+        def yl:double below
+        def yr:double below
+        def k:int 0
+        while (k < (array_length bs)) {
+            def b:SaInst (itemAt bs k)
+            SaHier.branch(cons b)
+            def right:boolean (mode == "r")
+            if (mode == "hang") {
+                right = ((k % 2) == 1)
+            }
+            def y:double (? right yr yl)
+            def x:double (trunkX + (gap / 2.0))
+            if (right == false) {
+                x = ((trunkX - (gap / 2.0)) - b.w)
+            }
+            SaHier.shift(b x y)
+            if right {
+                yr = ((yr + b.h) + rowGap)
+            } {
+                yl = ((yl + b.h) + rowGap)
+            }
+            if (k < (array_length cs)) {
+                def bb@(optional):SaInst (SaHier.boxOf(b))
+                if (!null? bb) {
+                    def bbx:SaInst (unwrap bb)
+                    def sideX:double bbx.x
+                    if (right == false) {
+                        sideX = (bbx.x + bbx.w)
+                    }
+                    SaConn.hang((itemAt cs k) trunkX top sideX (bbx.y + (bbx.h / 2.0)))
+                }
+            }
+            k = (k + 1)
+        }
+    }
+
+    ; a row's box: the bounds of its branches
+    sfn boundsOf:void (hc:SaInst) {
+        def bs:[SaInst] (SaHier.branchesOf(hc))
+        if ((array_length bs) == 0) {
+            return
+        }
+        def b0:SaInst (itemAt bs 0)
+        def minX:double b0.x
+        def minY:double b0.y
+        def maxX:double (b0.x + b0.w)
+        def maxY:double (b0.y + b0.h)
+        def i:int 1
+        while (i < (array_length bs)) {
+            def b:SaInst (itemAt bs i)
+            if (b.x < minX) { minX = b.x }
+            if (b.y < minY) { minY = b.y }
+            if ((b.x + b.w) > maxX) { maxX = (b.x + b.w) }
+            if ((b.y + b.h) > maxY) { maxY = (b.y + b.h) }
+            i = (i + 1)
+        }
+        hc.x = minX
+        hc.y = minY
+        hc.w = (maxX - minX)
+        hc.h = (maxY - minY)
+    }
+
+    ; a subtree drawn as nothing
+    sfn hideAll:void (s:SaInst) {
+        def all:[SaInst]
+        push all s
+        s.collect(all)
+        def i:int 0
+        while (i < (array_length all)) {
+            def a:SaInst (itemAt all i)
+            def none:[double]
+            a.segs = none
+            a.w = 0.0
+            a.h = 0.0
+            i = (i + 1)
+        }
+    }
+}

@@ -103,10 +103,22 @@ class SaAlgorithmTest {
 
     sfn testOther:void (c:SaKit) {
         print "-- the rest --"
+        ; every algorithm the specification names is one this engine has
+        def types:[string] (SaLayoutReader.words((SaLayoutReader.algTypes())))
+        def quiet:boolean true
+        def ti:int 0
+        while (ti < (array_length types)) {
+            def t:string (itemAt types ti)
+            def at:SaAlgorithms (SaAlgorithmTest.run(3 ("<dgm:alg type=\"" + t + "\"/><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/></dgm:forEach>")))
+            if ((array_length at.warnings) > 0) {
+                quiet = false
+            }
+            ti = (ti + 1)
+        }
+        c.ok("every algorithm in the specification is implemented: none warns" quiet)
+        c.eqInt("ten of them" (array_length types) 10)
         def a:SaAlgorithms (SaAlgorithmTest.run(3 "<dgm:alg type=\"cycle\"/><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/></dgm:forEach>"))
-        c.eqInt("an algorithm not here yet says so" (array_length a.warnings) 1)
-        c.ok("by name" ((indexOf (itemAt a.warnings 0) "cycle") >= 0))
-        c.eqStr("and places its shapes in a line" (SaAlgorithmTest.boxes(a)) "0,0 1333x2000 | 1333,0 1333x2000 | 2667,0 1333x2000")
+        c.ok("cycle no longer places its shapes in a line" ((SaAlgorithmTest.boxes(a)) != "0,0 1333x2000 | 1333,0 1333x2000 | 2667,0 1333x2000"))
         ; a connector among a lin's children points the way the line goes
         def body:string "<dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/></dgm:alg><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"arrow\"><dgm:alg type=\"conn\"/></dgm:layoutNode></dgm:forEach></dgm:forEach>"
         def a2:SaAlgorithms (SaAlgorithmTest.run(2 body))

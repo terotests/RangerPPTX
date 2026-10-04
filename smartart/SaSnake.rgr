@@ -1,0 +1,178 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaSnake — shapes in rows that wrap, as text does
+; ==============================================================================
+;
+; The children that take a place (not connectors, not spaces) are laid out
+; in a grid: along a row (`flowDir` row) or down a column (col), `sibSp`
+; apart, the rows `secSibSp` apart (`sibSp` when not given).
+;
+;   grDir      tL (default) tR bL bR: the corner the first shape is in
+;   contDir    sameDir (default): every row runs the same way; revDir: every
+;              other row runs back, as a snake does
+;   bkpt       endCnv (default): the shapes as large as they can be, and
+;              as many to a row as fit at that size, to the end of the box;
+;              bal: the same number of rows, the shapes spread evenly over
+;              them; fixed: `bkPtFixedVal` to a row
+;   off        ctr (default): a short last row is centred; off: it starts
+;              where the others do
+;
+; The shapes keep the proportions their constraints give them and are made
+; smaller, with the gaps, until the grid fits the box; never larger. The
+; grid is centred in the box.
+; ==============================================================================
+
+Import "SaConn.rgr"
+
+class SaSnake {
+
+    sfn place:void (cons:SaConstraints p:SaInst) {
+        def cells:[SaInst]
+        def i:int 0
+        while (i < (array_length p.children)) {
+            def c:SaInst (itemAt p.children i)
+            if (SaConn.isCell(c)) {
+                push cells c
+            } {
+                SaConn.hide(c p)
+            }
+            i = (i + 1)
+        }
+        def n:int (array_length cells)
+        if (n == 0) {
+            return
+        }
+        def w0:double 0.0
+        def h0:double 0.0
+        i = 0
+        while (i < n) {
+            def c2:SaInst (itemAt cells i)
+            def cw:double (cons.get(c2 "w"))
+            def chh:double (cons.get(c2 "h"))
+            if (cw > w0) { w0 = cw }
+            if (chh > h0) { h0 = chh }
+            i = (i + 1)
+        }
+        if ((w0 <= 0.0) || (h0 <= 0.0)) {
+            return
+        }
+        def sp:double (cons.get(p "sibSp"))
+        def ssp:double sp
+        if (p.has("secSibSp")) {
+            ssp = (cons.get(p "secSibSp"))
+        }
+        def byCol:boolean ((p.alg.param("flowDir" "row")) == "col")
+        def bkpt:string (p.alg.param("bkpt" "endCnv"))
+        ; along a row: the shape's length and the gap; across: the row's
+        def la:double (? byCol h0 w0)
+        def lc:double (? byCol w0 h0)
+        def roomA:double (? byCol p.h p.w)
+        def roomC:double (? byCol p.w p.h)
+        def k:int 1
+        if (bkpt == "fixed") {
+            def fv@(optional):int (str2int (p.alg.param("bkPtFixedVal" "1")))
+            k = (?? fv 1)
+            if (k < 1) { k = 1 }
+            if (k > n) { k = n }
+        } {
+            ; the largest the shapes can be (never larger than they are),
+            ; then as many to a row as still allows that
+            def best:double -1.0
+            def tryK:int 1
+            while (tryK <= n) {
+                def s:double (SaSnake.scaleFor(n tryK la lc sp ssp roomA roomC))
+                if (s > 1.0) {
+                    s = 1.0
+                }
+                if (s >= (best - 0.000001)) {
+                    if (s > (best + 0.000001)) {
+                        best = s
+                    }
+                    k = tryK
+                }
+                tryK = (tryK + 1)
+            }
+            if (bkpt == "bal") {
+                def lines0:int (SaSnake.linesOf(n k))
+                k = (SaSnake.linesOf(n lines0))
+            }
+        }
+        def lines:int (SaSnake.linesOf(n k))
+        def sc:double (SaSnake.scaleFor(n k la lc sp ssp roomA roomC))
+        if (sc > 1.0) {
+            sc = 1.0
+        }
+        la = (la * sc)
+        lc = (lc * sc)
+        sp = (sp * sc)
+        ssp = (ssp * sc)
+        def totalA:double (((to_double k) * la) + ((to_double (k - 1)) * sp))
+        def totalC:double (((to_double lines) * lc) + ((to_double (lines - 1)) * ssp))
+        def originA:double ((roomA - totalA) / 2.0)
+        def originC:double ((roomC - totalC) / 2.0)
+        def gr:string (p.alg.param("grDir" "tL"))
+        def flipX:boolean ((gr == "tR") || (gr == "bR"))
+        def flipY:boolean ((gr == "bL") || (gr == "bR"))
+        def rev:boolean ((p.alg.param("contDir" "sameDir")) == "revDir")
+        def centre:boolean ((p.alg.param("off" "ctr")) == "ctr")
+        i = 0
+        while (i < n) {
+            def line:int (to_int ((to_double i) / (to_double k)))
+            def idx:int (i % k)
+            def inLine:int k
+            if (line == (lines - 1)) {
+                inLine = (n - (line * k))
+            }
+            if (rev && ((line % 2) == 1)) {
+                idx = ((inLine - 1) - idx)
+            }
+            def a:double (originA + ((to_double idx) * (la + sp)))
+            if (centre && (inLine < k)) {
+                a = (a + (((to_double (k - inLine)) * (la + sp)) / 2.0))
+            }
+            def cpos:double (originC + ((to_double line) * (lc + ssp)))
+            def cell:SaInst (itemAt cells i)
+            def lx:double (? byCol cpos a)
+            def ly:double (? byCol a cpos)
+            def cw2:double (? byCol lc la)
+            def ch2:double (? byCol la lc)
+            if flipX {
+                lx = ((p.w - lx) - cw2)
+            }
+            if flipY {
+                ly = ((p.h - ly) - ch2)
+            }
+            cell.x = (p.x + lx)
+            cell.y = (p.y + ly)
+            cell.w = cw2
+            cell.h = ch2
+            i = (i + 1)
+        }
+    }
+
+    ; rows (lines) for n shapes, k to a row
+    sfn linesOf:int (n:int k:int) {
+        if (k <= 0) {
+            return n
+        }
+        return (to_int ((to_double (n + (k - 1))) / (to_double k)))
+    }
+
+    ; how much a grid of n, k to a row, must be scaled to fit
+    sfn scaleFor:double (n:int k:int la:double lc:double sp:double ssp:double roomA:double roomC:double) {
+        def lines:int (SaSnake.linesOf(n k))
+        def needA:double (((to_double k) * la) + ((to_double (k - 1)) * sp))
+        def needC:double (((to_double lines) * lc) + ((to_double (lines - 1)) * ssp))
+        def s:double 1000000000.0
+        if (needA > 0.0) {
+            s = (roomA / needA)
+        }
+        if (needC > 0.0) {
+            def s2:double (roomC / needC)
+            if (s2 < s) {
+                s = s2
+            }
+        }
+        return s
+    }
+}

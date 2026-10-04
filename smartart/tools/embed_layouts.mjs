@@ -70,7 +70,7 @@ for (const [i, n] of names.entries()) {
 src += `}\n`;
 
 // --- the presets ---------------------------------------------------------
-const wanted = new Set(["rect", "roundRect", "rightArrow", "leftArrow", "upArrow", "downArrow"]);
+const wanted = new Set(["rect", "roundRect", "rightArrow", "leftArrow", "upArrow", "downArrow", "line"]);
 for (const f of files) {
   const xml = fs.readFileSync(path.join(dir, f), "utf8");
   for (const m of xml.matchAll(/<dgm:shape[^>]*\stype="([^"]+)"/g)) {

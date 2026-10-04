@@ -1,8 +1,7 @@
 # PLAN_SMARTART — a SmartArt layout engine
 
-Status (2026-10-04): phases 0 and 1 done. Phase 1's layouts are the four
-list and process layouts; `default` moved to phase 2 with the `snake`
-algorithm it needs. Phases 2–4 not started. The engine lives in this repository
+Status (2026-10-04): phases 0, 1 and 2 done: every algorithm the
+specification names, and ten layouts. Phases 3 and 4 not started. The engine lives in this repository
 under `smartart/`; terotests/RangerSmartArt is not used.
 
 ## Why
@@ -311,6 +310,33 @@ word's trailing space as `PptxTextLayout` does. With no host measurer it is
 still the 0.52 em guess. Tests: `SaTextTest` (host widths, bold cut, sizes
 fitted per font, the trailing space), `SaRenderTest` (family on every run
 and every drawn piece, the painter's line count equal to the engine's).
+
+## Phase 2, as built
+
+| Piece | File | Tests (each on JavaScript, C++ and Go) |
+| --- | --- | --- |
+| snake: grDir, flowDir, contDir, bkpt (endCnv, bal, fixed), bkPtFixedVal, off; shrinks to fit, never grows | `smartart/SaSnake.rgr` | `SaAlgorithm2Test` (115 in all) |
+| cycle: stAng, spanAng (a negative one anticlockwise), ctrShpMap fNode, rotPath; arrows on the circle, lines from the centre | `SaCycle.rgr` | |
+| hierRoot / hierChild: the tree at once from the outermost hierChild; rows, levels, assistants; hierBranch std, l, r, hang (init as std); elbow lines | `SaHier.rgr` | |
+| pyra: levels of one triangle, fromT / fromB, pyraLvlNode; text kept off the slopes | `SaPyra.rgr` | |
+| conn wherever its parent did not place it: srcNode / dstNode or its neighbours; dim 1D / 2D, begPts / endPts, connRout bend, endSty | `SaConn.rgr` | |
+| Lines drawn as `line` shapes, one per segment, with an arrowhead where asked; a shape's own rotation and adjust values from its algorithm | `SaEngine.linesOf`, `SaInst.segs` / `rotDeg` / `adjNames` | |
+| default, cycle2, radial1, hierarchy1, orgChart1, pyramid1 | `builtin/*.xml` | `SaLayout2Test` 284: each at 1, 2, 3, 5, 8 items, an org chart with an assistant, what each layout is for |
+| An unknown or absent layout is drawn as `default` (was vList2) | `SaEngine` | `SaEngineTest` |
+
+`npm run pptx:smartart:test` runs 1,077 checks per target.
+
+Sliqtly: the MCP guide lists the ten layouts; PresCheck draws a cycle, a
+pyramid, an organisation chart with an assistant and a radial in a deck
+(8 checks, 285 in all); `mcp-go/smartart_test.go` `TestSmartArtLayouts`
+lays out six of them through the server and renders each slide.
+
+Not done in phase 2: a point's own `hierBranch` (from its presentation
+properties; the layout's is used), `hierAlign` other than centred, the
+pyramid's accent text (`pyraAcct*`), curved connector routes (`curve`,
+`longCurve` are drawn straight). The layouts are written from the
+specification and checked for their properties; the oracle decks will say
+how close their boxes are to PowerPoint's.
 
 ## Phases
 

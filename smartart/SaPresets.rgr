@@ -4,14 +4,14 @@
 ; ==============================================================================
 ;
 ; Cut from gallery/office/geom/assets/presets.txt by
-; smartart/tools/embed_layouts.mjs: chevron, downArrow, leftArrow, rect, rightArrow, roundRect, upArrow.
+; smartart/tools/embed_layouts.mjs: chevron, downArrow, ellipse, leftArrow, line, rect, rightArrow, roundRect, trapezoid, upArrow.
 ; SaRender loads them into the painter it draws a diagram with.
 ; ==============================================================================
 
 class SaPresets {
 
     sfn names:string () {
-        return "chevron, downArrow, leftArrow, rect, rightArrow, roundRect, upArrow"
+        return "chevron, downArrow, ellipse, leftArrow, line, rect, rightArrow, roundRect, trapezoid, upArrow"
     }
 
     sfn text:string () {
@@ -58,6 +58,21 @@ class SaPresets {
         s = (s + "l r y1" + "\n")
         s = (s + "l hc b" + "\n")
         s = (s + "z" + "\n")
+        s = (s + "#ellipse" + "\n")
+        s = (s + "G idx cos wd2 2700000" + "\n")
+        s = (s + "G idy sin hd2 2700000" + "\n")
+        s = (s + "G il +- hc 0 idx" + "\n")
+        s = (s + "G ir +- hc idx 0" + "\n")
+        s = (s + "G it +- vc 0 idy" + "\n")
+        s = (s + "G ib +- vc idy 0" + "\n")
+        s = (s + "R il it ir ib" + "\n")
+        s = (s + "P 0 0 norm 1" + "\n")
+        s = (s + "m l vc" + "\n")
+        s = (s + "a wd2 hd2 cd2 cd4" + "\n")
+        s = (s + "a wd2 hd2 3cd4 cd4" + "\n")
+        s = (s + "a wd2 hd2 0 cd4" + "\n")
+        s = (s + "a wd2 hd2 cd4 cd4" + "\n")
+        s = (s + "z" + "\n")
         s = (s + "#leftArrow" + "\n")
         s = (s + "A adj1 50000" + "\n")
         s = (s + "A adj2 50000" + "\n")
@@ -81,6 +96,10 @@ class SaPresets {
         s = (s + "l x2 y2" + "\n")
         s = (s + "l x2 b" + "\n")
         s = (s + "z" + "\n")
+        s = (s + "#line" + "\n")
+        s = (s + "P 0 0 norm 1" + "\n")
+        s = (s + "m l t" + "\n")
+        s = (s + "l r b" + "\n")
         s = (s + "#rect" + "\n")
         s = (s + "R l t r b" + "\n")
         s = (s + "P 0 0 norm 1" + "\n")
@@ -131,6 +150,24 @@ class SaPresets {
         s = (s + "a x1 x1 0 cd4" + "\n")
         s = (s + "l x1 b" + "\n")
         s = (s + "a x1 x1 cd4 cd4" + "\n")
+        s = (s + "z" + "\n")
+        s = (s + "#trapezoid" + "\n")
+        s = (s + "A adj 25000" + "\n")
+        s = (s + "G maxAdj */ 50000 w ss" + "\n")
+        s = (s + "G a pin 0 adj maxAdj" + "\n")
+        s = (s + "G x1 */ ss a 200000" + "\n")
+        s = (s + "G x2 */ ss a 100000" + "\n")
+        s = (s + "G x3 +- r 0 x2" + "\n")
+        s = (s + "G x4 +- r 0 x1" + "\n")
+        s = (s + "G il */ wd3 a maxAdj" + "\n")
+        s = (s + "G it */ hd3 a maxAdj" + "\n")
+        s = (s + "G ir +- r 0 il" + "\n")
+        s = (s + "R il it ir b" + "\n")
+        s = (s + "P 0 0 norm 1" + "\n")
+        s = (s + "m l b" + "\n")
+        s = (s + "l x2 t" + "\n")
+        s = (s + "l x3 t" + "\n")
+        s = (s + "l r b" + "\n")
         s = (s + "z" + "\n")
         s = (s + "#upArrow" + "\n")
         s = (s + "A adj1 50000" + "\n")

@@ -252,13 +252,13 @@ class SaEngineTest {
         def k0:PptxShape (itemAt (SaKit.shapes(r4 "node")) 0)
         c.eqStr("and the default colours" k0.fill.scheme "accent1")
         ; a layout it does not have
-        def r5:SaResult (SaEngineTest.draw((SaKit.flat("cycle2" 3))))
+        def r5:SaResult (SaEngineTest.draw((SaKit.flat("noSuchLayout9" 3))))
         c.ok("a layout it does not have is still drawn" r5.ok)
-        c.eqStr("as vList2" r5.layoutUsed "vList2")
-        c.ok("and it says which, and what it has" (((indexOf (itemAt r5.warnings 0) "cycle2") >= 0) && ((indexOf (itemAt r5.warnings 0) "process1") >= 0)))
-        ; no layout named at all: vList2, without a warning
+        c.eqStr("as default, PowerPoint's own fallback" r5.layoutUsed "default")
+        c.ok("and it says which, and what it has" (((indexOf (itemAt r5.warnings 0) "noSuchLayout9") >= 0) && ((indexOf (itemAt r5.warnings 0) "process1") >= 0)))
+        ; no layout named at all: default, without a warning
         def r6:SaResult (SaEngineTest.draw((SaKit.flat("" 2))))
-        c.eqStr("no layout named: vList2" r6.layoutUsed "vList2")
+        c.eqStr("no layout named: default" r6.layoutUsed "default")
         c.eqInt("quietly" (array_length r6.warnings) 0)
         ; a whole definition passed in
         def o7 (new SaOptions())

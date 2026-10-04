@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- default, "Basic Block List": the items as blocks in rows that wrap.
+     PowerPoint's own fallback layout. Written for this engine from the
+     specification and from what PowerPoint draws; not copied from Office. -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" uniqueId="urn:microsoft.com/office/officeart/2005/8/layout/default">
+  <dgm:title val="Basic Block List"/>
+  <dgm:layoutNode name="diagram">
+    <dgm:varLst><dgm:dir/><dgm:resizeHandles val="exact"/></dgm:varLst>
+    <dgm:choose name="direction">
+      <dgm:if name="forward" func="var" arg="dir" op="equ" val="norm"><dgm:alg type="snake"><dgm:param type="grDir" val="tL"/><dgm:param type="flowDir" val="row"/><dgm:param type="contDir" val="sameDir"/><dgm:param type="off" val="ctr"/></dgm:alg></dgm:if>
+      <dgm:else name="backward"><dgm:alg type="snake"><dgm:param type="grDir" val="tR"/><dgm:param type="flowDir" val="row"/><dgm:param type="contDir" val="sameDir"/><dgm:param type="off" val="ctr"/></dgm:alg></dgm:else>
+    </dgm:choose>
+    <dgm:shape/>
+    <dgm:constrLst>
+      <dgm:constr type="w" for="ch" forName="node" refType="w"/>
+      <dgm:constr type="h" for="ch" forName="node" refType="w" refFor="ch" refForName="node" fact="0.6"/>
+      <dgm:constr type="sibSp" refType="w" refFor="ch" refForName="node" fact="0.1"/>
+      <dgm:constr type="secSibSp" refType="w" refFor="ch" refForName="node" fact="0.1"/>
+      <dgm:constr type="primFontSz" for="ch" forName="node" op="equ" val="65"/>
+    </dgm:constrLst>
+    <dgm:forEach name="items" axis="ch" ptType="node">
+      <dgm:layoutNode name="node" styleLbl="node1">
+        <dgm:varLst><dgm:bulletEnabled val="1"/></dgm:varLst>
+        <dgm:alg type="tx"/>
+        <dgm:shape type="rect"/>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:constrLst><dgm:constr type="tMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="bMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="lMarg" refType="primFontSz" fact="0.3"/><dgm:constr type="rMarg" refType="primFontSz" fact="0.3"/></dgm:constrLst>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="5" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

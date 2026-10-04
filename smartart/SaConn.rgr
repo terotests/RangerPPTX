@@ -1,0 +1,342 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaConn — connectors: the lines and arrows between two shapes
+; ==============================================================================
+;
+; A connector is a layout node with the `conn` algorithm. Who draws it
+; depends on its parent's algorithm:
+;
+;   lin      places it in the line like any child, an arrow pointing the way
+;            the line goes (SaAlgorithms.lin)
+;   cycle    an arrow on the circle between two nodes, or a line from the
+;            centre to a node (SaCycle)
+;   hierRoot elbow lines from a box to the boxes under it (SaHier)
+;   anything else
+;            between the shapes it names (`srcNode` / `dstNode`), else the
+;            sibling before it and the one after it (`connect` here)
+;
+; Its parameters:
+;
+;   dim      2D (default): an arrow shape between the two, along the line
+;            from one to the other; 1D: a line, edge to edge
+;   endSty   arr / noArr / auto: an arrowhead at a 1D line's end; auto is
+;            one for a sibling transition, none for a parent transition
+;   connRout stra (default) or bend: bend makes the line an elbow (vertical,
+;            across, vertical)
+;   begPts / endPts
+;            auto (default): where the line from one centre to the other
+;            leaves the shape; ctr, tCtr, bCtr, midL, midR: that point of
+;            the box
+;
+; A line is kept as segments (SaInst.segs) and drawn as one `line` shape
+; per segment (SaEngine); its box is the segments' bounds.
+; ==============================================================================
+
+Import "SaConstraints.rgr"
+
+class SaConn {
+
+    sfn isConn:boolean (c:SaInst) {
+        if (c.alg.type == "conn") {
+            return true
+        }
+        return (c.hasShape && (c.shape.type == "conn"))
+    }
+
+    sfn isSpace:boolean (c:SaInst) {
+        return (c.alg.type == "sp")
+    }
+
+    ; a shape that takes a place of its own: not a connector, not a space
+    sfn isCell:boolean (c:SaInst) {
+        return (((SaConn.isConn(c)) == false) && ((SaConn.isSpace(c)) == false))
+    }
+
+    sfn is1D:boolean (c:SaInst) {
+        return ((c.alg.param("dim" "2D")) == "1D")
+    }
+
+    sfn endArrow:boolean (c:SaInst) {
+        def e:string (c.alg.param("endSty" "auto"))
+        if (e == "arr") {
+            return true
+        }
+        if (e == "noArr") {
+            return false
+        }
+        return (c.ctxType == "sibTrans")
+    }
+
+    sfn rad:double (deg:double) {
+        return ((deg * 3.141592653589793) / 180.0)
+    }
+
+    sfn deg:double (r:double) {
+        return ((r * 180.0) / 3.141592653589793)
+    }
+
+    ; no segments, no box: drawn as nothing
+    sfn hide:void (c:SaInst at:SaInst) {
+        def none:[double]
+        c.segs = none
+        c.x = at.x
+        c.y = at.y
+        c.w = 0.0
+        c.h = 0.0
+    }
+
+    ; the box of a line's segments; a line along an axis gets no thickness,
+    ; which is what a line shape is
+    sfn boxOfSegs:void (c:SaInst) {
+        def n:int (array_length c.segs)
+        if (n < 4) {
+            return
+        }
+        def minX:double (itemAt c.segs 0)
+        def minY:double (itemAt c.segs 1)
+        def maxX:double minX
+        def maxY:double minY
+        def i:int 0
+        while ((i + 1) < n) {
+            def x:double (itemAt c.segs i)
+            def y:double (itemAt c.segs (i + 1))
+            if (x < minX) { minX = x }
+            if (x > maxX) { maxX = x }
+            if (y < minY) { minY = y }
+            if (y > maxY) { maxY = y }
+            i = (i + 2)
+        }
+        c.x = minX
+        c.y = minY
+        c.w = (maxX - minX)
+        c.h = (maxY - minY)
+    }
+
+    ; a straight line, (x1, y1) to (x2, y2)
+    sfn line:void (c:SaInst x1:double y1:double x2:double y2:double) {
+        def s:[double]
+        push s x1
+        push s y1
+        push s x2
+        push s y2
+        c.segs = s
+        c.arrowEnd = (SaConn.endArrow(c))
+        SaConn.boxOfSegs(c)
+    }
+
+    ; an elbow: down from (x1, y1) to `midY`, across to x2, down to (x2, y2).
+    ; Segments of no length are left out.
+    sfn elbow:void (c:SaInst x1:double y1:double x2:double y2:double midY:double) {
+        def s:[double]
+        SaConn.seg(s x1 y1 x1 midY)
+        SaConn.seg(s x1 midY x2 midY)
+        SaConn.seg(s x2 midY x2 y2)
+        c.segs = s
+        c.arrowEnd = (SaConn.endArrow(c))
+        SaConn.boxOfSegs(c)
+    }
+
+    ; down from (x1, y1) to y2, then across to x2
+    sfn hang:void (c:SaInst x1:double y1:double x2:double y2:double) {
+        def s:[double]
+        SaConn.seg(s x1 y1 x1 y2)
+        SaConn.seg(s x1 y2 x2 y2)
+        c.segs = s
+        c.arrowEnd = (SaConn.endArrow(c))
+        SaConn.boxOfSegs(c)
+    }
+
+    sfn seg:void (s:[double] x1:double y1:double x2:double y2:double) {
+        def dx:double (x2 - x1)
+        def dy:double (y2 - y1)
+        if (((dx * dx) + (dy * dy)) < 0.0001) {
+            return
+        }
+        push s x1
+        push s y1
+        push s x2
+        push s y2
+    }
+
+    ; Where the line from b's centre towards (tx, ty) leaves b: on the
+    ; ellipse for an ellipse, on the box for anything else.
+    sfn edgePoint:[double] (b:SaInst tx:double ty:double) {
+        def out:[double]
+        def cx:double (b.x + (b.w / 2.0))
+        def cy:double (b.y + (b.h / 2.0))
+        def dx:double (tx - cx)
+        def dy:double (ty - cy)
+        def len:double (sqrt ((dx * dx) + (dy * dy)))
+        if ((len < 0.0001) || ((b.w <= 0.0) || (b.h <= 0.0))) {
+            push out cx
+            push out cy
+            return out
+        }
+        def ux:double (dx / len)
+        def uy:double (dy / len)
+        def a:double (b.w / 2.0)
+        def bb:double (b.h / 2.0)
+        def t:double 0.0
+        if (b.hasShape && (b.shape.type == "ellipse")) {
+            def qx:double (ux / a)
+            def qy:double (uy / bb)
+            t = (1.0 / (sqrt ((qx * qx) + (qy * qy))))
+        } {
+            def tx2:double 1000000000.0
+            def ty2:double 1000000000.0
+            if ((fabs ux) > 0.000001) {
+                tx2 = (a / (fabs ux))
+            }
+            if ((fabs uy) > 0.000001) {
+                ty2 = (bb / (fabs uy))
+            }
+            t = tx2
+            if (ty2 < t) {
+                t = ty2
+            }
+        }
+        push out (cx + (ux * t))
+        push out (cy + (uy * t))
+        return out
+    }
+
+    ; a named point of a box: ctr tCtr bCtr midL midR
+    sfn pointOf:[double] (b:SaInst name:string) {
+        def out:[double]
+        def x:double (b.x + (b.w / 2.0))
+        def y:double (b.y + (b.h / 2.0))
+        if (name == "tCtr") { y = b.y }
+        if (name == "bCtr") { y = (b.y + b.h) }
+        if (name == "midL") { x = b.x }
+        if (name == "midR") { x = (b.x + b.w) }
+        push out x
+        push out y
+        return out
+    }
+
+    ; A 2D arrow (the connector's own shape) centred at (cx, cy), pointing
+    ; at `angle` degrees (0 is to the right, clockwise), `len` long and
+    ; `thick` across.
+    sfn arrowAt:void (c:SaInst cx:double cy:double angle:double len:double thick:double) {
+        def none:[double]
+        c.segs = none
+        c.w = len
+        c.h = thick
+        c.x = (cx - (len / 2.0))
+        c.y = (cy - (thick / 2.0))
+        c.put("connDir" 0.0 "")
+        c.rotDeg = angle
+    }
+
+    ; From shape `a` to shape `b`: a line edge to edge (1D), or an arrow in
+    ; the gap between them (2D), no longer than `maxLen` and as thick as the
+    ; connector's own height asks.
+    sfn between:void (cons:SaConstraints c:SaInst a:SaInst b:SaInst) {
+        def bp:string (c.alg.param("begPts" "auto"))
+        def ep:string (c.alg.param("endPts" "auto"))
+        def acx:double (a.x + (a.w / 2.0))
+        def acy:double (a.y + (a.h / 2.0))
+        def bcx:double (b.x + (b.w / 2.0))
+        def bcy:double (b.y + (b.h / 2.0))
+        def p1:[double] (SaConn.edgePoint(a bcx bcy))
+        if (bp != "auto") {
+            p1 = (SaConn.pointOf(a bp))
+        }
+        def p2:[double] (SaConn.edgePoint(b acx acy))
+        if (ep != "auto") {
+            p2 = (SaConn.pointOf(b ep))
+        }
+        def x1:double (itemAt p1 0)
+        def y1:double (itemAt p1 1)
+        def x2:double (itemAt p2 0)
+        def y2:double (itemAt p2 1)
+        if (SaConn.is1D(c)) {
+            if ((c.alg.param("connRout" "stra")) == "bend") {
+                SaConn.elbow(c x1 y1 x2 y2 ((y1 + y2) / 2.0))
+            } {
+                SaConn.line(c x1 y1 x2 y2)
+            }
+            return
+        }
+        def dx:double (x2 - x1)
+        def dy:double (y2 - y1)
+        def gap:double (sqrt ((dx * dx) + (dy * dy)))
+        def len:double (cons.get(c "w"))
+        def thick:double (cons.get(c "h"))
+        ; the gap's middle 80 %, at most
+        if (len > (gap * 0.8)) {
+            def f:double ((gap * 0.8) / len)
+            len = (len * f)
+            if ((c.fromOf("h")) == "w") {
+                thick = (thick * f)
+            }
+        }
+        if (thick > len) {
+            thick = len
+        }
+        SaConn.arrowAt(c ((x1 + x2) / 2.0) ((y1 + y2) / 2.0) (SaConn.deg((atan2 dy dx))) len thick)
+    }
+
+    sfn byName@(optional):SaInst (p:SaInst name:string) {
+        def i:int 0
+        while (i < (array_length p.children)) {
+            def c:SaInst (itemAt p.children i)
+            if (c.name == name) {
+                def hit@(optional):SaInst c
+                return hit
+            }
+            i = (i + 1)
+        }
+        def none@(optional):SaInst
+        return none
+    }
+
+    ; The connectors among p's children that its algorithm did not place:
+    ; each between the shapes it names, else the shape before it and the
+    ; shape after it.
+    sfn connect:void (cons:SaConstraints p:SaInst) {
+        def n:int (array_length p.children)
+        def i:int 0
+        while (i < n) {
+            def c:SaInst (itemAt p.children i)
+            if (SaConn.isConn(c)) {
+                def src@(optional):SaInst
+                def dst@(optional):SaInst
+                def sn:string (c.alg.param("srcNode" ""))
+                def dn:string (c.alg.param("dstNode" ""))
+                if ((strlen sn) > 0) {
+                    src = (SaConn.byName(p sn))
+                }
+                if ((strlen dn) > 0) {
+                    dst = (SaConn.byName(p dn))
+                }
+                if (null? src) {
+                    def j:int (i - 1)
+                    while ((j >= 0) && (null? src)) {
+                        def b:SaInst (itemAt p.children j)
+                        if (SaConn.isCell(b)) {
+                            src = b
+                        }
+                        j = (j - 1)
+                    }
+                }
+                if (null? dst) {
+                    def k:int (i + 1)
+                    while ((k < n) && (null? dst)) {
+                        def b2:SaInst (itemAt p.children k)
+                        if (SaConn.isCell(b2)) {
+                            dst = b2
+                        }
+                        k = (k + 1)
+                    }
+                }
+                if ((!null? src) && (!null? dst)) {
+                    SaConn.between(cons c (unwrap src) (unwrap dst))
+                } {
+                    SaConn.hide(c p)
+                }
+            }
+            i = (i + 1)
+        }
+    }
+}

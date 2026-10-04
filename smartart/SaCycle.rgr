@@ -1,0 +1,245 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaCycle — shapes on a circle
+; ==============================================================================
+;
+; The children that take a place go round a circle, the first at `stAng`
+; degrees (0 is twelve o'clock, clockwise), the rest `spanAng` (360 by
+; default) shared out between them: a full circle in equal steps, a part of
+; one from its first angle to its last.
+;
+;   ctrShpMap  none (default); fNode: the first shape goes in the middle and
+;              the others round it, as a radial diagram has them
+;   rotPath    none (default); alongPath: each shape turned to its angle
+;
+; A negative `spanAng` goes round anticlockwise.
+;
+; The circle is as small as keeps neighbours `sibSp` apart (and clear of a
+; shape in the middle); then the whole of it is made smaller, the shapes with
+; it, until it fits the box, never larger, and centred in it.
+;
+; Connectors: a sibling transition is an arrow on the circle between the
+; shape before it and the one after it (the last back to the first on a full
+; circle), pointing the way round, no longer than 80 % of the gap; a parent
+; transition is a line from the shape in the middle to its own shape (the
+; one after it in the program) — `dim="1D"` makes either a line.
+; ==============================================================================
+
+Import "SaConn.rgr"
+
+class SaCycle {
+
+    sfn num:double (s:string fallback:double) {
+        def v@(optional):double (str2double (trim s))
+        return (?? v fallback)
+    }
+
+    sfn place:void (cons:SaConstraints p:SaInst) {
+        def cells:[SaInst]
+        def i:int 0
+        while (i < (array_length p.children)) {
+            def c:SaInst (itemAt p.children i)
+            if (SaConn.isCell(c)) {
+                push cells c
+            }
+            i = (i + 1)
+        }
+        def n:int (array_length cells)
+        if (n == 0) {
+            i = 0
+            while (i < (array_length p.children)) {
+                SaConn.hide((itemAt p.children i) p)
+                i = (i + 1)
+            }
+            return
+        }
+        def hasCtr:boolean ((p.alg.param("ctrShpMap" "none")) == "fNode")
+        def ring:[SaInst]
+        def first:int 0
+        if hasCtr {
+            first = 1
+        }
+        i = first
+        while (i < n) {
+            push ring (itemAt cells i)
+            i = (i + 1)
+        }
+        def m:int (array_length ring)
+        def stAng:double (SaCycle.num((p.alg.param("stAng" "0")) 0.0))
+        def span:double (SaCycle.num((p.alg.param("spanAng" "360")) 360.0))
+        ; a negative span goes round anticlockwise
+        def full:boolean ((fabs span) >= 359.999)
+        def step:double 0.0
+        if (m > 1) {
+            if full {
+                step = (span / (to_double m))
+            } {
+                step = (span / (to_double (m - 1)))
+            }
+        }
+        ; sizes, as the constraints give them
+        def ws:[double]
+        def hs:[double]
+        def d:double 0.0
+        i = 0
+        while (i < m) {
+            def r0:SaInst (itemAt ring i)
+            def rw:double (cons.get(r0 "w"))
+            def rh:double (cons.get(r0 "h"))
+            push ws rw
+            push hs rh
+            if (rw > d) { d = rw }
+            if (rh > d) { d = rh }
+            i = (i + 1)
+        }
+        def cw:double 0.0
+        def chh:double 0.0
+        if hasCtr {
+            def c0:SaInst (itemAt cells 0)
+            cw = (cons.get(c0 "w"))
+            chh = (cons.get(c0 "h"))
+        }
+        def sp:double (cons.get(p "sibSp"))
+        ; the radius that keeps neighbours apart, and clear of the middle
+        def r:double 0.0
+        if (m > 1) {
+            def half:double (SaConn.rad((fabs (step / 2.0))))
+            def sn:double (sin half)
+            if (sn > 0.000001) {
+                r = ((d + sp) / (2.0 * sn))
+            }
+        }
+        if (hasCtr && (m > 0)) {
+            def cd:double cw
+            if (chh > cd) { cd = chh }
+            def rc:double (((cd / 2.0) + sp) + (d / 2.0))
+            if (rc > r) {
+                r = rc
+            }
+        }
+        ; the bounds of it all, centred at 0, 0
+        def minX:double 0.0
+        def maxX:double 0.0
+        def minY:double 0.0
+        def maxY:double 0.0
+        if hasCtr {
+            minX = (0.0 - (cw / 2.0))
+            maxX = (cw / 2.0)
+            minY = (0.0 - (chh / 2.0))
+            maxY = (chh / 2.0)
+        }
+        def xs:[double]
+        def ys:[double]
+        i = 0
+        while (i < m) {
+            def a:double (SaConn.rad((stAng + ((to_double i) * step))))
+            def x:double (r * (sin a))
+            def y:double (0.0 - (r * (cos a)))
+            push xs x
+            push ys y
+            def hw:double ((itemAt ws i) / 2.0)
+            def hh:double ((itemAt hs i) / 2.0)
+            if ((i == 0) && (hasCtr == false)) {
+                minX = (x - hw)
+                maxX = (x + hw)
+                minY = (y - hh)
+                maxY = (y + hh)
+            }
+            if ((x - hw) < minX) { minX = (x - hw) }
+            if ((x + hw) > maxX) { maxX = (x + hw) }
+            if ((y - hh) < minY) { minY = (y - hh) }
+            if ((y + hh) > maxY) { maxY = (y + hh) }
+            i = (i + 1)
+        }
+        def bw:double (maxX - minX)
+        def bh:double (maxY - minY)
+        def s:double 1.0
+        if ((bw > 0.0) && ((p.w / bw) < s)) {
+            s = (p.w / bw)
+        }
+        if ((bh > 0.0) && ((p.h / bh) < s)) {
+            s = (p.h / bh)
+        }
+        ; the centre of the circle, so that the bounds sit in the middle
+        def ox:double ((p.x + (p.w / 2.0)) - (((minX + maxX) / 2.0) * s))
+        def oy:double ((p.y + (p.h / 2.0)) - (((minY + maxY) / 2.0) * s))
+        def along:boolean ((p.alg.param("rotPath" "none")) == "alongPath")
+        if hasCtr {
+            def c1:SaInst (itemAt cells 0)
+            c1.w = (cw * s)
+            c1.h = (chh * s)
+            c1.x = (ox - (c1.w / 2.0))
+            c1.y = (oy - (c1.h / 2.0))
+        }
+        i = 0
+        while (i < m) {
+            def rn:SaInst (itemAt ring i)
+            rn.w = ((itemAt ws i) * s)
+            rn.h = ((itemAt hs i) * s)
+            rn.x = ((ox + ((itemAt xs i) * s)) - (rn.w / 2.0))
+            rn.y = ((oy + ((itemAt ys i) * s)) - (rn.h / 2.0))
+            if along {
+                rn.rotDeg = (stAng + ((to_double i) * step))
+            }
+            i = (i + 1)
+        }
+        ; the connectors
+        def sib:int 0
+        def par:int 0
+        def gap:double ((((2.0 * r) * (sin (SaConn.rad((fabs (step / 2.0)))))) - d) * s)
+        i = 0
+        while (i < (array_length p.children)) {
+            def c3:SaInst (itemAt p.children i)
+            if (SaConn.isConn(c3)) {
+                if ((c3.ctxType == "parTrans") && hasCtr) {
+                    if (par < m) {
+                        SaConn.between(cons c3 (itemAt cells 0) (itemAt ring par))
+                    } {
+                        SaConn.hide(c3 p)
+                    }
+                    par = (par + 1)
+                } {
+                    def last:int (m - 1)
+                    if full {
+                        last = m
+                    }
+                    if ((sib < last) && (m > 1)) {
+                        def from:SaInst (itemAt ring sib)
+                        def to:SaInst (itemAt ring ((sib + 1) % m))
+                        if (SaConn.is1D(c3)) {
+                            SaConn.between(cons c3 from to)
+                        } {
+                            def mid:double (stAng + (((to_double sib) + 0.5) * step))
+                            def ma:double (SaConn.rad(mid))
+                            def cx:double (ox + ((r * s) * (sin ma)))
+                            def cy:double (oy - ((r * s) * (cos ma)))
+                            def len:double ((cons.get(c3 "w")) * s)
+                            def thick:double ((cons.get(c3 "h")) * s)
+                            if ((len > (gap * 0.8)) && (gap > 0.0)) {
+                                def f:double ((gap * 0.8) / len)
+                                len = (len * f)
+                                thick = (thick * f)
+                            }
+                            ; the tangent: the arrow points from this shape on
+                            ; to the next, clockwise or, on a negative span,
+                            ; anticlockwise
+                            def heading:double mid
+                            if (step < 0.0) {
+                                heading = (mid + 180.0)
+                            }
+                            SaConn.arrowAt(c3 cx cy heading len thick)
+                        }
+                    } {
+                        SaConn.hide(c3 p)
+                    }
+                    sib = (sib + 1)
+                }
+            } {
+                if ((SaConn.isSpace(c3)) && ((SaConn.isCell(c3)) == false)) {
+                    SaConn.hide(c3 p)
+                }
+            }
+            i = (i + 1)
+        }
+    }
+}

@@ -1,0 +1,441 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaAlgorithm2Test — snake, cycle, hierRoot/hierChild, pyra and connectors, in
+; points
+; ==============================================================================
+;
+; A 400 × 200 frame. Boxes are written x,y wxh in tenths of a point, as
+; SaAlgorithmTest writes them.
+; ==============================================================================
+
+Import "SaTestKit.rgr"
+
+class SaAlgorithm2Test {
+
+    sfn run:SaAlgorithms (data:string rootBody:string) {
+        def t:SaPresTree (SaKit.ptree(data rootBody))
+        def c:SaConstraints (SaConstraints.resolve(t 400.0 200.0))
+        return (SaAlgorithms.run(c))
+    }
+
+    sfn tenth:string (v:double) {
+        def neg:boolean (v < 0.0)
+        def a:double v
+        if neg {
+            a = (0.0 - v)
+        }
+        def n:int (to_int ((a * 10.0) + 0.5))
+        if (neg && (n > 0)) {
+            return ("-" + (to_string n))
+        }
+        return (to_string n)
+    }
+
+    sfn box:string (s:SaInst) {
+        return ((SaAlgorithm2Test.tenth(s.x)) + "," + (SaAlgorithm2Test.tenth(s.y)) + " " + (SaAlgorithm2Test.tenth(s.w)) + "x" + (SaAlgorithm2Test.tenth(s.h)))
+    }
+
+    sfn boxes:string (a:SaAlgorithms name:string) {
+        def l:[SaInst] (SaKit.byName(a.cons.ptree name))
+        def out:string ""
+        def i:int 0
+        while (i < (array_length l)) {
+            if (i > 0) {
+                out = (out + " | ")
+            }
+            out = (out + (SaAlgorithm2Test.box((itemAt l i))))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn segs:string (s:SaInst) {
+        def out:string ""
+        def i:int 0
+        while ((i + 3) < (array_length s.segs)) {
+            if (i > 0) {
+                out = (out + " ")
+            }
+            out = (out + (SaAlgorithm2Test.tenth((itemAt s.segs i))) + "," + (SaAlgorithm2Test.tenth((itemAt s.segs (i + 1)))) + ">" + (SaAlgorithm2Test.tenth((itemAt s.segs (i + 2)))) + "," + (SaAlgorithm2Test.tenth((itemAt s.segs (i + 3)))))
+            i = (i + 4)
+        }
+        return out
+    }
+
+    sfn nth:SaInst (a:SaAlgorithms name:string i:int) {
+        def l:[SaInst] (SaKit.byName(a.cons.ptree name))
+        return (itemAt l i)
+    }
+
+    sfn wOf:double (a:SaAlgorithms name:string i:int) {
+        def s:SaInst (SaAlgorithm2Test.nth(a name i))
+        return s.w
+    }
+
+    sfn rotOf:double (a:SaAlgorithms name:string i:int) {
+        def s:SaInst (SaAlgorithm2Test.nth(a name i))
+        return s.rotDeg
+    }
+
+    sfn arrowOf:boolean (a:SaAlgorithms name:string i:int) {
+        def s:SaInst (SaAlgorithm2Test.nth(a name i))
+        return s.arrowEnd
+    }
+
+    sfn count:int (a:SaAlgorithms name:string) {
+        return (array_length (SaKit.byName(a.cons.ptree name)))
+    }
+
+    ; ------------------------------------------------------------------
+    ; snake
+    ; ------------------------------------------------------------------
+
+    sfn snake:SaAlgorithms (n:int params:string more:string) {
+        def body:string ("<dgm:alg type=\"snake\">" + params + "</dgm:alg><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" val=\"50\"/>" + more + "</dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/></dgm:forEach>")
+        return (SaAlgorithm2Test.run((SaKit.flat("" n)) body))
+    }
+
+    sfn p:string (name:string v:string) {
+        return ("<dgm:param type=\"" + name + "\" val=\"" + v + "\"/>")
+    }
+
+    sfn testSnake:void (c:SaKit) {
+        print "-- snake --"
+        c.eqStr("one: in the middle" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(1 "" "")) "node")) "1500,750 1000x500")
+        ; four 100 × 50 in 400 × 200: as large as they are, as many to a row
+        ; as fit
+        c.eqStr("four: a row of four" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 "" "")) "node")) "0,750 1000x500 | 1000,750 1000x500 | 2000,750 1000x500 | 3000,750 1000x500")
+        c.eqStr("five: four, then one centred" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(5 "" "")) "node")) "0,500 1000x500 | 1000,500 1000x500 | 2000,500 1000x500 | 3000,500 1000x500 | 1500,1000 1000x500")
+        c.eqStr("off: the short row starts where the others do" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(5 (SaAlgorithm2Test.p("off" "off")) "")) "node")) "0,500 1000x500 | 1000,500 1000x500 | 2000,500 1000x500 | 3000,500 1000x500 | 0,1000 1000x500")
+        c.eqStr("bal: three and two" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(5 (SaAlgorithm2Test.p("bkpt" "bal")) "")) "node")) "500,500 1000x500 | 1500,500 1000x500 | 2500,500 1000x500 | 1000,1000 1000x500 | 2000,1000 1000x500")
+        c.eqStr("fixed: two to a row" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 ((SaAlgorithm2Test.p("bkpt" "fixed")) + (SaAlgorithm2Test.p("bkPtFixedVal" "2"))) "")) "node")) "1000,500 1000x500 | 2000,500 1000x500 | 1000,1000 1000x500 | 2000,1000 1000x500")
+        def two:string ((SaAlgorithm2Test.p("bkpt" "fixed")) + (SaAlgorithm2Test.p("bkPtFixedVal" "2")))
+        c.eqStr("revDir: the second row runs back" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 (two + (SaAlgorithm2Test.p("contDir" "revDir"))) "")) "node")) "1000,500 1000x500 | 2000,500 1000x500 | 2000,1000 1000x500 | 1000,1000 1000x500")
+        c.eqStr("grDir tR: from the top right" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 (two + (SaAlgorithm2Test.p("grDir" "tR"))) "")) "node")) "2000,500 1000x500 | 1000,500 1000x500 | 2000,1000 1000x500 | 1000,1000 1000x500")
+        c.eqStr("grDir bL: from the bottom left" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 (two + (SaAlgorithm2Test.p("grDir" "bL"))) "")) "node")) "1000,1000 1000x500 | 2000,1000 1000x500 | 1000,500 1000x500 | 2000,500 1000x500")
+        c.eqStr("grDir bR: from the bottom right" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 (two + (SaAlgorithm2Test.p("grDir" "bR"))) "")) "node")) "2000,1000 1000x500 | 1000,1000 1000x500 | 2000,500 1000x500 | 1000,500 1000x500")
+        c.eqStr("flowDir col: down the columns" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 (two + (SaAlgorithm2Test.p("flowDir" "col"))) "")) "node")) "1000,500 1000x500 | 1000,1000 1000x500 | 2000,500 1000x500 | 2000,1000 1000x500")
+        c.eqStr("sibSp and secSibSp apart" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 two "<dgm:constr type=\"sibSp\" val=\"20\"/><dgm:constr type=\"secSibSp\" val=\"10\"/>")) "node")) "900,450 1000x500 | 2100,450 1000x500 | 900,1050 1000x500 | 2100,1050 1000x500")
+        c.eqStr("secSibSp not given: sibSp" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.snake(4 two "<dgm:constr type=\"sibSp\" val=\"20\"/>")) "node")) "900,400 1000x500 | 2100,400 1000x500 | 900,1100 1000x500 | 2100,1100 1000x500")
+        ; too many to fit at their size: smaller, the proportions kept
+        def a:SaAlgorithms (SaAlgorithm2Test.snake(20 "" ""))
+        def n0:SaInst (SaAlgorithm2Test.nth(a "node" 0))
+        c.ok(("twenty: smaller (" + (SaAlgorithm2Test.box(n0)) + ")") (n0.w < 100.0))
+        c.near("still twice as wide as tall" (n0.w / n0.h) 2.0)
+        def n19:SaInst (SaAlgorithm2Test.nth(a "node" 19))
+        c.ok("and all inside" ((((n0.x >= -0.01) && (n0.y >= -0.01)) && ((n19.x + n19.w) <= 400.01)) && ((n19.y + n19.h) <= 200.01)))
+        ; never larger than they are
+        def big:SaAlgorithms (SaAlgorithm2Test.snake(2 "" ""))
+        def b0:SaInst (SaAlgorithm2Test.nth(big "node" 0))
+        c.near("two: their own width, not the box's" b0.w 100.0)
+        ; a connector in a snake is not drawn
+        def withConn:string ("<dgm:alg type=\"snake\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" val=\"50\"/></dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"/><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"arrow\"><dgm:alg type=\"conn\"/></dgm:layoutNode></dgm:forEach></dgm:forEach>")
+        def ac:SaAlgorithms (SaAlgorithm2Test.run((SaKit.flat("" 3)) withConn))
+        c.eqInt("the connectors are there" (SaAlgorithm2Test.count(ac "arrow")) 2)
+        c.near("with no size" (SaAlgorithm2Test.wOf(ac "arrow" 0)) 0.0)
+        c.eqStr("and the steps placed without them" (SaAlgorithm2Test.boxes(ac "node")) "500,750 1000x500 | 1500,750 1000x500 | 2500,750 1000x500")
+        c.eqInt("snake: no warning" (array_length a.warnings) 0)
+        c.eqInt("lines for 5, 4 to a row" (SaSnake.linesOf(5 4)) 2)
+        c.eqInt("lines for 4, 4 to a row" (SaSnake.linesOf(4 4)) 1)
+        c.eqInt("lines for 1" (SaSnake.linesOf(1 3)) 1)
+    }
+
+    ; ------------------------------------------------------------------
+    ; cycle
+    ; ------------------------------------------------------------------
+
+    sfn cycle:SaAlgorithms (n:int params:string more:string) {
+        def body:string ("<dgm:alg type=\"cycle\">" + params + "</dgm:alg><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"40\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"node\" val=\"40\"/><dgm:constr type=\"sibSp\" val=\"20\"/>" + more + "</dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"node\"><dgm:shape type=\"ellipse\"/></dgm:layoutNode><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\" hideLastTrans=\"0\"><dgm:layoutNode name=\"arrow\"><dgm:alg type=\"conn\"/></dgm:layoutNode></dgm:forEach></dgm:forEach>")
+        return (SaAlgorithm2Test.run((SaKit.flat("" n)) body))
+    }
+
+    sfn ctr:string (s:SaInst) {
+        return ((SaAlgorithm2Test.tenth((s.x + (s.w / 2.0)))) + "," + (SaAlgorithm2Test.tenth((s.y + (s.h / 2.0)))))
+    }
+
+    sfn centres:string (a:SaAlgorithms name:string) {
+        def l:[SaInst] (SaKit.byName(a.cons.ptree name))
+        def out:string ""
+        def i:int 0
+        while (i < (array_length l)) {
+            if (i > 0) {
+                out = (out + " | ")
+            }
+            out = (out + (SaAlgorithm2Test.ctr((itemAt l i))))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testCycle:void (c:SaKit) {
+        print "-- cycle (centres) --"
+        ; four 40-point shapes 20 apart: the circle's radius is
+        ; 60 / (2 sin 45°) = 42.43, centred in the frame
+        c.eqStr("four round a circle, the first at twelve o'clock" (SaAlgorithm2Test.centres((SaAlgorithm2Test.cycle(4 "" "")) "node")) "2000,576 | 2424,1000 | 2000,1424 | 1576,1000")
+        c.eqStr("their own size" (SaAlgorithm2Test.boxes((SaAlgorithm2Test.cycle(1 "" "")) "node")) "1800,800 400x400")
+        c.eqStr("one: in the middle" (SaAlgorithm2Test.centres((SaAlgorithm2Test.cycle(1 "" "")) "node")) "2000,1000")
+        c.eqStr("two: across from each other" (SaAlgorithm2Test.centres((SaAlgorithm2Test.cycle(2 "" "")) "node")) "2000,700 | 2000,1300")
+        c.eqStr("stAng 90: the first at three o'clock" (SaAlgorithm2Test.centres((SaAlgorithm2Test.cycle(4 (SaAlgorithm2Test.p("stAng" "90")) "")) "node")) "2424,1000 | 2000,1424 | 1576,1000 | 2000,576")
+        c.eqStr("a negative span: anticlockwise" (SaAlgorithm2Test.centres((SaAlgorithm2Test.cycle(4 (SaAlgorithm2Test.p("spanAng" "-360")) "")) "node")) "2000,576 | 1576,1000 | 2000,1424 | 2424,1000")
+        ; half a circle: three over 180°, 90° apart, the bounds centred
+        c.eqStr("spanAng 180: first to last over half a circle" (SaAlgorithm2Test.centres((SaAlgorithm2Test.cycle(3 (SaAlgorithm2Test.p("spanAng" "180")) "")) "node")) "1788,576 | 2212,1000 | 1788,1424")
+        ; a shape in the middle: the ring keeps clear of it
+        def mid:SaAlgorithms (SaAlgorithm2Test.cycle(4 (SaAlgorithm2Test.p("ctrShpMap" "fNode")) ""))
+        ; the three at 0°, 120° and 240°, 60 out: their bounds (-80 to 50
+        ; from the centre) are what is centred, so the centre sits 15 low
+        c.eqStr("fNode: the first in the middle, three round it at 60" (SaAlgorithm2Test.centres(mid "node")) "2000,1150 | 2000,550 | 2520,1450 | 1480,1450")
+        ; too big for the frame: all of it smaller, centred
+        def big:SaAlgorithms (SaAlgorithm2Test.cycle(6 "" "<dgm:constr type=\"w\" for=\"ch\" forName=\"node\" val=\"120\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"node\" val=\"120\"/>"))
+        def b0:SaInst (SaAlgorithm2Test.nth(big "node" 0))
+        def b3:SaInst (SaAlgorithm2Test.nth(big "node" 3))
+        c.ok(("too big: smaller (" + (SaAlgorithm2Test.box(b0)) + ")") (b0.w < 120.0))
+        c.near("still round" b0.w b0.h)
+        c.ok("the top one at the top of the frame" ((fabs b0.y) < 0.01))
+        c.ok("the bottom one at its bottom" ((fabs ((b3.y + b3.h) - 200.0)) < 0.01))
+        ; turned along the path
+        def turned:SaAlgorithms (SaAlgorithm2Test.cycle(4 (SaAlgorithm2Test.p("rotPath" "alongPath")) ""))
+        c.near("alongPath: the second turned 90°" (SaAlgorithm2Test.rotOf(turned "node" 1)) 90.0)
+        def flat4:SaAlgorithms (SaAlgorithm2Test.cycle(4 "" ""))
+        c.near("none: not turned" (SaAlgorithm2Test.rotOf(flat4 "node" 1)) 0.0)
+        ; the arrows
+        def a4:SaAlgorithms (SaAlgorithm2Test.cycle(4 "" "<dgm:constr type=\"w\" for=\"ch\" forName=\"arrow\" val=\"10\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"arrow\" val=\"6\"/>"))
+        c.eqInt("four arrows on a full circle, the last back to the first" (SaAlgorithm2Test.count(a4 "arrow")) 4)
+        def ar0:SaInst (SaAlgorithm2Test.nth(a4 "arrow" 0))
+        c.near("the first half way to the second, pointing on (45°)" ar0.rotDeg 45.0)
+        c.eqStr("on the circle between them" (SaAlgorithm2Test.ctr(ar0)) "2300,700")
+        c.eqStr("its own size" ((SaAlgorithm2Test.tenth(ar0.w)) + "x" + (SaAlgorithm2Test.tenth(ar0.h))) "100x60")
+        c.near("drawn as a right arrow, turned" (ar0.raw("connDir" -1.0)) 0.0)
+        c.near("the last from the fourth to the first (315°)" (SaAlgorithm2Test.rotOf(a4 "arrow" 3)) 315.0)
+        def back:SaAlgorithms (SaAlgorithm2Test.cycle(4 (SaAlgorithm2Test.p("spanAng" "-360")) "<dgm:constr type=\"w\" for=\"ch\" forName=\"arrow\" val=\"10\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"arrow\" val=\"6\"/>"))
+        c.near("anticlockwise: the arrow points back round (135°)" (SaAlgorithm2Test.rotOf(back "arrow" 0)) 135.0)
+        ; a long arrow is cut to the gap
+        def longA:SaAlgorithms (SaAlgorithm2Test.cycle(4 "" "<dgm:constr type=\"w\" for=\"ch\" forName=\"arrow\" val=\"100\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"arrow\" val=\"20\"/>"))
+        def la:SaInst (SaAlgorithm2Test.nth(longA "arrow" 0))
+        c.near("an arrow longer than the gap: 80 % of it" la.w 16.0)
+        c.near("thinner by as much" la.h 3.2)
+        ; part of a circle: no arrow back from the last
+        def part:SaAlgorithms (SaAlgorithm2Test.cycle(3 (SaAlgorithm2Test.p("spanAng" "180")) ""))
+        c.ok("part of a circle: no arrow from the last back" ((SaAlgorithm2Test.wOf(part "arrow" 2)) == 0.0))
+        c.ok("but between the others" ((SaAlgorithm2Test.wOf(part "arrow" 0)) > 0.0))
+        def one:SaAlgorithms (SaAlgorithm2Test.cycle(1 "" ""))
+        c.near("one: its arrow is not drawn" (SaAlgorithm2Test.wOf(one "arrow" 0)) 0.0)
+    }
+
+    ; radial: a shape in the middle, lines out to the others
+    sfn testRadialLines:void (c:SaKit) {
+        print "-- cycle with a centre: lines --"
+        def pts:string ((SaKit.pt("c" "C")) + (SaKit.pt("r1" "A")) + (SaKit.pt("r2" "B")))
+        def cs:string ((SaKit.cx("0" "c")) + (SaKit.cx("c" "r1")) + (SaKit.cx("c" "r2")))
+        def body:string "<dgm:alg type=\"cycle\"><dgm:param type=\"ctrShpMap\" val=\"fNode\"/></dgm:alg><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" val=\"40\"/><dgm:constr type=\"h\" for=\"ch\" val=\"40\"/><dgm:constr type=\"sibSp\" val=\"20\"/></dgm:constrLst><dgm:forEach axis=\"ch\" ptType=\"node\" cnt=\"1\"><dgm:layoutNode name=\"centre\"><dgm:shape type=\"ellipse\"/></dgm:layoutNode><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:forEach axis=\"precedSib\" ptType=\"parTrans\" cnt=\"1\"><dgm:layoutNode name=\"spoke\"><dgm:alg type=\"conn\"><dgm:param type=\"dim\" val=\"1D\"/></dgm:alg></dgm:layoutNode></dgm:forEach><dgm:layoutNode name=\"node\"><dgm:shape type=\"ellipse\"/></dgm:layoutNode></dgm:forEach></dgm:forEach>"
+        def a:SaAlgorithms (SaAlgorithm2Test.run((SaKit.data("" pts cs)) body))
+        c.eqStr("the centre in the middle" (SaAlgorithm2Test.centres(a "centre")) "2000,1000")
+        ; two round it: 180° apart, radius max((40 + 20) / 2, 20 + 20 + 20) = 60
+        c.eqStr("two round it, 60 out" (SaAlgorithm2Test.centres(a "node")) "2000,400 | 2000,1600")
+        c.eqInt("a line to each" (SaAlgorithm2Test.count(a "spoke")) 2)
+        def s0:SaInst (SaAlgorithm2Test.nth(a "spoke" 0))
+        c.eqStr("from the centre's edge to the shape's" (SaAlgorithm2Test.segs(s0)) "2000,800>2000,600")
+        c.ok("no arrowhead on a parent transition" (s0.arrowEnd == false))
+        c.eqStr("the second straight down" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(a "spoke" 1)))) "2000,1200>2000,1400")
+    }
+
+    ; ------------------------------------------------------------------
+    ; hierarchy
+    ; ------------------------------------------------------------------
+
+    ; a box 60 × 30, rows 10 apart, levels 20; `branch` the hierBranch
+    sfn hierBody:string (branch:string) {
+        def vars:string ""
+        if ((strlen branch) > 0) {
+            vars = ("<dgm:varLst><dgm:hierBranch val=\"" + branch + "\"/></dgm:varLst>")
+        }
+        return (vars + "<dgm:alg type=\"hierChild\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"des\" forName=\"box\" val=\"60\"/><dgm:constr type=\"h\" for=\"des\" forName=\"box\" val=\"30\"/><dgm:constr type=\"sibSp\" val=\"10\"/><dgm:constr type=\"sibSp\" for=\"des\" forName=\"kids\" val=\"10\"/><dgm:constr type=\"sibSp\" for=\"des\" forName=\"assts\" val=\"10\"/><dgm:constr type=\"sp\" for=\"des\" forName=\"branch\" val=\"20\"/></dgm:constrLst><dgm:forEach name=\"b\" axis=\"ch\" ptType=\"norm\"><dgm:forEach axis=\"precedSib\" ptType=\"parTrans\" cnt=\"1\"><dgm:layoutNode name=\"line\"><dgm:alg type=\"conn\"><dgm:param type=\"dim\" val=\"1D\"/><dgm:param type=\"connRout\" val=\"bend\"/></dgm:alg></dgm:layoutNode></dgm:forEach><dgm:layoutNode name=\"branch\"><dgm:alg type=\"hierRoot\"/><dgm:layoutNode name=\"box\"><dgm:shape type=\"rect\"/></dgm:layoutNode><dgm:layoutNode name=\"assts\"><dgm:alg type=\"hierChild\"/><dgm:forEach axis=\"ch\" ptType=\"asst\"><dgm:forEach axis=\"precedSib\" ptType=\"parTrans\" cnt=\"1\"><dgm:layoutNode name=\"aline\"><dgm:alg type=\"conn\"><dgm:param type=\"dim\" val=\"1D\"/></dgm:alg></dgm:layoutNode></dgm:forEach><dgm:layoutNode name=\"abranch\"><dgm:alg type=\"hierRoot\"/><dgm:layoutNode name=\"abox\"><dgm:shape type=\"rect\"/></dgm:layoutNode></dgm:layoutNode></dgm:forEach></dgm:layoutNode><dgm:layoutNode name=\"kids\"><dgm:alg type=\"hierChild\"/><dgm:forEach ref=\"b\"/></dgm:layoutNode></dgm:layoutNode></dgm:forEach>")
+    }
+
+    sfn hier:SaAlgorithms (data:string branch:string) {
+        return (SaAlgorithm2Test.run(data (SaAlgorithm2Test.hierBody(branch))))
+    }
+
+    ; a over b and c
+    sfn abc:string () {
+        return (SaKit.data("" ((SaKit.pt("a" "A")) + (SaKit.pt("b" "B")) + (SaKit.pt("c" "C"))) ((SaKit.cx("0" "a")) + (SaKit.cx("a" "b")) + (SaKit.cx("a" "c")))))
+    }
+
+    sfn testHier:void (c:SaKit) {
+        print "-- hierRoot / hierChild --"
+        ; a over b and c: the row is 60 + 10 + 60 = 130 wide, the tree 130 ×
+        ; (30 + 20 + 30), centred in 400 × 200
+        def a:SaAlgorithms (SaAlgorithm2Test.hier((SaAlgorithm2Test.abc()) ""))
+        c.eqStr("the top box over the middle of its row, the row under it" (SaAlgorithm2Test.boxes(a "box")) "1700,600 600x300 | 1350,1100 600x300 | 2050,1100 600x300")
+        c.eqInt("a line to each box under it" (SaAlgorithm2Test.count(a "line")) 3)
+        c.near("none to the top one" (SaAlgorithm2Test.wOf(a "line" 0)) 0.0)
+        def l1:SaInst (SaAlgorithm2Test.nth(a "line" 1))
+        c.eqStr("an elbow: down half way, across, down" (SaAlgorithm2Test.segs(l1)) "2000,900>2000,1000 2000,1000>1650,1000 1650,1000>1650,1100")
+        c.eqStr("and to the other" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(a "line" 2)))) "2000,900>2000,1000 2000,1000>2350,1000 2350,1000>2350,1100")
+        c.eqStr("its box the elbow's bounds" (SaAlgorithm2Test.box(l1)) "1650,900 350x200")
+        ; one box alone
+        def one:SaAlgorithms (SaAlgorithm2Test.hier((SaKit.flat("" 1)) ""))
+        c.eqStr("one box: in the middle" (SaAlgorithm2Test.boxes(one "box")) "1700,850 600x300")
+        ; three at the top: a row
+        def three:SaAlgorithms (SaAlgorithm2Test.hier((SaKit.flat("" 3)) ""))
+        c.eqStr("three at the top: a row" (SaAlgorithm2Test.boxes(three "box")) "1000,850 600x300 | 1700,850 600x300 | 2400,850 600x300")
+        ; a narrow box over a wide row
+        def deep:string (SaKit.data("" ((SaKit.pt("a" "A")) + (SaKit.pt("b" "B")) + (SaKit.pt("c" "C")) + (SaKit.pt("b1" "B1")) + (SaKit.pt("b2" "B2"))) ((SaKit.cx("0" "a")) + (SaKit.cx("a" "b")) + (SaKit.cx("a" "c")) + (SaKit.cx("b" "b1")) + (SaKit.cx("b" "b2")))))
+        def d:SaAlgorithms (SaAlgorithm2Test.hier(deep ""))
+        ; b's branch is 130 wide, c's 60: the row 200; three levels, 130 tall.
+        ; In the order the tree is walked: a, b, b1, b2, c
+        c.eqStr("each branch as wide as what hangs from it" (SaAlgorithm2Test.boxes(d "box")) "1700,350 600x300 | 1350,850 600x300 | 1000,1350 600x300 | 1700,1350 600x300 | 2400,850 600x300")
+        ; too big: smaller, all of it
+        def wide:SaAlgorithms (SaAlgorithm2Test.hier((SaKit.flat("" 8)) ""))
+        def w0:SaInst (SaAlgorithm2Test.nth(wide "box" 0))
+        def w7:SaInst (SaAlgorithm2Test.nth(wide "box" 7))
+        c.ok(("eight at the top: smaller (" + (SaAlgorithm2Test.box(w0)) + ")") (w0.w < 60.0))
+        c.near("from the frame's left" w0.x 0.0)
+        c.near("to its right" (w7.x + w7.w) 400.0)
+        c.near("the proportions kept" (w0.w / w0.h) 2.0)
+        ; hanging to the right: a's box, then b and c in a column 5 right of
+        ; the line down from a's middle, 10 apart; the branch 95 × 120
+        def r:SaAlgorithms (SaAlgorithm2Test.hier((SaAlgorithm2Test.abc()) "r"))
+        c.eqStr("hierBranch r: a column right of the line down" (SaAlgorithm2Test.boxes(r "box")) "1525,400 600x300 | 1875,900 600x300 | 1875,1300 600x300")
+        c.eqStr("a line down and across to its side" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(r "line" 1)))) "1825,700>1825,1050 1825,1050>1875,1050")
+        def l:SaAlgorithms (SaAlgorithm2Test.hier((SaAlgorithm2Test.abc()) "l"))
+        c.eqStr("hierBranch l: left of it" (SaAlgorithm2Test.boxes(l "box")) "1875,400 600x300 | 1525,900 600x300 | 1525,1300 600x300")
+        def hg:SaAlgorithms (SaAlgorithm2Test.hier((SaAlgorithm2Test.abc()) "hang"))
+        c.eqStr("hang: either side" (SaAlgorithm2Test.boxes(hg "box")) "1700,600 600x300 | 1350,1100 600x300 | 2050,1100 600x300")
+        c.eqStr("each line to its own side" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(hg "line" 2)))) "2000,900>2000,1250 2000,1250>2050,1250")
+        ; an assistant: beside the line, above the row
+        def withA:string (SaKit.data("" ((SaKit.pt("a" "A")) + (SaKit.asst("s" "S")) + (SaKit.pt("b" "B"))) ((SaKit.cx("0" "a")) + (SaKit.cx("a" "s")) + (SaKit.cx("a" "b")))))
+        def as:SaAlgorithms (SaAlgorithm2Test.hier(withA ""))
+        def ab:SaInst (SaAlgorithm2Test.nth(as "abox" 0))
+        def top:SaInst (SaAlgorithm2Test.nth(as "box" 0))
+        def kid:SaInst (SaAlgorithm2Test.nth(as "box" 1))
+        c.ok("the assistant right of the line down" (ab.x > (top.x + (top.w / 2.0))))
+        c.ok("below the box" (ab.y >= (top.y + top.h)))
+        c.ok("above the row" ((ab.y + ab.h) <= kid.y))
+        c.near("the row under the line" (kid.x + (kid.w / 2.0)) (top.x + (top.w / 2.0)))
+        def al:SaInst (SaAlgorithm2Test.nth(as "aline" 0))
+        c.eqInt("a line to the assistant: down, then across (two segments)" (array_length al.segs) 8)
+        c.near("to its left side" (itemAt al.segs 6) ab.x)
+        c.near("at its middle" (itemAt al.segs 7) (ab.y + (ab.h / 2.0)))
+        ; assistants only in the row of assistants
+        def kidsRow:SaInst (SaAlgorithm2Test.nth(as "kids" 0))
+        c.ok("the row of the others is not the assistants'" (kidsRow.w > 0.0))
+        c.eqInt("hierarchy: no warning" (array_length a.warnings) 0)
+    }
+
+    ; ------------------------------------------------------------------
+    ; pyra
+    ; ------------------------------------------------------------------
+
+    sfn pyra:SaAlgorithms (n:int params:string) {
+        def body:string ("<dgm:alg type=\"pyra\">" + params + "</dgm:alg><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"level\"><dgm:shape type=\"trapezoid\"/></dgm:layoutNode></dgm:forEach>")
+        return (SaAlgorithm2Test.run((SaKit.flat("" n)) body))
+    }
+
+    sfn testPyra:void (c:SaKit) {
+        print "-- pyra --"
+        ; 200 tall, base 230: four levels of 50, each 230 / 8 = 28.75 in at
+        ; each side
+        def a:SaAlgorithms (SaAlgorithm2Test.pyra(4 ""))
+        c.eqStr("four levels, the apex first" (SaAlgorithm2Test.boxes(a "level")) "1713,0 575x500 | 1425,500 1150x500 | 1138,1000 1725x500 | 850,1500 2300x500")
+        def l0:SaInst (SaAlgorithm2Test.nth(a "level" 0))
+        def l3:SaInst (SaAlgorithm2Test.nth(a "level" 3))
+        c.eqStr("the slope as the trapezoid's adjustment" (itemAt l0.adjNames 0) "adj")
+        c.near("the apex: a trapezoid that comes to a point" (itemAt l0.adjVals 0) 57500.0)
+        c.near("the base: 28.75 in on a side of 50" (itemAt l3.adjVals 0) 57500.0)
+        def l1:SaInst (SaAlgorithm2Test.nth(a "level" 1))
+        ; level 1: 115 wide, 50 tall: its shorter side is 50
+        c.near("every level's top corners on the slope" (((itemAt l1.adjVals 0) * 50.0) / 100000.0) 28.75)
+        c.near("text kept off the slopes" (l1.raw("lMarg" 0.0)) 14.375)
+        c.near("on both sides" (l1.raw("rMarg" 0.0)) 14.375)
+        c.near("the apex's text lower down" (l0.raw("tMarg" 0.0)) 17.5)
+        c.near("and further in" (l0.raw("lMarg" 0.0)) 18.6875)
+        def b:SaAlgorithms (SaAlgorithm2Test.pyra(4 (SaAlgorithm2Test.p("linDir" "fromB"))))
+        c.eqStr("fromB: the first at the base" (SaAlgorithm2Test.boxes(b "level")) "850,1500 2300x500 | 1138,1000 1725x500 | 1425,500 1150x500 | 1713,0 575x500")
+        def one:SaAlgorithms (SaAlgorithm2Test.pyra(1 ""))
+        c.eqStr("one: the whole triangle" (SaAlgorithm2Test.boxes(one "level")) "850,0 2300x2000")
+        ; a narrow box: as wide as the box, shorter
+        def t:SaPresTree (SaKit.ptree((SaKit.flat("" 2)) "<dgm:alg type=\"pyra\"/><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"level\"/></dgm:forEach>"))
+        def nc:SaConstraints (SaConstraints.resolve(t 115.0 200.0))
+        def na:SaAlgorithms (SaAlgorithms.run(nc))
+        c.eqStr("a narrow box: the triangle as wide as it, centred" (SaAlgorithm2Test.boxes(na "level")) "288,500 575x500 | 0,1000 1150x500")
+        ; only the levels it names
+        def named:string "<dgm:alg type=\"pyra\"><dgm:param type=\"pyraLvlNode\" val=\"level\"/></dgm:alg><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"level\"/><dgm:layoutNode name=\"other\"/></dgm:forEach>"
+        def nm:SaAlgorithms (SaAlgorithm2Test.run((SaKit.flat("" 2)) named))
+        c.eqStr("pyraLvlNode: the levels it names" (SaAlgorithm2Test.boxes(nm "level")) "1425,0 1150x1000 | 850,1000 2300x1000")
+        c.near("the others not drawn" (SaAlgorithm2Test.wOf(nm "other" 0)) 0.0)
+    }
+
+    ; ------------------------------------------------------------------
+    ; connectors between shapes a composite placed
+    ; ------------------------------------------------------------------
+
+    sfn conn:SaAlgorithms (params:string) {
+        def body:string ("<dgm:alg type=\"composite\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" forName=\"a\" val=\"40\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"a\" val=\"20\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"a\" val=\"0\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"a\" val=\"0\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"b\" val=\"40\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"b\" val=\"20\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"b\" val=\"140\"/><dgm:constr type=\"t\" for=\"ch\" forName=\"b\" val=\"100\"/><dgm:constr type=\"w\" for=\"ch\" forName=\"k\" val=\"40\"/><dgm:constr type=\"h\" for=\"ch\" forName=\"k\" val=\"10\"/></dgm:constrLst><dgm:layoutNode name=\"a\"/><dgm:layoutNode name=\"k\"><dgm:alg type=\"conn\">" + params + "</dgm:alg></dgm:layoutNode><dgm:layoutNode name=\"b\"/>")
+        return (SaAlgorithm2Test.run((SaKit.flat("" 1)) body))
+    }
+
+    sfn testConn:void (c:SaKit) {
+        print "-- connectors between shapes --"
+        ; a at 0,0 40×20 (centre 20,10); b at 140,100 (centre 160,110)
+        def l:SaAlgorithms (SaAlgorithm2Test.conn((SaAlgorithm2Test.p("dim" "1D"))))
+        def k:SaInst (SaAlgorithm2Test.nth(l "k" 0))
+        c.eqStr("1D: a line edge to edge, along the line between the centres" (SaAlgorithm2Test.segs(k)) "340,200>1460,1000")
+        c.eqStr("its box" (SaAlgorithm2Test.box(k)) "340,200 1120x800")
+        c.ok("auto on something that is not a transition: no arrowhead" (k.arrowEnd == false))
+        def arr:SaAlgorithms (SaAlgorithm2Test.conn(((SaAlgorithm2Test.p("dim" "1D")) + (SaAlgorithm2Test.p("endSty" "arr")))))
+        c.ok("endSty arr: an arrowhead" (SaAlgorithm2Test.arrowOf(arr "k" 0)))
+        def pts:SaAlgorithms (SaAlgorithm2Test.conn(((SaAlgorithm2Test.p("dim" "1D")) + ((SaAlgorithm2Test.p("begPts" "bCtr")) + (SaAlgorithm2Test.p("endPts" "tCtr"))))))
+        c.eqStr("begPts bCtr to endPts tCtr" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(pts "k" 0)))) "200,200>1600,1000")
+        def mids:SaAlgorithms (SaAlgorithm2Test.conn(((SaAlgorithm2Test.p("dim" "1D")) + ((SaAlgorithm2Test.p("begPts" "midR")) + (SaAlgorithm2Test.p("endPts" "midL"))))))
+        c.eqStr("midR to midL" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(mids "k" 0)))) "400,100>1400,1100")
+        def ctrs:SaAlgorithms (SaAlgorithm2Test.conn(((SaAlgorithm2Test.p("dim" "1D")) + ((SaAlgorithm2Test.p("begPts" "ctr")) + (SaAlgorithm2Test.p("endPts" "ctr"))))))
+        c.eqStr("ctr to ctr" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(ctrs "k" 0)))) "200,100>1600,1100")
+        def bend:SaAlgorithms (SaAlgorithm2Test.conn(((SaAlgorithm2Test.p("dim" "1D")) + ((SaAlgorithm2Test.p("connRout" "bend")) + ((SaAlgorithm2Test.p("begPts" "bCtr")) + (SaAlgorithm2Test.p("endPts" "tCtr")))))))
+        c.eqStr("connRout bend: an elbow" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(bend "k" 0)))) "200,200>200,600 200,600>1600,600 1600,600>1600,1000")
+        ; 2D: an arrow in the gap, along the line
+        def two:SaAlgorithms (SaAlgorithm2Test.conn(""))
+        def a2:SaInst (SaAlgorithm2Test.nth(two "k" 0))
+        c.eqStr("2D: an arrow at the middle of the gap" (SaAlgorithm2Test.ctr(a2)) "900,600")
+        c.near("turned along the line" a2.rotDeg (SaConn.deg((atan2 100.0 140.0))))
+        c.eqStr("at its own size" ((SaAlgorithm2Test.tenth(a2.w)) + "x" + (SaAlgorithm2Test.tenth(a2.h))) "400x100")
+        c.eqInt("no segments" (array_length a2.segs) 0)
+        ; named ends
+        def body:string "<dgm:alg type=\"composite\"/><dgm:constrLst><dgm:constr type=\"w\" for=\"ch\" val=\"40\"/><dgm:constr type=\"h\" for=\"ch\" val=\"20\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"a\" val=\"0\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"b\" val=\"100\"/><dgm:constr type=\"l\" for=\"ch\" forName=\"x\" val=\"300\"/></dgm:constrLst><dgm:layoutNode name=\"a\"/><dgm:layoutNode name=\"b\"/><dgm:layoutNode name=\"k\"><dgm:alg type=\"conn\"><dgm:param type=\"dim\" val=\"1D\"/><dgm:param type=\"srcNode\" val=\"a\"/><dgm:param type=\"dstNode\" val=\"x\"/></dgm:alg></dgm:layoutNode><dgm:layoutNode name=\"x\"/>"
+        def nm:SaAlgorithms (SaAlgorithm2Test.run((SaKit.flat("" 1)) body))
+        c.eqStr("srcNode and dstNode name the ends" (SaAlgorithm2Test.segs((SaAlgorithm2Test.nth(nm "k" 0)))) "400,100>3000,100")
+        ; nothing on one side: not drawn
+        def lone:string "<dgm:alg type=\"composite\"/><dgm:layoutNode name=\"a\"/><dgm:layoutNode name=\"k\"><dgm:alg type=\"conn\"/></dgm:layoutNode>"
+        def ln:SaAlgorithms (SaAlgorithm2Test.run((SaKit.flat("" 1)) lone))
+        c.near("nothing after it: not drawn" (SaAlgorithm2Test.wOf(ln "k" 0)) 0.0)
+        ; the geometry it rests on
+        def e (new SaInst())
+        e.x = 0.0
+        e.y = 0.0
+        e.w = 40.0
+        e.h = 20.0
+        def ep:[double] (SaConn.edgePoint(e 120.0 10.0))
+        c.near("a box's edge, straight out" (itemAt ep 0) 40.0)
+        e.hasShape = true
+        e.shape.type = "ellipse"
+        def ee:[double] (SaConn.edgePoint(e 20.0 110.0))
+        c.near("an ellipse's edge, straight down" (itemAt ee 1) 20.0)
+        def diag:[double] (SaConn.edgePoint(e 120.0 110.0))
+        def dx:double ((itemAt diag 0) - 20.0)
+        def dy:double ((itemAt diag 1) - 10.0)
+        c.near("on the ellipse at an angle" ((((dx * dx) / 400.0) + ((dy * dy) / 100.0))) 1.0)
+        def none:[double] (SaConn.edgePoint(e 20.0 10.0))
+        c.near("towards its own centre: the centre" (itemAt none 0) 20.0)
+    }
+
+    sfn main:void () {
+        print "== SaAlgorithm2Test =="
+        def c (new SaKit())
+        SaAlgorithm2Test.testSnake(c)
+        SaAlgorithm2Test.testCycle(c)
+        SaAlgorithm2Test.testRadialLines(c)
+        SaAlgorithm2Test.testHier(c)
+        SaAlgorithm2Test.testPyra(c)
+        SaAlgorithm2Test.testConn(c)
+        c.finish("SaAlgorithm2Test")
+    }
+}

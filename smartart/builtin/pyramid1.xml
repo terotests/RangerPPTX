@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- pyramid1, "Basic Pyramid": one triangle cut into a level per item, the
+     first at the apex. Written for this engine; see default.xml. -->
+<dgm:layoutDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" uniqueId="urn:microsoft.com/office/officeart/2005/8/layout/pyramid1">
+  <dgm:title val="Basic Pyramid"/>
+  <dgm:layoutNode name="pyramid">
+    <dgm:varLst><dgm:dir/><dgm:resizeHandles val="exact"/></dgm:varLst>
+    <dgm:choose name="direction">
+      <dgm:if name="forward" func="var" arg="dir" op="equ" val="norm"><dgm:alg type="pyra"><dgm:param type="linDir" val="fromT"/><dgm:param type="pyraLvlNode" val="level"/></dgm:alg></dgm:if>
+      <dgm:else name="backward"><dgm:alg type="pyra"><dgm:param type="linDir" val="fromB"/><dgm:param type="pyraLvlNode" val="level"/></dgm:alg></dgm:else>
+    </dgm:choose>
+    <dgm:shape/>
+    <dgm:constrLst>
+      <dgm:constr type="primFontSz" for="ch" forName="level" op="equ" val="65"/>
+    </dgm:constrLst>
+    <dgm:forEach name="levels" axis="ch" ptType="node">
+      <dgm:layoutNode name="level" styleLbl="node1">
+        <dgm:varLst><dgm:bulletEnabled val="1"/></dgm:varLst>
+        <dgm:alg type="tx"/>
+        <dgm:shape type="trapezoid"/>
+        <dgm:presOf axis="desOrSelf" ptType="node"/>
+        <dgm:ruleLst><dgm:rule type="primFontSz" val="5" fact="NaN" max="NaN"/></dgm:ruleLst>
+      </dgm:layoutNode>
+    </dgm:forEach>
+  </dgm:layoutNode>
+</dgm:layoutDef>

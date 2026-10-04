@@ -1,0 +1,109 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; ==============================================================================
+; SaPyra — a triangle cut into levels
+; ==============================================================================
+;
+; The children that take a place (or only those named `pyraLvlNode`, when
+; it is given) are the levels of one triangle, the first at the apex
+; (`linDir` fromT, the default) or at the base (fromB). Every level is as
+; tall as the others; each is a trapezoid whose sloping sides are the
+; triangle's, so the apex level comes out a triangle.
+;
+; The triangle is as tall as the box and its base 1.15 times its height,
+; unless the box is too narrow for that, when it is as wide as the box and
+; its height 1/1.15 of that; centred in the box.
+;
+; A level's text is kept off the slopes: its left and right margins are set
+; to half the slope's run across the level, so the text stays inside the
+; shape at its middle; the apex's text goes in its lower part (top margin
+; 0.35 of the level, sides 0.65 of the run), where the triangle is wide
+; enough for it. The algorithm sets all four margins: a level's own margin
+; constraints would undo them.
+;
+; Not here yet: the accent text beside the levels (`pyraAcctPos`,
+; `pyraAcctRatio`, `pyraAcctBkgdNode`, `pyraAcctTxNode`), which pyramid2
+; and pyramid3 use.
+; ==============================================================================
+
+Import "SaConn.rgr"
+
+class SaPyra {
+
+    sfn aspect:double () {
+        return 1.15
+    }
+
+    sfn place:void (cons:SaConstraints p:SaInst) {
+        def lvlName:string (p.alg.param("pyraLvlNode" ""))
+        def levels:[SaInst]
+        def i:int 0
+        while (i < (array_length p.children)) {
+            def c:SaInst (itemAt p.children i)
+            def isLevel:boolean (SaConn.isCell(c))
+            if ((strlen lvlName) > 0) {
+                isLevel = (c.name == lvlName)
+            }
+            if isLevel {
+                push levels c
+            } {
+                SaConn.hide(c p)
+            }
+            i = (i + 1)
+        }
+        def n:int (array_length levels)
+        if (n == 0) {
+            return
+        }
+        def H:double p.h
+        def W:double (H * (SaPyra.aspect()))
+        if (W > p.w) {
+            W = p.w
+            H = (W / (SaPyra.aspect()))
+        }
+        def top:double (p.y + ((p.h - H) / 2.0))
+        def cx:double (p.x + (p.w / 2.0))
+        def lh:double (H / (to_double n))
+        ; how far in a slope comes over one level
+        def run:double (W / (2.0 * (to_double n)))
+        def fromB:boolean ((p.alg.param("linDir" "fromT")) == "fromB")
+        i = 0
+        while (i < n) {
+            def lvl:int i
+            if fromB {
+                lvl = ((n - 1) - i)
+            }
+            def s:SaInst (itemAt levels i)
+            def wb:double ((W * (to_double (lvl + 1))) / (to_double n))
+            s.x = (cx - (wb / 2.0))
+            s.y = (top + ((to_double lvl) * lh))
+            s.w = wb
+            s.h = lh
+            ; the trapezoid's top corners `run` in from the bottom ones
+            def ss:double wb
+            if (lh < ss) {
+                ss = lh
+            }
+            def none:[string]
+            def noVals:[double]
+            s.adjNames = none
+            s.adjVals = noVals
+            if (ss > 0.0) {
+                push s.adjNames "adj"
+                push s.adjVals ((run * 100000.0) / ss)
+            }
+            ; the text off the slopes; in the apex, in its lower part, where
+            ; there is room
+            def side:double (run / 2.0)
+            def topM:double (lh * 0.08)
+            if (lvl == 0) {
+                side = (run * 0.65)
+                topM = (lh * 0.35)
+            }
+            s.put("lMarg" side "")
+            s.put("rMarg" side "")
+            s.put("tMarg" topM "")
+            s.put("bMarg" (lh * 0.08) "")
+            i = (i + 1)
+        }
+    }
+}

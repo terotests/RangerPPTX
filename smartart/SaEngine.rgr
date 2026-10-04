@@ -11,13 +11,14 @@
 ;               PowerPoint saves, so one representation is drawn, edited and
 ;               exported whoever laid the diagram out
 ;   r.warnings  what was drawn other than asked: an unknown layout or colour
-;               set, an algorithm not implemented yet, text that did not fit
+;               set, text that did not fit
 ;
 ; The layout is the one the data's document point names (`loTypeId`), or
 ; `SaOptions.layout` when the host's Markdown overrides it, read from the
 ; built-in definitions (`builtin/`, embedded in SaBuiltins) — or one passed in
 ; whole (`layoutXml`), which is how a layout PowerPoint saved in a file is
-; used. An id with no definition is drawn as `vList2` and said so.
+; used. An id with no definition is drawn as `default` (Basic Block List,
+; PowerPoint's own fallback) and said so.
 ; ==============================================================================
 
 Import "SaModel.rgr"
@@ -98,9 +99,9 @@ class SaEngine {
             def xml:string (SaBuiltins.layoutXml(shortWant))
             if ((strlen xml) == 0) {
                 if ((strlen shortWant) > 0) {
-                    push res.warnings ("the layout \"" + shortWant + "\" is not one this engine has; drawn as vList2 (it has: " + (SaBuiltins.names()) + ")")
+                    push res.warnings ("the layout \"" + shortWant + "\" is not one this engine has; drawn as default (it has: " + (SaBuiltins.names()) + ")")
                 }
-                xml = (SaBuiltins.layoutXml("vList2"))
+                xml = (SaBuiltins.layoutXml("default"))
             }
             def lr2:SaLayoutReadResult (SaLayoutReader.read(xml))
             if (lr2.ok == false) {
@@ -161,15 +162,68 @@ class SaEngine {
         def i:int 0
         while (i < (array_length every)) {
             def s:SaInst (itemAt every i)
-            def made@(optional):PptxShape (SaEngine.shapeOf(s text colors))
-            if (!null? made) {
-                push g.children (unwrap made)
+            if ((array_length s.segs) >= 4) {
+                SaEngine.linesOf(s colors g.children)
+            } {
+                def made@(optional):PptxShape (SaEngine.shapeOf(s text colors))
+                if (!null? made) {
+                    push g.children (unwrap made)
+                }
             }
             i = (i + 1)
         }
         res.shape = g
         res.ok = true
         return res
+    }
+
+    ; A connector line: one `line` shape per segment, its box the segment's
+    ; bounds, flipped when the segment runs up or left; an arrowhead at the
+    ; end of the last when the connector has one.
+    sfn linesOf:void (s:SaInst colors:string out:[PptxShape]) {
+        def paint:SaPaint (SaStyle.paintFor(s.styleLbl colors s.nameIdx))
+        def col:PptxColor paint.line
+        if paint.noLine {
+            col = paint.fill
+        }
+        def n:int (array_length s.segs)
+        def i:int 0
+        while ((i + 3) < n) {
+            def x1:double (itemAt s.segs i)
+            def y1:double (itemAt s.segs (i + 1))
+            def x2:double (itemAt s.segs (i + 2))
+            def y2:double (itemAt s.segs (i + 3))
+            def sh (new PptxShape())
+            sh.kind = (PptxShapeKind.shape())
+            sh.name = (s.name + " " + (to_string (s.nameIdx + 1)) + "." + (to_string ((to_int ((to_double i) / 4.0)) + 1)))
+            sh.x = x1
+            if (x2 < x1) {
+                sh.x = x2
+            }
+            sh.y = y1
+            if (y2 < y1) {
+                sh.y = y2
+            }
+            sh.width = (fabs (x2 - x1))
+            sh.height = (fabs (y2 - y1))
+            sh.flipH = (x2 < x1)
+            sh.flipV = (y2 < y1)
+            sh.hasXfrm = true
+            sh.hasOff = true
+            sh.hasExt = true
+            sh.preset = "line"
+            sh.noFill = true
+            sh.line = col
+            sh.lineWidthPt = paint.lineWidthPt
+            if (sh.lineWidthPt < 1.0) {
+                sh.lineWidthPt = 1.0
+            }
+            if (s.arrowEnd && ((i + 4) >= n)) {
+                sh.tailEnd = "triangle"
+            }
+            push out sh
+            i = (i + 4)
+        }
     }
 
     ; the preset a connector is drawn as, by the way its line goes
@@ -222,7 +276,7 @@ class SaEngine {
         sh.hasXfrm = true
         sh.hasOff = true
         sh.hasExt = true
-        sh.rotation = s.shape.rot
+        sh.rotation = (s.shape.rot + s.rotDeg)
         def preset:string s.shape.type
         if ((preset == "conn") || (s.alg.type == "conn")) {
             preset = (SaEngine.connPreset((s.raw("connDir" 0.0))))
@@ -232,6 +286,20 @@ class SaEngine {
         }
         sh.preset = preset
         def a:int 0
+        if ((array_length s.adjNames) > 0) {
+            ; an algorithm's own, for this one shape
+            while (a < (array_length s.adjNames)) {
+                def an:string (itemAt s.adjNames a)
+                def av:double (itemAt s.adjVals a)
+                push sh.adjNames an
+                push sh.adjValues av
+                if (an == "adj") {
+                    sh.adj = (av / 100000.0)
+                }
+                a = (a + 1)
+            }
+            a = (array_length s.shape.adj)
+        }
         while (a < (array_length s.shape.adj)) {
             if (itemAt s.shape.adjSet a) {
                 def v:double (itemAt s.shape.adj a)

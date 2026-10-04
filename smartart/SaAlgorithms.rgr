@@ -21,12 +21,22 @@
 ;              nothing to place. tx is text in the node's own shape (SaText);
 ;              sp is room; a conn among a lin's children is placed by the lin
 ;              like any child, and drawn as an arrow pointing along it.
+;   snake      a grid that wraps (SaSnake)
+;   cycle      a circle, or a radial with a shape in the middle (SaCycle)
+;   hierRoot, hierChild
+;              a tree, laid out at once from its outermost hierChild (SaHier)
+;   pyra       a triangle cut into levels (SaPyra)
 ;
-; Algorithms not here yet (snake, cycle, hierRoot, hierChild, pyra) place
-; their children as a lin would, and the engine says so in its warnings.
+; A connector its parent's algorithm did not place goes between the shapes
+; it names, or the ones before and after it (SaConn.connect).
 ; ==============================================================================
 
 Import "SaConstraints.rgr"
+Import "SaConn.rgr"
+Import "SaSnake.rgr"
+Import "SaCycle.rgr"
+Import "SaHier.rgr"
+Import "SaPyra.rgr"
 
 class SaAlgorithms {
     def cons:SaConstraints (new SaConstraints())
@@ -60,20 +70,25 @@ class SaAlgorithms {
 
     fn place:void (p:SaInst) {
         def t:string p.alg.type
-        if ((array_length p.children) > 0) {
+        if (((array_length p.children) > 0) && (p.placed == false)) {
             if ((t == "lin") || (t == "")) {
                 this.lin(p)
-            } {
-                if (t == "composite") {
-                    this.composite(p)
-                } {
-                    if ((t == "tx") || ((t == "sp") || (t == "conn"))) {
-                        this.composite(p)
-                    } {
-                        this.warnOnce(("the " + t + " algorithm is not implemented yet; its shapes are placed in a line"))
-                        this.lin(p)
-                    }
-                }
+            }
+            if (((t == "composite") || (t == "tx")) || ((t == "sp") || (t == "conn"))) {
+                this.composite(p)
+                SaConn.connect(cons p)
+            }
+            if (t == "snake") {
+                SaSnake.place(cons p)
+            }
+            if (t == "cycle") {
+                SaCycle.place(cons p)
+            }
+            if ((t == "hierChild") || (t == "hierRoot")) {
+                SaHier.place(cons p)
+            }
+            if (t == "pyra") {
+                SaPyra.place(cons p)
             }
         }
         def i:int 0

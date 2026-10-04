@@ -66,6 +66,19 @@ class SaInst {
     ; the instances whose primary font size must be one size with this one's
     def fontGroup:int -1
 
+    ; what an algorithm set for this one instance (phase 2): a rotation in
+    ; degrees, clockwise; adjust values by name, in 100000ths, used instead of
+    ; the shape's own; the straight segments a connector line is drawn as
+    ; (x1 y1 x2 y2 …, in the frame's space) and whether the last one ends in
+    ; an arrowhead; and that it was placed by an algorithm that lays out a
+    ; whole subtree at once (hierarchy), so its own pass leaves it be
+    def rotDeg:double 0.0
+    def adjNames:[string]
+    def adjVals:[double]
+    def segs:[double]
+    def arrowEnd:boolean false
+    def placed:boolean false
+
     Constructor () {
     }
 
