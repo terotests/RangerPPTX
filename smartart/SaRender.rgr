@@ -225,13 +225,33 @@ class SaRender {
     }
 
     ; Every run's colour checked against what it is drawn on — its shape's
-    ; fill, or `ground` (the slide) where the shape has none — and made light
-    ; 1 or dark 1, whichever reads better, when it does not stand out.
-    ; Colours must be resolved first (resolveAll).
+    ; fill; for a shape with none (lProcess2's column heading, text alone on
+    ; the column), the last filled shape painted before it that it sits on;
+    ; or `ground` (the slide) — and made light 1 or dark 1, whichever reads
+    ; better, when it does not stand out. Colours must be resolved first
+    ; (resolveAll).
     sfn keepReadable:void (s:PptxShape pal:SaPalette ground:string) {
+        def painted:[PptxShape]
+        SaRender.readableIn(s pal ground painted)
+    }
+
+    sfn readableIn:void (s:PptxShape pal:SaPalette ground:string painted:[PptxShape]) {
         def under:string ground
-        if ((s.noFill == false) && (s.fill.isSet && ((strlen s.fill.srgb) >= 6))) {
+        if (SaRender.filled(s)) {
             under = (SaRender.over(s.fill.srgb s.fill.alpha ground))
+        } {
+            ; the centre of the text box, against what was painted there
+            def cx:double (s.x + (s.width * 0.5))
+            def cy:double (s.y + (s.height * 0.5))
+            def k:int ((array_length painted) - 1)
+            while (k >= 0) {
+                def b:PptxShape (itemAt painted k)
+                if ((((cx >= b.x) && (cx <= (b.x + b.width))) && (cy >= b.y)) && (cy <= (b.y + b.height))) {
+                    under = (SaRender.over(b.fill.srgb b.fill.alpha ground))
+                    break
+                }
+                k = (k - 1)
+            }
         }
         def light:string (pal.hexOf("lt1"))
         def dark:string (pal.hexOf("dk1"))
@@ -257,11 +277,18 @@ class SaRender {
             }
             p = (p + 1)
         }
+        if (SaRender.filled(s)) {
+            push painted s
+        }
         def i:int 0
         while (i < (array_length s.children)) {
-            SaRender.keepReadable((itemAt s.children i) pal ground)
+            SaRender.readableIn((itemAt s.children i) pal ground painted)
             i = (i + 1)
         }
+    }
+
+    sfn filled:boolean (s:PptxShape) {
+        return ((s.noFill == false) && (s.fill.isSet && ((strlen s.fill.srgb) >= 6)))
     }
 
     ; The painter a diagram is drawn with: one unit is one point, and the

@@ -206,6 +206,18 @@ class SaRenderTest {
         SaRender.keepReadable(r2.shape (SaRenderTest.palette()) "FFFFFF")
         c.eqStr("text that reads is not touched" (SaRenderTest.runColours(r2.shape)) before)
         c.near("contrast: black on white" (SaRender.contrast("000000" "FFFFFF")) 21.0)
+        ; lProcess2's heading has no fill of its own: it sits on the pale
+        ; column, not on the dark slide
+        def r3:SaResult (SaEngine.layout((SaKit.twoLevels("lProcess2" 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r3.shape dark)
+        SaRender.keepReadable(r3.shape dark "0B1030")
+        def col:PptxShape (itemAt (SaKit.shapes(r3 "bg")) 0)
+        def head:PptxShape (itemAt (SaKit.shapes(r3 "header")) 0)
+        c.ok("the heading has no fill" ((SaRender.filled(head)) == false))
+        def hp:PptxParagraph (itemAt head.text.paragraphs 0)
+        def hr:PptxTextRun (itemAt hp.runs 0)
+        def colFill:string (SaRender.over(col.fill.srgb col.fill.alpha "0B1030"))
+        c.ok(("the heading reads on its column (" + (to_string (SaRender.contrast(hr.color.srgb colFill))) + ")") ((SaRender.contrast(hr.color.srgb colFill)) >= 4.5))
     }
 
     sfn runColours:string (s:PptxShape) {
