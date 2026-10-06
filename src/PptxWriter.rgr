@@ -1262,12 +1262,34 @@ class PptxWriter {
             this.noteMediaUse(sidx)
             blip = (PptxWriter.svgBlipXml(rid ("rIdImg" + (to_string (sidx + 1)))))
         }
-        out = (out + "<p:blipFill>" + blip + "<a:stretch><a:fillRect/></a:stretch></p:blipFill>")
+        out = (out + "<p:blipFill>" + blip + (PptxWriter.srcRectXml(shape)) + "<a:stretch><a:fillRect/></a:stretch></p:blipFill>")
         out = (out + "<p:spPr>" + (PptxWriter.xfrmXml(shape "a:xfrm" false)) + "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></p:spPr>")
         return (out + "</p:pic>")
     }
 
 
+
+    ; `a:srcRect` for a picture shown in part, in thousandths of a percent
+    ; cut off each side; "" for a whole one.
+    sfn srcRectXml:string (shape:PptxShape) {
+        if ((((shape.cropL + shape.cropT) + shape.cropR) + shape.cropB) < 0.00001) {
+            return ""
+        }
+        def out:string "<a:srcRect"
+        out = (out + (PptxWriter.cropAttr("l" shape.cropL)))
+        out = (out + (PptxWriter.cropAttr("t" shape.cropT)))
+        out = (out + (PptxWriter.cropAttr("r" shape.cropR)))
+        out = (out + (PptxWriter.cropAttr("b" shape.cropB)))
+        return (out + "/>")
+    }
+
+    sfn cropAttr:string (name:string v:double) {
+        if (v < 0.00001) {
+            return ""
+        }
+        def n:int (to_int ((v * 100000.0) + 0.5))
+        return (" " + name + "=\"" + (to_string n) + "\"")
+    }
 
     ; A blip that is the PNG `pngRid` with the SVG `svgRid` over it
     ; (MS-ODRAWXML 2.3.6.8, `asvg:svgBlip` in the blip's extension list).

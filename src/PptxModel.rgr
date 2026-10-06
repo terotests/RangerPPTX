@@ -895,6 +895,12 @@ class PptxShape {
     def imagePart:string ""     ; resolved package path
     def imageBytes:buffer (buffer_alloc 0)
     def imageOk:boolean false   ; decoded pixels available in viewer cache
+    ; the part of the picture shown (`a:srcRect`): how much is cut off each
+    ; side, as fractions of its width / height (0 = nothing)
+    def cropL:double 0.0
+    def cropT:double 0.0
+    def cropR:double 0.0
+    def cropB:double 0.0
     ; The same picture as an SVG, written beside `imageBytes` as the blip's
     ; `asvg:svgBlip` extension: PowerPoint (2016 and later) and LibreOffice
     ; draw the vector, older readers the PNG — which can then be a small one.

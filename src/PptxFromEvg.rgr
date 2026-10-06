@@ -444,6 +444,13 @@ class PptxFromEvg {
         pic.imageBytes = bytes
         pic.imagePart = c.src
         pic.imageOk = true
+        ; a picture shown in part (a crop window over its pixels)
+        if c.hasCrop {
+            pic.cropL = c.cropX
+            pic.cropT = c.cropY
+            pic.cropR = ((1.0 - c.cropX) - c.cropW)
+            pic.cropB = ((1.0 - c.cropY) - c.cropH)
+        }
         ; Alt text, because a picture is the one shape where the pixels tell a
         ; screen reader nothing — `PptxA11y` says "No alt text" for exactly
         ; this case, and a deck built from a document that HAD alt text should
