@@ -895,6 +895,12 @@ class PptxShape {
     def imagePart:string ""     ; resolved package path
     def imageBytes:buffer (buffer_alloc 0)
     def imageOk:boolean false   ; decoded pixels available in viewer cache
+    ; the part of the picture shown (`a:srcRect`): how much is cut off each
+    ; side, as fractions of its width / height (0 = nothing)
+    def cropL:double 0.0
+    def cropT:double 0.0
+    def cropR:double 0.0
+    def cropB:double 0.0
     ; Placeholder (PresentationML p:ph)
     def isPlaceholder:boolean false
     def phType:string ""        ; title / body / ctrTitle / subTitle / …
