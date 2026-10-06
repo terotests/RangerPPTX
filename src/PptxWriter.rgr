@@ -1250,7 +1250,19 @@ class PptxWriter {
         ; will turn out to be.
         def rid:string ("rIdImg" + (to_string (idx + 1)))
         def out:string ("<p:pic><p:nvPicPr><p:cNvPr id=\"" + (to_string id) + "\" name=\"" + (PptxWriter.esc(name)) + "\"" + (PptxWriter.descrAttr(shape)) + "/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>")
-        out = (out + "<p:blipFill><a:blip r:embed=\"" + rid + "\"/>" + (PptxWriter.srcRectXml(shape)) + "<a:stretch><a:fillRect/></a:stretch></p:blipFill>")
+        def blip:string ("<a:blip r:embed=\"" + rid + "\"/>")
+        if ((buffer_length shape.svgBytes) > 0) {
+            ; the vector, as the 2016 extension; the PNG above stays the
+            ; picture for readers that know nothing of it
+            def sp:string shape.svgPart
+            if ((strlen sp) == 0) {
+                sp = "picture.svg"
+            }
+            def sidx:int (this.mediaIndexFor(sp shape.svgBytes))
+            this.noteMediaUse(sidx)
+            blip = (PptxWriter.svgBlipXml(rid ("rIdImg" + (to_string (sidx + 1)))))
+        }
+        out = (out + "<p:blipFill>" + blip + (PptxWriter.srcRectXml(shape)) + "<a:stretch><a:fillRect/></a:stretch></p:blipFill>")
         out = (out + "<p:spPr>" + (PptxWriter.xfrmXml(shape "a:xfrm" false)) + "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></p:spPr>")
         return (out + "</p:pic>")
     }
@@ -1277,6 +1289,12 @@ class PptxWriter {
         }
         def n:int (to_int ((v * 100000.0) + 0.5))
         return (" " + name + "=\"" + (to_string n) + "\"")
+    }
+
+    ; A blip that is the PNG `pngRid` with the SVG `svgRid` over it
+    ; (MS-ODRAWXML 2.3.6.8, `asvg:svgBlip` in the blip's extension list).
+    sfn svgBlipXml:string (pngRid:string svgRid:string) {
+        return ("<a:blip r:embed=\"" + pngRid + "\"><a:extLst><a:ext uri=\"{96DAC541-7B7A-43D3-8B79-37D633B846F1}\"><asvg:svgBlip xmlns:asvg=\"http://schemas.microsoft.com/office/drawing/2016/SVG/main\" r:embed=\"" + svgRid + "\"/></a:ext></a:extLst></a:blip>")
     }
 
     fn groupXml:string (shape:PptxShape) {
@@ -2293,7 +2311,7 @@ class PptxWriter {
     }
 
     fn contentTypesXml:string (pres:PptxPresentation) {
-        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpeg\" ContentType=\"image/jpeg\"/><Default Extension=\"gif\" ContentType=\"image/gif\"/>"
+        def out:string "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"jpeg\" ContentType=\"image/jpeg\"/><Default Extension=\"gif\" ContentType=\"image/gif\"/><Default Extension=\"svg\" ContentType=\"image/svg+xml\"/>"
         out = (out + "<Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/>")
         out = (out + "<Override PartName=\"/ppt/slideMasters/slideMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml\"/>")
         out = (out + "<Override PartName=\"/ppt/slideLayouts/slideLayout1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml\"/>")
@@ -3083,8 +3101,8 @@ class PptxWriter {
             }
         }
         ; A picture the edit added may be of a kind the deck had none of.
-        def needed:[string] ([] _:string ( "png" "jpeg" "gif" ))
-        def types:[string] ([] _:string ( "image/png" "image/jpeg" "image/gif" ))
+        def needed:[string] ([] _:string ( "png" "jpeg" "gif" "svg" ))
+        def types:[string] ([] _:string ( "image/png" "image/jpeg" "image/gif" "image/svg+xml" ))
         def ni:int 0
         while (ni < (array_length needed)) {
             def ext2:string (itemAt needed ni)
