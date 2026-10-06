@@ -895,6 +895,11 @@ class PptxShape {
     def imagePart:string ""     ; resolved package path
     def imageBytes:buffer (buffer_alloc 0)
     def imageOk:boolean false   ; decoded pixels available in viewer cache
+    ; The same picture as an SVG, written beside `imageBytes` as the blip's
+    ; `asvg:svgBlip` extension: PowerPoint (2016 and later) and LibreOffice
+    ; draw the vector, older readers the PNG — which can then be a small one.
+    def svgBytes:buffer (buffer_alloc 0)
+    def svgPart:string ""
     ; Placeholder (PresentationML p:ph)
     def isPlaceholder:boolean false
     def phType:string ""        ; title / body / ctrTitle / subTitle / …

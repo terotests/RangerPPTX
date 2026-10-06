@@ -50,6 +50,7 @@ class PptxWriterTest {
         this.testFlattening()
         this.testPictures()
         this.testTwoPicturesOneName()
+        this.testSvgPicture()
         this.testEditedDeck()
         this.testLockRoundTrip()
         this.testFlipRoundTrip()
@@ -586,6 +587,64 @@ class PptxWriterTest {
         this.check("and the third is the first again" ((this.pngMark(sc.imageBytes)) == 11))
         this.check("they landed at two different parts" (sa.imagePart != sb.imagePart))
         this.check("and the repeat shares the first one's part" (sa.imagePart == sc.imagePart))
+        p2.close()
+    }
+
+    ; A picture with an SVG beside its PNG: the SVG goes into the package as
+    ; its own media part and the blip names it in the 2016 extension, while
+    ; the PNG stays the picture every reader can draw.
+    fn testSvgPicture:void () {
+        print "--- a picture with its SVG ---"
+        def pres (new PptxPresentation())
+        pres.slideWidth = 960.0
+        pres.slideHeight = 540.0
+        def slide (new PptxSlide())
+        slide.width = 960.0
+        slide.height = 540.0
+        def a (new PptxShape())
+        a.kind = 1
+        a.name = "Vector"
+        a.x = 10.0
+        a.y = 10.0
+        a.width = 200.0
+        a.height = 100.0
+        a.hasXfrm = true
+        a.imagePart = "media/drawing.svg"
+        a.imageBytes = (this.markedPng(33))
+        def svg:string "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 10\"><path d=\"M0 0h20v10z\" fill=\"#c00\"/></svg>"
+        a.svgBytes = (buffer_from_string svg)
+        a.svgPart = "media/drawing.svg"
+        push slide.shapes a
+        push pres.slides slide
+
+        def writer (new PptxWriter())
+        writer.save(pres "gallery/pptx/bin" "svg-picture.pptx")
+        this.check("the PNG and the SVG are two media entries" ((array_length writer.media) == 2))
+
+        def pkg (new OpcPackage())
+        if ((pkg.openParts("gallery/pptx/bin" "svg-picture.pptx")) == false) {
+            this.check("the deck reopens" false)
+            return
+        }
+        def xml:string (pkg.readXml("ppt/slides/slide1.xml"))
+        this.check("the blip carries the svgBlip extension" ((indexOf xml "<asvg:svgBlip xmlns:asvg=\"http://schemas.microsoft.com/office/drawing/2016/SVG/main\" r:embed=\"rIdImg2\"/>") > 0))
+        this.check("over the PNG" ((indexOf xml "<a:blip r:embed=\"rIdImg1\"><a:extLst>") > 0))
+        def rels:string (pkg.readXml("ppt/slides/_rels/slide1.xml.rels"))
+        this.check("the slide relates to an .svg part" ((indexOf rels ".svg\"") > 0))
+        def types:string (pkg.readXml("[Content_Types].xml"))
+        this.check("svg has a content type" ((indexOf types "Extension=\"svg\" ContentType=\"image/svg+xml\"") > 0))
+        pkg.close()
+
+        def p2 (new PptxParser())
+        def ok:boolean (p2.openParts("gallery/pptx/bin" "svg-picture.pptx"))
+        this.check("the deck reopens" ok)
+        if (ok == false) {
+            return
+        }
+        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def s2:PptxSlide (itemAt after.slides 0)
+        def sa:PptxShape (itemAt s2.shapes 0)
+        this.check("and its picture is still the PNG" ((this.pngMark(sa.imageBytes)) == 33))
         p2.close()
     }
 
