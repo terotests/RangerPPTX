@@ -602,7 +602,7 @@ class SaEngine {
             sh.shadow.offsetYPt = paint.shadowDistPt
             sh.shadow.blurPt = paint.shadowBlurPt
             sh.shadow.color = (PptxColor.srgbOf("000000"))
-            sh.shadow.alpha = 0.35
+            sh.shadow.alpha = paint.shadowAlpha
         }
         if ((array_length lines) > 0) {
             sh.hasText = true

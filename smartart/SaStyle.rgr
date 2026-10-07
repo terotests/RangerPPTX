@@ -31,6 +31,8 @@ class SaPaint {
     def shadow:boolean false
     def shadowDistPt:double 0.0
     def shadowBlurPt:double 0.0
+    ; …and how dark, 0..1
+    def shadowAlpha:double 0.0
 
     Constructor () {
     }
@@ -120,10 +122,24 @@ class SaStyle {
         }
         if ((ql.effect > 0) && (p.noFill == false)) {
             p.shadow = true
-            p.shadowDistPt = ((to_double ql.effect) * 1.5)
-            p.shadowBlurPt = ((to_double ql.effect) * 3.0)
+            SaStyle.shadowOf(p ql.effect)
         }
         return p
+    }
+
+    ; The outer shadow of an effect level (1 Subtle, 2 Moderate, 3 Intense:
+    ; simple3 … simple5). Each a step one sees from the one before on a
+    ; slide: at 1.5 pt a level, the three were a hair apart and read as
+    ; one style (Tero 2026-10-07).
+    sfn shadowOf:void (p:SaPaint effect:int) {
+        def e:int effect
+        if (e > 3) { e = 3 }
+        def dist:[double] ([] _:double (0.0 2.0 4.0 7.0))
+        def blur:[double] ([] _:double (0.0 4.0 9.0 16.0))
+        def alpha:[double] ([] _:double (0.0 0.3 0.42 0.55))
+        p.shadowDistPt = (itemAt dist e)
+        p.shadowBlurPt = (itemAt blur e)
+        p.shadowAlpha = (itemAt alpha e)
     }
 
     ; the idx-th shape of a label, in a set named by id, simple1 (one of
