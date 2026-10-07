@@ -193,6 +193,36 @@ class SaEngine {
         def cons:SaConstraints (SaConstraints.resolve(ptree w h))
         def algs:SaAlgorithms (SaAlgorithms.runWith(cons opts.wrap))
         def text:SaText (SaText.fit(cons opts.measure))
+        ; A slide host (wrap): a row of shapes that keep their proportions
+        ; and fill less than half the box's height, their text broken onto
+        ; several lines — three long-texted chevrons across a slide — is made
+        ; taller, when that sets the text clearly larger. PowerPoint keeps the proportions; a slide has the
+        ; room.
+        if ((opts.wrap && ((SaEngine.heightUsed(ptree)) < (h * 0.5))) && (text.breaks())) {
+            def best:double (SaEngine.leastFont(ptree))
+            def tries:[double] ([] _:double (1.4 1.8 2.4))
+            def ti:int 0
+            while (ti < (array_length tries)) {
+                def pt2:SaPresTree (SaPresTree.build(model lo))
+                pt2.numberByName()
+                def c2:SaConstraints (SaConstraints.resolve(pt2 w h))
+                def a2:SaAlgorithms (SaAlgorithms.runStretched(c2 true (itemAt tries ti)))
+                if (a2.stretched == false) {
+                    break
+                }
+                def t2:SaText (SaText.fit(c2 opts.measure))
+                def least:double (SaEngine.leastFont(pt2))
+                if ((least >= (best * 1.12)) && ((array_length t2.warnings) <= (array_length text.warnings))) {
+                    ptree = pt2
+                    cons = c2
+                    algs = a2
+                    text = t2
+                    best = least
+                }
+                ti = (ti + 1)
+            }
+            res.ptree = ptree
+        }
         def k:int 0
         while (k < (array_length algs.warnings)) {
             push res.warnings (itemAt algs.warnings k)
@@ -275,6 +305,8 @@ class SaEngine {
             look.count(cs.name)
             ci = (ci + 1)
         }
+        ; the points whose text some shape shows
+        def shown:[string]
         def i:int 0
         while (i < (array_length every)) {
             def s:SaInst (itemAt every i)
@@ -284,9 +316,20 @@ class SaEngine {
                 def made@(optional):PptxShape (SaEngine.shapeOf(s text look))
                 if (!null? made) {
                     push g.children (unwrap made)
+                    def lines:[SaLine] (text.linesOf(s))
+                    def li:int 0
+                    while (li < (array_length lines)) {
+                        def ln:SaLine (itemAt lines li)
+                        push shown ln.ptId
+                        li = (li + 1)
+                    }
                 }
             }
             i = (i + 1)
+        }
+        def left:string (SaEngine.notShown(model shown res.layoutUsed))
+        if ((strlen left) > 0) {
+            push res.warnings left
         }
         ; what the shapes say now: a diagram whose shapes were changed by
         ; hand no longer matches it, and is saved as those shapes
@@ -296,6 +339,86 @@ class SaEngine {
         res.shape = g
         res.ok = true
         return res
+    }
+
+    ; the smallest size any shape's text was set at; 0 when none has text
+    sfn leastFont:double (ptree:SaPresTree) {
+        def every:[SaInst] (ptree.all())
+        def least:double 0.0
+        def i:int 0
+        while (i < (array_length every)) {
+            def s:SaInst (itemAt every i)
+            if ((s.fontPt > 0.0) && ((least == 0.0) || (s.fontPt < least))) {
+                least = s.fontPt
+            }
+            i = (i + 1)
+        }
+        return least
+    }
+
+    ; how tall the drawn shapes are together, top of the highest to the
+    ; bottom of the lowest
+    sfn heightUsed:double (ptree:SaPresTree) {
+        def every:[SaInst] (ptree.all())
+        def top:double 0.0
+        def bottom:double 0.0
+        def any:boolean false
+        def i:int 0
+        while (i < (array_length every)) {
+            def s:SaInst (itemAt every i)
+            if (((s.hasShape && (s.shape.type != "none")) && (s.w > 0.0)) && (s.h > 0.0)) {
+                if ((any == false) || (s.y < top)) {
+                    top = s.y
+                }
+                if ((any == false) || ((s.y + s.h) > bottom)) {
+                    bottom = (s.y + s.h)
+                }
+                any = true
+            }
+            i = (i + 1)
+        }
+        return (bottom - top)
+    }
+
+    ; What the layout left out: the items with text that no shape shows (a
+    ; layout holds as many as it has places for — gear1 three, cycle4 four),
+    ; named, so whoever wrote the file knows what the slide does not say.
+    ; "" when every item is drawn.
+    sfn notShown:string (model:SaModel shown:[string] layout:string) {
+        def all:[SaPoint]
+        SaEngine.contentUnder(model ((model.doc()).id) all)
+        def missing:[string]
+        def total:int 0
+        def i:int 0
+        while (i < (array_length all)) {
+            def p:SaPoint (itemAt all i)
+            def t:string (trim (p.plainText()))
+            if ((strlen t) > 0) {
+                total = (total + 1)
+                if ((indexOf shown p.id) < 0) {
+                    push missing ("\"" + t + "\"")
+                }
+            }
+            i = (i + 1)
+        }
+        def n:int (array_length missing)
+        if (n == 0) {
+            return ""
+        }
+        return ("the layout " + layout + " has a place for " + (to_string (total - n)) + " of the " + (to_string total) + " items; not drawn: " + (join missing ", "))
+    }
+
+    sfn contentUnder:void (model:SaModel id:string out:[SaPoint]) {
+        def kids:[SaPoint] (model.children(id))
+        def i:int 0
+        while (i < (array_length kids)) {
+            def k:SaPoint (itemAt kids i)
+            if (k.isContent()) {
+                push out k
+                SaEngine.contentUnder(model k.id out)
+            }
+            i = (i + 1)
+        }
     }
 
     ; A connector line: one `line` shape per segment, its box the segment's
@@ -432,6 +555,30 @@ class SaEngine {
                 }
             }
             a = (a + 1)
+        }
+        ; a shape a host's row made taller keeps its point as deep as it was
+        ; (the depth is a fraction of the shorter side, which grew)
+        if ((s.stretchK > 1.0) && ((preset == "chevron") || (preset == "homePlate"))) {
+            def side:double s.w
+            if (s.h < side) {
+                side = s.h
+            }
+            def f:double ((s.h / s.stretchK) / side)
+            def found:boolean false
+            def ai:int 0
+            while (ai < (array_length sh.adjNames)) {
+                if ((itemAt sh.adjNames ai) == "adj") {
+                    set sh.adjValues ai ((itemAt sh.adjValues ai) * f)
+                    sh.adj = (sh.adj * f)
+                    found = true
+                }
+                ai = (ai + 1)
+            }
+            if (found == false) {
+                push sh.adjNames "adj"
+                push sh.adjValues (50000.0 * f)
+                sh.adj = (0.5 * f)
+            }
         }
         def paint:SaPaint (look.paint(s))
         if (geometry == false) {

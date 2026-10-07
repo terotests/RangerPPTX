@@ -220,6 +220,82 @@ class SaRenderTest {
         c.ok(("the heading reads on its column (" + (to_string (SaRender.contrast(hr.color.srgb colFill))) + ")") ((SaRender.contrast(hr.color.srgb colFill)) >= 4.5))
     }
 
+    ; Text beside a shape is on the slide, not on the shape: what is under it
+    ; is the shape's outline, not its box. arrow2's labels on a dark slide
+    ; were judged against the pale arrow whose box held them, and set dark
+    ; on the dark slide.
+    sfn testOutline:void (c:SaKit) {
+        print "-- text judged by the outline under it, not the box --"
+        def dark (new SaPalette())
+        dark.set("accent1" "#E07A2F")
+        dark.set("lt1" "#0B1030")
+        dark.set("dk1" "#E8ECFF")
+        def r:SaResult (SaEngine.layout((SaKit.flat("arrow2" 5)) (new SaOptions()) 960.0 400.0))
+        SaRender.resolveAll(r.shape dark)
+        SaRender.keepReadable(r.shape dark "0B1030")
+        def reads:int 0
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def l:PptxShape (itemAt r.shape.children i)
+            if ((indexOf l.name "label") == 0) {
+                def para:PptxParagraph (itemAt l.text.paragraphs 0)
+                def run:PptxTextRun (itemAt para.runs 0)
+                if ((SaRender.contrast(run.color.srgb "0B1030")) >= 4.5) {
+                    reads = (reads + 1)
+                }
+            }
+            i = (i + 1)
+        }
+        c.eqInt("every arrow2 label reads on the dark slide" reads 5)
+        ; an ellipse's box corner is not the ellipse
+        def geo (new OfficePresetShapes())
+        geo.load((SaPresets.text()))
+        def e (new PptxShape())
+        e.x = 0.0
+        e.y = 0.0
+        e.width = 100.0
+        e.height = 100.0
+        e.preset = "ellipse"
+        c.ok("the middle of a circle is in it" (SaRender.covers(e 50.0 50.0 geo)))
+        c.ok("the corner of its box is not" ((SaRender.covers(e 5.0 5.0 geo)) == false))
+        e.preset = "rect"
+        c.ok("a rectangle's corner is" (SaRender.covers(e 5.0 5.0 geo)))
+        ; a quarter turned: the wedge's corner moves with it
+        def w (new PptxShape())
+        w.x = 0.0
+        w.y = 0.0
+        w.width = 100.0
+        w.height = 100.0
+        w.preset = "pieWedge"
+        def before:boolean (SaRender.covers(w 90.0 90.0 geo))
+        w.rotation = 180.0
+        def after:boolean (SaRender.covers(w 90.0 90.0 geo))
+        c.ok("a turned shape is tested turned" (before != after))
+    }
+
+    ; simple3 … simple5 cast a shadow; black, on a dark slide, is not seen.
+    sfn testShadows:void (c:SaKit) {
+        print "-- a style's shadow shows on a dark slide --"
+        def dark (new SaPalette())
+        dark.set("accent1" "#E07A2F")
+        dark.set("lt1" "#0B1030")
+        dark.set("dk1" "#E8ECFF")
+        def o (new SaOptions())
+        o.style = "simple5"
+        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) o 480.0 270.0))
+        SaRender.resolveAll(r.shape dark)
+        def node:PptxShape (itemAt (SaKit.shapes(r "node")) 0)
+        c.ok("simple5 has a shadow" node.shadow.isSet)
+        c.eqStr("black" node.shadow.color.srgb "000000")
+        SaRender.shadowsOn(r.shape dark "0B1030")
+        c.eqStr("on a dark slide, in the ink" node.shadow.color.srgb "E8ECFF")
+        def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) o 480.0 270.0))
+        SaRender.resolveAll(r2.shape (SaRenderTest.palette()))
+        SaRender.shadowsOn(r2.shape (SaRenderTest.palette()) "FFFFFF")
+        def n2:PptxShape (itemAt (SaKit.shapes(r2 "node")) 0)
+        c.eqStr("on a light one, black" n2.shadow.color.srgb "000000")
+    }
+
     sfn runColours:string (s:PptxShape) {
         def out:string ""
         def p:int 0
@@ -303,6 +379,8 @@ class SaRenderTest {
         SaRenderTest.testFile(c)
         SaRenderTest.testBullets(c)
         SaRenderTest.testReadable(c)
+        SaRenderTest.testOutline(c)
+        SaRenderTest.testShadows(c)
         SaRenderTest.testPresets(c)
         c.finish("SaRenderTest")
     }

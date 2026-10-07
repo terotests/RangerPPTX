@@ -14,6 +14,7 @@ one place. The files it writes are what the engine embeds
 (tools/embed_layouts.mjs); edit this script, not them, and run both.
 """
 
+import math
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -128,24 +129,32 @@ def venn1():
 
 
 def matrix1():
-    quads = ""
     anchors = {1: ("t", "l"), 2: ("t", "r"), 3: ("b", "l"), 4: ("b", "r")}
     def quad(k):
         v, h = anchors[k]
         return node("quad", "node1", "rect", tx=p("txAnchorVert", v) + p("parTxLTRAlign", h))
-    grid = ('<dgm:layoutNode name="grid"><dgm:alg type="snake">' + p("bkpt", "fixed") + p("bkPtFixedVal", 2) + p("off", "off")
-            + "</dgm:alg><dgm:shape/><dgm:constrLst>"
-            + c("w", "ch", "quad", "w", 0.5) + c("h", "ch", "quad", "h", 0.5) + c("sibSp", ref="w", fact=0.0)
-            + "</dgm:constrLst>"
-            + by_pos(4, quad).replace('name="items"', 'name="quadrants"')
-            + "</dgm:layoutNode>")
+    def grid(each):
+        return ('<dgm:layoutNode name="grid"><dgm:alg type="snake">' + p("bkpt", "fixed") + p("bkPtFixedVal", 2) + p("off", "off")
+                + "</dgm:alg><dgm:shape/><dgm:constrLst>"
+                + c("w", "ch", "quad", "w", 0.5) + c("h", "ch", "quad", "h", 0.5) + c("sibSp", ref="w", fact=0.0)
+                + "</dgm:constrLst>"
+                + by_pos(4, quad).replace('name="items"', 'name="' + each + '"')
+                + "</dgm:layoutNode>")
     title = node("title", "fgAcc1", "roundRect", presof='<dgm:presOf axis="self"/>')
+    # PowerPoint's Titled Matrix: the first item the title, the four under it
+    # the quadrants. Items with nothing under them are the quadrants
+    # themselves, with no title: a flat list of four is a matrix of four,
+    # not one title and three items gone.
+    titled = ("<dgm:constrLst>" + box("grid", 1.0, 1.0, l=0.0, t=0.0) + box("title", 0.36, 0.3, cx=0.5, cy=0.5)
+              + FONTD("quad") + c("primFontSz", "ch", "title", op="equ", val=65) + "</dgm:constrLst>"
+              '<dgm:forEach name="theTitle" axis="ch" ptType="node" cnt="1">' + grid("quadrants") + title + "</dgm:forEach>")
+    flat = ("<dgm:constrLst>" + box("grid", 1.0, 1.0, l=0.0, t=0.0) + FONTD("quad") + "</dgm:constrLst>" + grid("items"))
     root = ('<dgm:layoutNode name="matrix"><dgm:varLst><dgm:resizeHandles val="exact"/></dgm:varLst><dgm:alg type="composite"/><dgm:shape/>'
-            "<dgm:constrLst>" + box("grid", 1.0, 1.0, l=0.0, t=0.0) + box("title", 0.36, 0.3, cx=0.5, cy=0.5)
-            + FONTD("quad") + c("primFontSz", "ch", "title", op="equ", val=65) + "</dgm:constrLst>"
-            '<dgm:forEach name="theTitle" axis="ch" ptType="node" cnt="1">' + grid + title + "</dgm:forEach></dgm:layoutNode>")
+            '<dgm:choose name="form"><dgm:if name="titled" func="maxDepth" op="gte" val="2">' + titled
+            + '</dgm:if><dgm:if name="alone" axis="ch" ptType="node" func="cnt" op="equ" val="1">' + titled
+            + '</dgm:if><dgm:else name="flat">' + flat + "</dgm:else></dgm:choose></dgm:layoutNode>")
     return layout("matrix1", "Titled Matrix",
-                  "the first item a title in the middle, the four under it the quadrants round it.", root)
+                  "the first item a title in the middle, the four under it the quadrants round it; items with nothing under them are the quadrants, untitled; one item alone is the title.", root)
 
 
 def target1():
@@ -176,15 +185,18 @@ def target1():
 
 
 def funnel1():
+    # in a square frame (`ar`), so the funnel is not stretched across a wide
+    # slide; the items poured in as balls that fill its mouth
     mouth = ('<dgm:layoutNode name="mouth"><dgm:alg type="snake">' + p("off", "ctr") + "</dgm:alg><dgm:shape/><dgm:constrLst>"
-             + c("w", "ch", "item", "h", 0.9) + c("h", "ch", "item", "h", 0.9) + c("sibSp", ref="w", fact=0.02)
+             + c("w", "ch", "item", "h", 1.0) + c("h", "ch", "item", "h", 1.0) + c("sibSp", ref="w", fact=0.0)
              + '</dgm:constrLst><dgm:forEach name="poured" axis="ch" ptType="node"><dgm:choose name="notLast">'
              '<dgm:if name="poured" func="revPos" op="gt" val="1">'
-             + node("item", "node1", "ellipse", constrs=margins("w", 0.12))
+             + node("item", "node1", "ellipse", constrs=margins("w", 0.1))
              + "</dgm:if><dgm:else name=\"last\"/></dgm:choose></dgm:forEach></dgm:layoutNode>")
-    root = ('<dgm:layoutNode name="funnel"><dgm:varLst><dgm:resizeHandles val="exact"/></dgm:varLst><dgm:alg type="composite"/><dgm:shape/>'
-            "<dgm:constrLst>" + box("shape", 0.5, 0.62, cx=0.5, t=0.0) + box("mouth", 0.38, 0.22, cx=0.5, t=0.06)
-            + box("arrow", 0.05, 0.1, cx=0.5, t=0.65) + box("result", 0.36, 0.2, cx=0.5, t=0.78)
+    root = ('<dgm:layoutNode name="funnel"><dgm:varLst><dgm:resizeHandles val="exact"/></dgm:varLst><dgm:alg type="composite">'
+            + p("ar", 1.0) + "</dgm:alg><dgm:shape/>"
+            "<dgm:constrLst>" + box("shape", 0.9, 0.64, cx=0.5, t=0.0) + box("mouth", 0.84, 0.28, cx=0.5, t=0.03)
+            + box("arrow", 0.06, 0.09, cx=0.5, t=0.66) + box("result", 0.5, 0.2, cx=0.5, t=0.79)
             + FONTD("item") + c("primFontSz", "ch", "result", op="equ", val=65) + "</dgm:constrLst>"
             + deco("shape", "alignAcc1", "funnel") + mouth + deco("arrow", "sibTrans2D1", "downArrow")
             + '<dgm:forEach name="out" axis="ch" ptType="node"><dgm:choose name="isLast">'
@@ -195,60 +207,115 @@ def funnel1():
 
 
 def gear1():
-    # in a square, its side the frame's height: three gears that mesh
-    # centres a little closer than the radii add up to, so the teeth mesh
+    # three gears that mesh: centres a little closer than the radii add up
+    # to, so the teeth mesh. Placed in a unit square (diameter, centre x,
+    # centre y), then fitted to the box they fill: as tall as the frame, as
+    # wide as they are.
     spots = {1: (0.56, 0.32, 0.56, "gear9"), 2: (0.40, 0.61, 0.27, "gear6"), 3: (0.32, 0.66, 0.72, "gear6")}
+    x0 = min(cx - d / 2 for d, cx, cy, _ in spots.values())
+    x1 = max(cx + d / 2 for d, cx, cy, _ in spots.values())
+    y0 = min(cy - d / 2 for d, cx, cy, _ in spots.values())
+    y1 = max(cy + d / 2 for d, cx, cy, _ in spots.values())
+    tall = y1 - y0
+    aspect = (x1 - x0) / tall
     inner = "<dgm:constrLst>"
     for k, (d, cx, cy, _) in spots.items():
-        inner += box(f"gear{k}", d, d, cx=cx, cy=cy)
+        inner += box(f"gear{k}", d / tall, d / tall, cx=((cx - x0) / tall) / aspect, cy=(cy - y0) / tall, wref="h", href="h")
     inner += c("primFontSz", "ch", op="equ", val=65) + "</dgm:constrLst>"
     gears = ('<dgm:layoutNode name="gears"><dgm:alg type="composite"/><dgm:shape/>' + inner
-             + by_pos(3, lambda k: node(f"gear{k}", "node1", spots[k][3], constrs=margins("w", 0.24)))
+             + by_pos(3, lambda k: node(f"gear{k}", "node1", spots[k][3], constrs=margins("w", 0.17)))
              + "</dgm:layoutNode>")
     root = ('<dgm:layoutNode name="gear"><dgm:varLst><dgm:resizeHandles val="exact"/></dgm:varLst><dgm:alg type="composite"/><dgm:shape/>'
-            "<dgm:constrLst>" + box("gears", 1.0, 1.0, cx=0.5, cy=0.5, wref="h", href="h") + "</dgm:constrLst>"
+            "<dgm:constrLst>" + box("gears", aspect, 1.0, cx=0.5, cy=0.5, wref="h", href="h") + "</dgm:constrLst>"
             + gears + "</dgm:layoutNode>")
     return layout("gear1", "Gear", "three items as meshing gears (three at most).", root)
 
 
+# arrow2's frame: the arrow is drawn in a box of this width over height
+# (the composite's `ar`), so the points computed on it below stay on it
+ARROW_AR = 1.8
+
+
+def swoosh_edges(ar):
+    """The swooshArrow preset's two long edges in a box ar × 1 (presets.txt,
+    default adjustments): the upper from the tail to the head's back, the
+    lower back to the tail. Each a quadratic Bézier, (p0, p1, p2)."""
+    w, h = ar, 1.0
+    ss = min(w, h)
+    xB, yB = w - ss * 0.16667, ss / 8.0
+    alfa = math.radians(90.0 / 14.0)
+    yF = yB + h * 0.25
+    xF = xB + math.tan(alfa) * h * 0.25
+    return ((0.0, h), (w / 6.0, h / 3.0), (xB, yB)), ((0.0, h), (w / 4.0, yF + h / 12.0), (xF, yF))
+
+
+def bezier_y_at(curve, x):
+    """y of a quadratic Bézier whose x rises with t, where it passes x."""
+    (x0, y0), (x1, y1), (x2, y2) = curve
+    lo, hi = 0.0, 1.0
+    for _ in range(60):
+        m = (lo + hi) / 2.0
+        xm = (1 - m) ** 2 * x0 + 2 * m * (1 - m) * x1 + m * m * x2
+        if xm < x:
+            lo = m
+        else:
+            hi = m
+    t = lo
+    return (1 - t) ** 2 * y0 + 2 * t * (1 - t) * y1 + t * t * y2
+
+
 def arrow2():
     N = 5
+    up, low = swoosh_edges(ARROW_AR)
+    DOT = 0.05  # of the width
     def spots(n):
         out = ""
+        first, last = 0.15, 0.78
+        gap = (last - first) / (n - 1) if n > 1 else 0.0
         for k in range(1, n + 1):
-            t = (k - 0.5) / n
-            x = 0.14 + 0.66 * t
-            y = 0.86 - 0.70 * (t ** 1.3)
-            out += box(f"dot{k}", 0.05, 0.05, cx=x, cy=y, wref="w", href="w")
-            out += box(f"label{k}", 0.2, 0.16, l=x + 0.025, t=max(0.0, y - 0.17))
+            fx = first + gap * (k - 1) if n > 1 else 0.47
+            x = fx * ARROW_AR
+            top, bottom = bezier_y_at(up, x), bezier_y_at(low, x)
+            cy = (top + bottom) / 2.0
+            r = DOT * ARROW_AR / 2.0
+            out += box(f"dot{k}", DOT, DOT, cx=fx, cy=cy, wref="w", href="w")
+            # the label under the arrow, from the point's right edge: clear of
+            # the arrow there and, as the arrow rises, further right too
+            lx = fx + DOT / 2.0
+            ty = max(bezier_y_at(low, lx * ARROW_AR), cy + r) + 0.03
+            lw = gap if n > 1 else 0.3
+            lw = min(lw, 1.0 - lx)
+            out += box(f"label{k}", lw, 1.0 - ty, l=lx, t=ty)
         return out
     def item(k):
         return (deco(f"dot{k}", "node1", "ellipse")
                 + node(f"label{k}", "revTx", "none", presof='<dgm:presOf axis="desOrSelf" ptType="node"/>',
-                       tx=p("txAnchorVert", "b") + p("parTxLTRAlign", "l"), constrs=margins("primFontSz", 0.1)))
+                       tx=p("txAnchorVert", "t") + p("parTxLTRAlign", "l"), constrs=margins("primFontSz", 0.1)))
     fonts = c("primFontSz", "ch", op="equ", val=65)
-    root = ('<dgm:layoutNode name="arrow"><dgm:varLst><dgm:resizeHandles val="exact"/></dgm:varLst><dgm:alg type="composite"/><dgm:shape/>'
+    root = ('<dgm:layoutNode name="arrow"><dgm:varLst><dgm:resizeHandles val="exact"/></dgm:varLst><dgm:alg type="composite">'
+            + p("ar", ARROW_AR) + "</dgm:alg><dgm:shape/>"
             "<dgm:constrLst>" + box("swoosh", 1.0, 1.0, l=0.0, t=0.0) + fonts + "</dgm:constrLst>"
             + by_cnt(N, spots) + deco("swoosh", "alignAcc1", "swooshArrow")
             + by_pos(N, item) + "</dgm:layoutNode>")
-    return layout("arrow2", "Upward Arrow", "the items as points rising along a sweeping arrow (five at most).", root)
+    return layout("arrow2", "Upward Arrow", "the items as points on a sweeping arrow, each named under it (five at most).", root)
 
 
 def bList2():
+    # PowerPoint's has a round picture at each block's corner; a block here
+    # has no picture to show, and an empty circle reads as a fault, so the
+    # blocks are drawn without it.
     cell = ('<dgm:layoutNode name="cell"><dgm:alg type="composite"/><dgm:shape/><dgm:constrLst>'
-            + box("text", 1.0, 0.72, l=0.0, t=0.28) + box("accent", 0.42, 0.42, l=0.03, t=0.0, wref="h", href="h", xref="w", yref="h")
-            + "</dgm:constrLst>"
-            + node("text", "node1", "roundRect", constrs=c("tMarg", ref="h", fact=0.22) + c("bMarg", ref="primFontSz", fact=0.3)
-                   + c("lMarg", ref="primFontSz", fact=0.3) + c("rMarg", ref="primFontSz", fact=0.3))
-            + deco("accent", "fgAcc1", "ellipse") + "</dgm:layoutNode>")
+            + box("text", 1.0, 1.0, l=0.0, t=0.0) + "</dgm:constrLst>"
+            + node("text", "node1", "roundRect", constrs=margins("primFontSz", 0.3))
+            + "</dgm:layoutNode>")
     root = ('<dgm:layoutNode name="list"><dgm:varLst><dgm:dir/><dgm:resizeHandles val="exact"/></dgm:varLst>'
             '<dgm:alg type="snake">' + p("grDir", "tL") + p("flowDir", "row") + p("contDir", "sameDir") + p("off", "ctr") + "</dgm:alg><dgm:shape/>"
-            "<dgm:constrLst>" + c("w", "ch", "cell", "w") + c("h", "ch", "cell", "w", refFor="ch", refName="cell", fact=0.62)
+            "<dgm:constrLst>" + c("w", "ch", "cell", "w") + c("h", "ch", "cell", "w", refFor="ch", refName="cell", fact=0.5)
             + c("sibSp", ref="w", refFor="ch", refName="cell", fact=0.08) + c("secSibSp", ref="w", refFor="ch", refName="cell", fact=0.06)
             + FONTD("text") + "</dgm:constrLst>"
             '<dgm:forEach name="items" axis="ch" ptType="node">' + cell + "</dgm:forEach></dgm:layoutNode>")
     return layout("bList2", "Bending Picture Accent List",
-                  "the items as blocks in rows that wrap, each with a round accent where its picture goes (drawn without the picture).", root)
+                  "the items as blocks in rows that wrap (drawn without PowerPoint's pictures).", root)
 
 
 def hProcess9():
@@ -291,12 +358,22 @@ def cycle4():
               + "</dgm:constrLst>"
               + by_pos(4, lambda k: deco("wedge", "node1", "pieWedge", rot=rots[k])).replace('name="items"', 'name="shapes"')
               + "</dgm:layoutNode>")
-    aligns = {1: ("t", "l"), 2: ("t", "r"), 3: ("b", "l"), 4: ("b", "r")}
+    # a quarter's text in the square that fits inside the quarter, at its
+    # right-angled corner (the circle's centre): out of the curved edge
+    inner, outer = 0.05, 0.31
+    sides = {1: ("r", "b"), 2: ("l", "b"), 3: ("r", "t"), 4: ("l", "t")}
+    def quarter_margins(k):
+        ix, iy = sides[k]
+        out = ""
+        for side in ("l", "r"):
+            out += c(side + "Marg", ref="w", fact=inner if side == ix else outer)
+        for side in ("t", "b"):
+            out += c(side + "Marg", ref="w", fact=inner if side == iy else outer)
+        return out
     labels = ('<dgm:layoutNode name="labels"><dgm:alg type="snake">' + p("bkpt", "fixed") + p("bkPtFixedVal", 2) + "</dgm:alg><dgm:shape/><dgm:constrLst>"
               + c("w", "ch", "label", "w", 0.5) + c("h", "ch", "label", "h", 0.5) + c("sibSp", ref="w", fact=0.02)
               + "</dgm:constrLst>"
-              + by_pos(4, lambda k: node("label", "node1", "none", tx=p("txAnchorVert", aligns[k][0]) + p("parTxLTRAlign", aligns[k][1]),
-                                       constrs=margins("w", 0.12))).replace('name="items"', 'name="texts"')
+              + by_pos(4, lambda k: node("label", "node1", "none", constrs=quarter_margins(k))).replace('name="items"', 'name="texts"')
               + "</dgm:layoutNode>")
     core = ('<dgm:layoutNode name="core"><dgm:alg type="composite"/><dgm:shape/><dgm:constrLst>'
             + box("wedges", 1.0, 1.0, l=0.0, t=0.0) + box("labels", 1.0, 1.0, l=0.0, t=0.0) + FONTD("label")

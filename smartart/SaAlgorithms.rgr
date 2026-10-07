@@ -16,7 +16,8 @@
 ;              height is its parent's keeps it. Then, if something is still
 ;              taller (wider) than the box, everything shrinks once more.
 ;   composite  children where their own l / t / r / b / ctrX / ctrY say,
-;              relative to the box, at the w / h they were given
+;              relative to the box, at the w / h they were given; with `ar`
+;              (width over height) in the largest box of that shape, centred
 ;   tx, sp, conn
 ;              nothing to place. tx is text in the node's own shape (SaText);
 ;              sp is room; a conn among a lin's children is placed by the lin
@@ -47,6 +48,11 @@ class SaAlgorithms {
     def warnings:[string]
     ; break a lin row into rows when the box is tall enough (linRows)
     def wrap:boolean false
+    ; a host's taller row (SaEngine.taller): the cells of a horizontal lin
+    ; whose height follows their width are made this much taller, and
+    ; `stretched` says some were
+    def stretch:double 1.0
+    def stretched:boolean false
 
     Constructor () {
     }
@@ -56,9 +62,14 @@ class SaAlgorithms {
     }
 
     sfn runWith:SaAlgorithms (c:SaConstraints wrap:boolean) {
+        return (SaAlgorithms.runStretched(c wrap 1.0))
+    }
+
+    sfn runStretched:SaAlgorithms (c:SaConstraints wrap:boolean stretch:double) {
         def a (new SaAlgorithms())
         a.cons = c
         a.wrap = wrap
+        a.stretch = stretch
         def r:SaInst c.ptree.root
         r.x = 0.0
         r.y = 0.0
@@ -86,6 +97,9 @@ class SaAlgorithms {
                 this.lin(p)
             }
             if (((t == "composite") || (t == "tx")) || ((t == "sp") || (t == "conn"))) {
+                if (t == "composite") {
+                    this.keepAspect(p)
+                }
                 this.composite(p)
                 SaConn.connect(cons p)
             }
@@ -165,6 +179,18 @@ class SaAlgorithms {
                 push tied ((c.fromOf("h")) == "w")
             }
             i = (i + 1)
+        }
+        if ((stretch > 1.0) && (vertical == false)) {
+            i = 0
+            while (i < n) {
+                def sc:SaInst (itemAt p.children i)
+                if ((itemAt tied i) && (SaConn.isCell(sc))) {
+                    set across i ((itemAt across i) * stretch)
+                    sc.stretchK = stretch
+                    stretched = true
+                }
+                i = (i + 1)
+            }
         }
         def sp:double (cons.get(p "sibSp"))
         def room:double (? vertical p.h p.w)
@@ -411,6 +437,33 @@ class SaAlgorithms {
         if (dir == "fromT") { return 90.0 }
         if (dir == "fromB") { return 270.0 }
         return 0.0
+    }
+
+    ; A composite with `ar` (its width over its height) is drawn in the
+    ; largest box of that shape inside the one it was given, centred: a
+    ; drawing whose parts are placed by fractions of a curve's own frame
+    ; (arrow2's points along its arrow) stays on the curve in any frame.
+    fn keepAspect:void (p:SaInst) {
+        def ar@(optional):double (str2double (trim (p.alg.param("ar" ""))))
+        if (null? ar) {
+            return
+        }
+        def want:double (unwrap ar)
+        if (((want <= 0.0) || (p.w <= 0.0)) || (p.h <= 0.0)) {
+            return
+        }
+        def w:double p.w
+        def h:double p.h
+        if ((w / h) > want) {
+            w = (h * want)
+        } {
+            h = (w / want)
+        }
+        p.x = (p.x + ((p.w - w) / 2.0))
+        p.y = (p.y + ((p.h - h) / 2.0))
+        p.w = w
+        p.h = h
+        this.resize(p)
     }
 
     fn composite:void (p:SaInst) {
