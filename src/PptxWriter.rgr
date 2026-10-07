@@ -150,62 +150,56 @@ class PptxWriter {
 
     ; --- text ----------------------------------------------------------------
 
+    ; Only the five ASCII specials are replaced; everything between them is
+    ; copied as it is with `substring`. Rebuilding the text one `charAt` /
+    ; `strfromcode` at a time is wrong on a target whose string unit is a
+    ; UTF-8 byte (Go): each byte of "ä" came back as a character of its own.
     sfn esc:string (s:string) {
         def out:string ""
+        def from:int 0
         def i:int 0
         def n:int (strlen s)
         while (i < n) {
             def c:int (charAt s i)
+            def rep:string ""
             if (c == 38) {
-                out = (out + "&amp;")
-            } {
-                if (c == 60) {
-                    out = (out + "&lt;")
-                } {
-                    if (c == 62) {
-                        out = (out + "&gt;")
-                    } {
-                        if (c == 34) {
-                            out = (out + "&quot;")
-                        } {
-                            if (c == 39) {
-                                out = (out + "&apos;")
-                            } {
-                                out = (out + (strfromcode c))
-                            }
-                        }
-                    }
-                }
+                rep = "&amp;"
+            }
+            if (c == 60) {
+                rep = "&lt;"
+            }
+            if (c == 62) {
+                rep = "&gt;"
+            }
+            if (c == 34) {
+                rep = "&quot;"
+            }
+            if (c == 39) {
+                rep = "&apos;"
+            }
+            if ((strlen rep) > 0) {
+                out = (out + (substring s from i) + rep)
+                from = (i + 1)
             }
             i = (i + 1)
         }
-        return out
+        return (out + (substring s from n))
     }
 
     ; ZipWriter.addString writes one byte per UTF-16 unit, which is fine for
     ; ASCII and wrong for every deck written in a language that needs more.
     ; The XML parts go in as UTF-8 bytes instead.
+    ; The text's code points (`to_chars`, the same on every target), not
+    ; `charAt`: on Go that is already a UTF-8 byte, and encoding each byte
+    ; again wrote "ä" as "Ã¤".
     sfn utf8:buffer (s:string) {
-        def n:int (strlen s)
+        def cs:[int] (to_chars s)
+        def n:int (array_length cs)
         def tmp:buffer (buffer_alloc (n * 4))
         def w:int 0
         def i:int 0
         while (i < n) {
-            def c:int (charAt s i)
-            ; A surrogate pair is one code point in two units.
-            if (c >= 55296) {
-                if (c <= 56319) {
-                    if ((i + 1) < n) {
-                        def lo:int (charAt s (i + 1))
-                        if (lo >= 56320) {
-                            if (lo <= 57343) {
-                                c = ((65536 + ((c - 55296) * 1024)) + (lo - 56320))
-                                i = (i + 1)
-                            }
-                        }
-                    }
-                }
-            }
+            def c:int (itemAt cs i)
             if (c < 128) {
                 buffer_set tmp w c
                 w = (w + 1)
