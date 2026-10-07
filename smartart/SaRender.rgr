@@ -343,8 +343,8 @@ class SaRender {
 
     sfn inkShadows:void (s:PptxShape ink:string) {
         if s.shadow.isSet {
+            ; as dark as the style made it (simple3 lighter than simple5)
             s.shadow.color = (PptxColor.srgbOf(ink))
-            s.shadow.alpha = 0.3
         }
         def i:int 0
         while (i < (array_length s.children)) {
