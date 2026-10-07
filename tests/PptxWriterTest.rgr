@@ -87,6 +87,8 @@ class PptxWriterTest {
         this.check("90 degrees is 5400000" ((PptxWriter.deg60k(90.0)) == "5400000"))
         this.check("a negative angle wraps" ((PptxWriter.deg60k(0.0 - 90.0)) == "16200000"))
         this.check("markup in text is escaped" ((PptxWriter.esc("a<b&c\"d")) == "a&lt;b&amp;c&quot;d"))
+        this.check("text outside ASCII is kept as it is" ((PptxWriter.esc("&Missä · ≥ 800 → 🙂")) == "&amp;Missä · ≥ 800 → 🙂"))
+        this.check("a special at either end" ((PptxWriter.esc("<ä>")) == "&lt;ä&gt;"))
         def u:buffer (PptxWriter.utf8("aä"))
         this.check("utf-8: one byte then two" ((buffer_length u) == 3))
         def euro:buffer (PptxWriter.utf8("€"))
