@@ -255,6 +255,26 @@ class SaText {
         return out
     }
 
+    ; Does some shape's text break onto more lines than it has, at the size
+    ; it was set at: text long enough that a taller shape would let it be
+    ; larger (SaEngine's taller row).
+    fn breaks:boolean () {
+        def every:[SaInst] (ptree.all())
+        def i:int 0
+        while (i < (array_length every)) {
+            def s:SaInst (itemAt every i)
+            def lines:[SaLine] (this.linesOf(s))
+            if (((array_length lines) > 0) && (s.fontPt > 0.0)) {
+                def w:double ((s.w - (this.margin(s "lMarg" s.fontPt))) - (this.margin(s "rMarg" s.fontPt)))
+                if ((this.wrappedCount(lines s.fontPt w)) > (array_length lines)) {
+                    return true
+                }
+            }
+            i = (i + 1)
+        }
+        return false
+    }
+
     fn fits:boolean (s:SaInst lines:[SaLine] size:double) {
         def w:double ((s.w - (this.margin(s "lMarg" size))) - (this.margin(s "rMarg" size)))
         def h:double ((s.h - (this.margin(s "tMarg" size))) - (this.margin(s "bMarg" size)))

@@ -73,6 +73,9 @@ class SaInst {
     ; an arrowhead; and that it was placed by an algorithm that lays out a
     ; whole subtree at once (hierarchy), so its own pass leaves it be
     def rotDeg:double 0.0
+    ; how much taller than its constraints a host's row made it
+    ; (SaAlgorithms.stretch)
+    def stretchK:double 1.0
     def adjNames:[string]
     def adjVals:[double]
     def segs:[double]

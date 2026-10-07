@@ -20,7 +20,8 @@
 ; light 1 is its dark paper and dark 1 its light ink, so a pale fill (a list
 ; column's tint of an accent) would carry pale text. `keepReadable` gives text
 ; that does not stand out from what it is drawn on (under 3:1, WCAG's large
-; text) whichever of the two reads better there.
+; text) whichever of the two reads better there; `shadowsOn` casts a quick
+; style's shadows in the ink on such a slide, where black would not show.
 ;
 ; A host that measured with its fonts (SaMeasure.over) draws with
 ; `drawWith(out res.shape x y res.measure)`, so the lines break where the
@@ -224,37 +225,84 @@ class SaRender {
         return out
     }
 
-    ; Every run's colour checked against what it is drawn on — its shape's
-    ; fill; for a shape with none (lProcess2's column heading, text alone on
-    ; the column), the last filled shape painted before it that it sits on;
-    ; or `ground` (the slide) — and made light 1 or dark 1, whichever reads
-    ; better, when it does not stand out. Colours must be resolved first
-    ; (resolveAll).
+    ; Every run's colour checked against what it is drawn on, and made
+    ; light 1 or dark 1, whichever reads better, when it does not stand out.
+    ; What is under the text is judged at points across its box: its own
+    ; fill when the shape has one, else the last filled shape painted before
+    ; it whose OUTLINE (not its box: an arrow's box is mostly the slide) holds
+    ; the point, else `ground` (the slide). A label half on a pale arrow and
+    ; half on a dark slide takes the colour that reads worst-case best.
+    ; Colours must be resolved first (resolveAll).
     sfn keepReadable:void (s:PptxShape pal:SaPalette ground:string) {
         def painted:[PptxShape]
-        SaRender.readableIn(s pal ground painted)
+        def geo (new OfficePresetShapes())
+        geo.load((SaPresets.text()))
+        SaRender.readableIn(s pal ground painted geo)
     }
 
-    sfn readableIn:void (s:PptxShape pal:SaPalette ground:string painted:[PptxShape]) {
-        def under:string ground
+    ; the colour under (px, py): the topmost of `painted` that covers it,
+    ; over the ground, or the ground
+    sfn groundAt:string (painted:[PptxShape] px:double py:double ground:string geo:OfficePresetShapes) {
+        def k:int ((array_length painted) - 1)
+        while (k >= 0) {
+            def b:PptxShape (itemAt painted k)
+            if (SaRender.covers(b px py geo)) {
+                return (SaRender.over(b.fill.srgb b.fill.alpha ground))
+            }
+            k = (k - 1)
+        }
+        return ground
+    }
+
+    ; the least contrast `c` has over the grounds
+    sfn worst:double (c:string grounds:[string]) {
+        def least:double 100.0
+        def i:int 0
+        while (i < (array_length grounds)) {
+            def r:double (SaRender.contrast(c (itemAt grounds i)))
+            if (r < least) {
+                least = r
+            }
+            i = (i + 1)
+        }
+        return least
+    }
+
+    sfn readableIn:void (s:PptxShape pal:SaPalette ground:string painted:[PptxShape] geo:OfficePresetShapes) {
+        def grounds:[string]
         if (SaRender.filled(s)) {
-            under = (SaRender.over(s.fill.srgb s.fill.alpha ground))
+            push grounds (SaRender.over(s.fill.srgb s.fill.alpha ground))
         } {
-            ; the centre of the text box, against what was painted there
-            def cx:double (s.x + (s.width * 0.5))
-            def cy:double (s.y + (s.height * 0.5))
-            def k:int ((array_length painted) - 1)
-            while (k >= 0) {
-                def b:PptxShape (itemAt painted k)
-                if ((((cx >= b.x) && (cx <= (b.x + b.width))) && (cy >= b.y)) && (cy <= (b.y + b.height))) {
-                    under = (SaRender.over(b.fill.srgb b.fill.alpha ground))
-                    break
+            ; a grid of points across the text's box, inside its margins
+            def x0:double (s.x + s.text.insetL)
+            def y0:double (s.y + s.text.insetT)
+            def tw:double ((s.width - s.text.insetL) - s.text.insetR)
+            def th:double ((s.height - s.text.insetT) - s.text.insetB)
+            if ((tw <= 0.0) || (th <= 0.0)) {
+                x0 = s.x
+                y0 = s.y
+                tw = s.width
+                th = s.height
+            }
+            def gy:int 0
+            while (gy < 3) {
+                def gx:int 0
+                while (gx < 5) {
+                    def px:double (x0 + (tw * (((to_double gx) + 0.5) / 5.0)))
+                    def py:double (y0 + (th * (((to_double gy) + 0.5) / 3.0)))
+                    push grounds (SaRender.groundAt(painted px py ground geo))
+                    gx = (gx + 1)
                 }
-                k = (k - 1)
+                gy = (gy + 1)
             }
         }
         def light:string (pal.hexOf("lt1"))
         def dark:string (pal.hexOf("dk1"))
+        def best:string light
+        if ((SaRender.worst(dark grounds)) > (SaRender.worst(light grounds))) {
+            best = dark
+        }
+        def bestAt:double (SaRender.worst(best grounds))
         def p:int 0
         while (p < (array_length s.text.paragraphs)) {
             def para:PptxParagraph (itemAt s.text.paragraphs p)
@@ -262,15 +310,9 @@ class SaRender {
             while (r < (array_length para.runs)) {
                 def run:PptxTextRun (itemAt para.runs r)
                 if (run.color.isSet && ((strlen run.color.srgb) >= 6)) {
-                    def now:double (SaRender.contrast(run.color.srgb under))
-                    if (now < 3.0) {
-                        def best:string light
-                        if ((SaRender.contrast(dark under)) > (SaRender.contrast(light under))) {
-                            best = dark
-                        }
-                        if ((SaRender.contrast(best under)) > now) {
-                            run.color.srgb = best
-                        }
+                    def now:double (SaRender.worst(run.color.srgb grounds))
+                    if ((now < 3.0) && (bestAt > now)) {
+                        run.color.srgb = best
                     }
                 }
                 r = (r + 1)
@@ -282,9 +324,117 @@ class SaRender {
         }
         def i:int 0
         while (i < (array_length s.children)) {
-            SaRender.readableIn((itemAt s.children i) pal ground painted)
+            SaRender.readableIn((itemAt s.children i) pal ground painted geo)
             i = (i + 1)
         }
+    }
+
+    ; A quick style's shadow (simple3 … simple5) is black, which on a dark
+    ; slide is no different from the slide: the style would change nothing
+    ; one can see. On a ground darker than mid-grey the shadow is cast in
+    ; dark 1 instead (the host's ink, light on a dark slide), so the style
+    ; still lifts the shapes off the page.
+    sfn shadowsOn:void (s:PptxShape pal:SaPalette ground:string) {
+        if ((SaRender.luminance(ground)) >= 0.18) {
+            return
+        }
+        SaRender.inkShadows(s (pal.hexOf("dk1")))
+    }
+
+    sfn inkShadows:void (s:PptxShape ink:string) {
+        if s.shadow.isSet {
+            s.shadow.color = (PptxColor.srgbOf(ink))
+            s.shadow.alpha = 0.3
+        }
+        def i:int 0
+        while (i < (array_length s.children)) {
+            SaRender.inkShadows((itemAt s.children i) ink)
+            i = (i + 1)
+        }
+    }
+
+    ; Does the shape's outline hold (px, py)? Its box turned by its rotation
+    ; and mirrored by its flips, then its preset's filled paths (even-odd);
+    ; a preset the catalogue does not have is its box.
+    sfn covers:boolean (b:PptxShape px:double py:double geo:OfficePresetShapes) {
+        if ((b.width <= 0.0) || (b.height <= 0.0)) {
+            return false
+        }
+        def cx:double (b.x + (b.width * 0.5))
+        def cy:double (b.y + (b.height * 0.5))
+        def qx:double px
+        def qy:double py
+        if (b.rotation != 0.0) {
+            def a:double ((0.0 - b.rotation) * (3.141592653589793 / 180.0))
+            def dx:double (px - cx)
+            def dy:double (py - cy)
+            qx = (cx + ((dx * (cos a)) - (dy * (sin a))))
+            qy = (cy + ((dx * (sin a)) + (dy * (cos a))))
+        }
+        def u:double ((qx - b.x) / b.width)
+        def v:double ((qy - b.y) / b.height)
+        if ((((u < 0.0) || (v < 0.0)) || (u > 1.0)) || (v > 1.0)) {
+            return false
+        }
+        if b.flipH {
+            u = (1.0 - u)
+        }
+        if b.flipV {
+            v = (1.0 - v)
+        }
+        if (((strlen b.preset) == 0) || ((geo.has(b.preset)) == false)) {
+            return true
+        }
+        def paths:[GeomPath] (geo.pathsFor(b.preset b.width b.height b.adjNames b.adjValues))
+        if ((array_length paths) == 0) {
+            return true
+        }
+        def i:int 0
+        while (i < (array_length paths)) {
+            def gp:GeomPath (itemAt paths i)
+            if (gp.fill != "none") {
+                def inside:boolean false
+                def r:int 0
+                while (r < (array_length gp.rings)) {
+                    def ring:PathRing (itemAt gp.rings r)
+                    if (SaRender.inRing(ring.pts u v)) {
+                        inside = (inside == false)
+                    }
+                    r = (r + 1)
+                }
+                if inside {
+                    return true
+                }
+            }
+            i = (i + 1)
+        }
+        return false
+    }
+
+    ; even-odd: does a ray from (x, y) cross the ring an odd number of times
+    sfn inRing:boolean (pts:[double] x:double y:double) {
+        def n:int (to_int ((to_double (array_length pts)) / 2.0))
+        if (n < 3) {
+            return false
+        }
+        def inside:boolean false
+        def j:int (n - 1)
+        def i:int 0
+        while (i < n) {
+            def xi:double (itemAt pts (i * 2))
+            def yi:double (itemAt pts ((i * 2) + 1))
+            def xj:double (itemAt pts (j * 2))
+            def yj:double (itemAt pts ((j * 2) + 1))
+            if ((yi > y) != (yj > y)) {
+                def xc:double (xi + (((y - yi) / (yj - yi)) * (xj - xi)))
+                if (x < xc) {
+                    inside = (inside == false)
+                }
+            }
+            j = i
+            i = (i + 1)
+        }
+        return inside
     }
 
     sfn filled:boolean (s:PptxShape) {
