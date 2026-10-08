@@ -339,6 +339,15 @@ class SaRenderTest {
         c.eqStr("its text is UTF-8" (SaFile.textOf(bytes)) "Hämeenlinna – Ω")
         c.eqStr("nothing is nothing" (SaFile.textOf((buffer_from_string ""))) "")
         c.ok("a head, not the whole file" ((strlen (SaFile.headOf((buffer_from_string (SaKit.flat("process1" 200)))))) <= 2048))
+        def big:string (SaKit.flat("process1" 200))
+        c.ok("whose data model it names" ((indexOf (SaFile.headOf((buffer_from_string big))) "dataModel") >= 0))
+        ; a character across the 2048th byte is left out, not cut in two
+        def pad:string ""
+        while ((strlen pad) < 2047) {
+            pad = (pad + "a")
+        }
+        def cut:string (SaFile.headOf((buffer_from_string (EVGCodepoint.encodeUtf8((pad + "äöå"))))))
+        c.eqStr("cut before a character, not inside it" cut pad)
         c.eqInt("16:9, wider than any column" ((SaFile.naturalW()) * 9) ((SaFile.naturalH()) * 16))
         ; the whole road: bytes in, a drawing out, the Finnish intact
         def fi:string (SaKit.data("process1" (SaKit.pt("a" "Hämeenlinna")) (SaKit.cx("0" "a"))))

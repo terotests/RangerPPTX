@@ -75,12 +75,20 @@ class SaFile {
         return (Utf8.decode((buffer_to_string data)))
     }
 
-    ; the first bytes, as text, for isSmartArt
+    ; the first bytes, as text, for isSmartArt. Only those are decoded: a
+    ; host asks this of every picture it is handed, and decoding a whole
+    ; PNG or JPEG as text to read its first characters was most of what
+    ; handing a deck's pictures over cost.
     sfn headOf:string (data:buffer) {
-        def t:string (SaFile.textOf(data))
-        if ((strlen t) > 2048) {
-            return (substring t 0 2048)
+        def n:int (buffer_length data)
+        if (n <= 2048) {
+            return (SaFile.textOf(data))
         }
-        return t
+        ; not cut inside a character: back off its continuation bytes
+        def end:int 2048
+        while ((end > 0) && (((buffer_get data end) >= 128) && ((buffer_get data end) < 192))) {
+            end = (end - 1)
+        }
+        return (SaFile.textOf((buffer_slice data 0 end)))
     }
 }
