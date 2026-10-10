@@ -862,7 +862,11 @@ class PptxWriter {
                 ; inserted — is named after what its bytes say it is.
                 def mime:string (assets.mimeOf(id))
                 def dotted:string (OfficeAssetStore.extensionForMime(mime))
-                ext = (substring dotted 1 (strlen dotted))
+                if ((strlen dotted) > 1) {
+                    ext = (substring dotted 1 (strlen dotted))
+                } {
+                    ext = "png"
+                }
             }
             def taken:[string:boolean]
             def j:int 0
@@ -927,20 +931,31 @@ class PptxWriter {
         return ((" descr=\"" + (PptxWriter.esc(shape.altText))) + "\"")
     }
 
+    ; The extension of a part name, "" when it has none that is a file
+    ; type (no dot, or what follows the last one is not letters and digits:
+    ; a name such as "three:apps/w.tsx#1:1"), and then the bytes say.
     sfn extensionOf:string (part:string) {
         def n:int (strlen part)
         def i:int (n - 1)
         while (i >= 0) {
-            if ((charAt part i) == 46) {
+            def c:int (charAt part i)
+            if (c == 46) {
                 def ext:string (substring part (i + 1) n)
+                if ((strlen ext) == 0) {
+                    return ""
+                }
                 if (ext == "jpg") {
                     return "jpeg"
                 }
                 return ext
             }
+            def alnum:boolean ((((c >= 48) && (c <= 57)) || ((c >= 65) && (c <= 90))) || ((c >= 97) && (c <= 122)))
+            if (alnum == false) {
+                return ""
+            }
             i = (i - 1)
         }
-        return "png"
+        return ""
     }
 
     ; --- shapes --------------------------------------------------------------
