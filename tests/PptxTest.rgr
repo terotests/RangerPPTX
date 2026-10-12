@@ -34,6 +34,25 @@ class PptxTest {
         }
     }
 
+    ; A chart's categories in the order the deck gives them (months are not
+    ; alphabetical), and no axis titled with the spec's own field names.
+    fn testChartOrder:void () {
+        print "--- chart keeps its category order ---"
+        def ch (new PptxChart())
+        push ch.categories "Jul"
+        push ch.categories "Aug"
+        push ch.categories "Sep"
+        def se (new PptxChartSeries())
+        push se.values 120.0
+        push se.values 135.0
+        push se.values 160.0
+        push ch.series se
+        def vl:string (PptxChartVela.buildVlJson(ch))
+        this.check("categories keep the deck's order" ((indexOf vl "\"sort\":null") > 0))
+        this.check("no axis is titled with a field name" ((indexOf vl "\"title\":null") > 0))
+        this.check("Jul before Aug" ((indexOf vl "Jul") < (indexOf vl "Aug")))
+    }
+
     fn run:void () {
         print "=== PptxTest ==="
         this.testUnits()
@@ -45,6 +64,7 @@ class PptxTest {
         this.testThemeStyles()
         this.testTableGrid()
         this.testSpacedRuns()
+        this.testChartOrder()
         this.testConnectors()
         this.testAdjustments()
         this.testInheritedText()

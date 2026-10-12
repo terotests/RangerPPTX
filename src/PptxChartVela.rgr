@@ -58,8 +58,8 @@ class PptxChartVela {
             i = (i + 1)
         }
         def mark:string "bar"
-        def xField:string "{\"field\":\"a\",\"type\":\"nominal\"}"
-        def yField:string "{\"field\":\"b\",\"type\":\"quantitative\"}"
+        def xField:string "{\"field\":\"a\",\"type\":\"nominal\",\"sort\":null,\"title\":null}"
+        def yField:string "{\"field\":\"b\",\"type\":\"quantitative\",\"title\":null}"
         if (chart.chartType == "col") {
             mark = "bar"
         }
