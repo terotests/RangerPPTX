@@ -155,8 +155,14 @@ class PptxView {
     fn resize:void (w:int h:int) {
         pageW = w
         pageH = h
-        canvas.init(w h)
-        ctx.attach(canvas)
+        ; the canvas of that size is kept: making it again cleared nothing a
+        ; frame does not paint over, and every app that starts (initBare,
+        ; then resize to the same size) made two (a deck laid out on a
+        ; server, which never draws, spent a tenth of its time zeroing them)
+        if ((w != (canvas.getWidth())) || (h != (canvas.getHeight()))) {
+            canvas.init(w h)
+            ctx.attach(canvas)
+        }
         ctx.tr.clearCache()
     }
 
