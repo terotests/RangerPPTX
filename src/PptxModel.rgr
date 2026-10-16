@@ -245,6 +245,13 @@ class PptxTextRun {
     ; none. What keeps a heading readable over a busy picture.
     def glow:PptxColor (new PptxColor())
     def glowPt:double 0.0
+    ; `a:hlinkClick`: where a click on this run goes. `link` an address
+    ; outside the deck (written as an external hyperlink); `linkSlide` a
+    ; slide of this deck, by its index in `pres.slides` (a slide jump), -1
+    ; for none. A `#fragment` nobody resolved to a slide is not written:
+    ; outside a browser it goes nowhere.
+    def link:string ""
+    def linkSlide:int -1
     ; Every style property of this run, onto another one — the whole of it,
     ; and neither the text nor the field.
     ;
@@ -274,6 +281,8 @@ class PptxTextRun {
         o.resolvedSizeSig = resolvedSizeSig
         o.glow = glow
         o.glowPt = glowPt
+        o.link = link
+        o.linkSlide = linkSlide
     }
 
     Constructor () {
