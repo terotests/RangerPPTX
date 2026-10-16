@@ -69,6 +69,7 @@ class PptxWriterTest {
         this.testUnmodelledContentSurvives()
         this.testEditKeepsInheritance()
         this.testPlaceholdersSurviveAnEdit()
+        this.testLinks()
         print ""
         print ("passed = " + (to_string passed) + "  failed = " + (to_string failed))
         if (failed == 0) {
@@ -1675,6 +1676,71 @@ class PptxWriterTest {
         }
         out.close()
         parser.close()
+    }
+
+    ; A run's link: an address as an external hyperlink, a slide of the deck
+    ; as a slide jump, each named once in the slide's relationships.
+    fn linkBox:PptxShape (words:[string] urls:[string] slides:[int]) {
+        def a (new PptxShape())
+        a.x = 40.0
+        a.y = 40.0
+        a.width = 400.0
+        a.height = 80.0
+        a.hasXfrm = true
+        a.hasText = true
+        def para (new PptxParagraph())
+        def i:int 0
+        while (i < (array_length words)) {
+            def r (new PptxTextRun())
+            r.text = (itemAt words i)
+            r.fontFamily = "Lato"
+            r.link = (itemAt urls i)
+            r.linkSlide = (itemAt slides i)
+            push para.runs r
+            i = (i + 1)
+        }
+        push a.text.paragraphs para
+        return a
+    }
+
+    fn testLinks:void () {
+        print "--- links: a hyperlink, a slide jump ---"
+        def pres (new PptxPresentation())
+        def s1 (new PptxSlide())
+        s1.width = 720.0
+        s1.height = 540.0
+        def words:[string] ([] _:string ( "see " "docs" " and " "again" " or " "the end" " and " "#nowhere" ))
+        def urls:[string] ([] _:string ( "" "https://example.com/a?b=1&c=2" "" "https://example.com/a?b=1&c=2" "" "" "" "#nowhere" ))
+        def slides:[int] ([] _:int ( -1 -1 -1 -1 -1 1 -1 -1 ))
+        push s1.shapes (this.linkBox(words urls slides))
+        push pres.slides s1
+        def s2 (new PptxSlide())
+        s2.width = 720.0
+        s2.height = 540.0
+        def w2:[string] ([] _:string ( "gone" ))
+        def u2:[string] ([] _:string ( "" ))
+        def j2:[int] ([] _:int ( 7 ))
+        push s2.shapes (this.linkBox(w2 u2 j2))
+        push pres.slides s2
+        def writer (new PptxWriter())
+        writer.save(pres "gallery/pptx/bin" "links.pptx")
+        def pkg (new OpcPackage())
+        if ((pkg.openParts("gallery/pptx/bin" "links.pptx")) == false) {
+            this.check("the deck with links reopens" false)
+            return
+        }
+        def xml:string (pkg.readXml("ppt/slides/slide1.xml"))
+        def rels:string (pkg.readXml("ppt/slides/_rels/slide1.xml.rels"))
+        this.check("the address is clicked through" ((indexOf xml "<a:latin typeface=\"Lato\"/><a:hlinkClick r:id=\"rIdLink1\"/></a:rPr><a:t xml:space=\"preserve\">docs</a:t>") > 0))
+        this.check("one relationship for the address used twice" ((PptxWriterTest.countOf(xml "r:id=\"rIdLink1\"")) == 2))
+        this.check("and only one" ((PptxWriterTest.countOf(rels "/hyperlink\"")) == 1))
+        this.check("it is external, its & escaped" ((indexOf rels "<Relationship Id=\"rIdLink1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://example.com/a?b=1&amp;c=2\" TargetMode=\"External\"/>") > 0))
+        this.check("the slide is jumped to" ((indexOf xml "<a:hlinkClick r:id=\"rIdJump1\" action=\"ppaction://hlinksldjump\"/>") > 0))
+        this.check("by a relationship to the slide" ((indexOf rels "<Relationship Id=\"rIdJump1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide\" Target=\"../slides/slide2.xml\"/>") > 0))
+        this.check("a fragment nobody resolved is plain text" ((PptxWriterTest.countOf(xml "hlinkClick")) == 3))
+        def xml2:string (pkg.readXml("ppt/slides/slide2.xml"))
+        this.check("a jump past the deck names no relationship" ((indexOf xml2 "hlinkClick") < 0))
+        pkg.close()
     }
 
     sfn countOf:int (haystack:string needle:string) {
