@@ -408,7 +408,7 @@ class SaAlgorithm2Test {
         def ln:SaAlgorithms (SaAlgorithm2Test.run((SaKit.flat("" 1)) lone))
         c.near("nothing after it: not drawn" (SaAlgorithm2Test.wOf(ln "k" 0)) 0.0)
         ; the geometry it rests on
-        def e (SaInst.new_())
+        def e (new SaInst())
         e.x = 0.0
         e.y = 0.0
         e.w = 40.0

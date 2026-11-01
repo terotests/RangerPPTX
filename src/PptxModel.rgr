@@ -245,6 +245,13 @@ class PptxTextRun {
     ; none. What keeps a heading readable over a busy picture.
     def glow:PptxColor (new PptxColor())
     def glowPt:double 0.0
+    ; `a:hlinkClick`: where a click on this run goes. `link` an address
+    ; outside the deck (written as an external hyperlink); `linkSlide` a
+    ; slide of this deck, by its index in `pres.slides` (a slide jump), -1
+    ; for none. A `#fragment` nobody resolved to a slide is not written:
+    ; outside a browser it goes nowhere.
+    def link:string ""
+    def linkSlide:int -1
     ; Every style property of this run, onto another one — the whole of it,
     ; and neither the text nor the field.
     ;
@@ -274,6 +281,8 @@ class PptxTextRun {
         o.resolvedSizeSig = resolvedSizeSig
         o.glow = glow
         o.glowPt = glowPt
+        o.link = link
+        o.linkSlide = linkSlide
     }
 
     Constructor () {
@@ -895,6 +904,17 @@ class PptxShape {
     def imagePart:string ""     ; resolved package path
     def imageBytes:buffer (buffer_alloc 0)
     def imageOk:boolean false   ; decoded pixels available in viewer cache
+    ; the part of the picture shown (`a:srcRect`): how much is cut off each
+    ; side, as fractions of its width / height (0 = nothing)
+    def cropL:double 0.0
+    def cropT:double 0.0
+    def cropR:double 0.0
+    def cropB:double 0.0
+    ; The same picture as an SVG, written beside `imageBytes` as the blip's
+    ; `asvg:svgBlip` extension: PowerPoint (2016 and later) and LibreOffice
+    ; draw the vector, older readers the PNG — which can then be a small one.
+    def svgBytes:buffer (buffer_alloc 0)
+    def svgPart:string ""
     ; Placeholder (PresentationML p:ph)
     def isPlaceholder:boolean false
     def phType:string ""        ; title / body / ctrTitle / subTitle / …

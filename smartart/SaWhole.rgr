@@ -199,6 +199,7 @@ class SaWhole {
         o.colors = opts.colors
         o.style = opts.style
         o.measure = opts.measure
+        o.wrap = opts.wrap
         def lostLayout:string ""
         if ((strlen opts.layout) == 0) {
             if ((strlen f.layoutXml) > 0) {

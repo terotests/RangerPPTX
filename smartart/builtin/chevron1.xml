@@ -24,8 +24,8 @@
         <dgm:constrLst>
           <dgm:constr type="tMarg" refType="primFontSz" fact="0.15"/>
           <dgm:constr type="bMarg" refType="primFontSz" fact="0.15"/>
-          <dgm:constr type="lMarg" refType="h" fact="0.5"/>
-          <dgm:constr type="rMarg" refType="h" fact="0.3"/>
+          <dgm:constr type="lMarg" refType="w" fact="0.2"/>
+          <dgm:constr type="rMarg" refType="w" fact="0.2"/>
         </dgm:constrLst>
         <dgm:ruleLst><dgm:rule type="primFontSz" val="5" fact="NaN" max="NaN"/></dgm:ruleLst>
       </dgm:layoutNode>

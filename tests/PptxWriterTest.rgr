@@ -50,6 +50,7 @@ class PptxWriterTest {
         this.testFlattening()
         this.testPictures()
         this.testTwoPicturesOneName()
+        this.testSvgPicture()
         this.testEditedDeck()
         this.testLockRoundTrip()
         this.testFlipRoundTrip()
@@ -68,6 +69,7 @@ class PptxWriterTest {
         this.testUnmodelledContentSurvives()
         this.testEditKeepsInheritance()
         this.testPlaceholdersSurviveAnEdit()
+        this.testLinks()
         print ""
         print ("passed = " + (to_string passed) + "  failed = " + (to_string failed))
         if (failed == 0) {
@@ -86,6 +88,8 @@ class PptxWriterTest {
         this.check("90 degrees is 5400000" ((PptxWriter.deg60k(90.0)) == "5400000"))
         this.check("a negative angle wraps" ((PptxWriter.deg60k(0.0 - 90.0)) == "16200000"))
         this.check("markup in text is escaped" ((PptxWriter.esc("a<b&c\"d")) == "a&lt;b&amp;c&quot;d"))
+        this.check("text outside ASCII is kept as it is" ((PptxWriter.esc("&Missä · ≥ 800 → 🙂")) == "&amp;Missä · ≥ 800 → 🙂"))
+        this.check("a special at either end" ((PptxWriter.esc("<ä>")) == "&lt;ä&gt;"))
         def u:buffer (PptxWriter.utf8("aä"))
         this.check("utf-8: one byte then two" ((buffer_length u) == 3))
         def euro:buffer (PptxWriter.utf8("€"))
@@ -586,6 +590,64 @@ class PptxWriterTest {
         this.check("and the third is the first again" ((this.pngMark(sc.imageBytes)) == 11))
         this.check("they landed at two different parts" (sa.imagePart != sb.imagePart))
         this.check("and the repeat shares the first one's part" (sa.imagePart == sc.imagePart))
+        p2.close()
+    }
+
+    ; A picture with an SVG beside its PNG: the SVG goes into the package as
+    ; its own media part and the blip names it in the 2016 extension, while
+    ; the PNG stays the picture every reader can draw.
+    fn testSvgPicture:void () {
+        print "--- a picture with its SVG ---"
+        def pres (new PptxPresentation())
+        pres.slideWidth = 960.0
+        pres.slideHeight = 540.0
+        def slide (new PptxSlide())
+        slide.width = 960.0
+        slide.height = 540.0
+        def a (new PptxShape())
+        a.kind = 1
+        a.name = "Vector"
+        a.x = 10.0
+        a.y = 10.0
+        a.width = 200.0
+        a.height = 100.0
+        a.hasXfrm = true
+        a.imagePart = "media/drawing.svg"
+        a.imageBytes = (this.markedPng(33))
+        def svg:string "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 10\"><path d=\"M0 0h20v10z\" fill=\"#c00\"/></svg>"
+        a.svgBytes = (buffer_from_string svg)
+        a.svgPart = "media/drawing.svg"
+        push slide.shapes a
+        push pres.slides slide
+
+        def writer (new PptxWriter())
+        writer.save(pres "gallery/pptx/bin" "svg-picture.pptx")
+        this.check("the PNG and the SVG are two media entries" ((array_length writer.media) == 2))
+
+        def pkg (new OpcPackage())
+        if ((pkg.openParts("gallery/pptx/bin" "svg-picture.pptx")) == false) {
+            this.check("the deck reopens" false)
+            return
+        }
+        def xml:string (pkg.readXml("ppt/slides/slide1.xml"))
+        this.check("the blip carries the svgBlip extension" ((indexOf xml "<asvg:svgBlip xmlns:asvg=\"http://schemas.microsoft.com/office/drawing/2016/SVG/main\" r:embed=\"rIdImg2\"/>") > 0))
+        this.check("over the PNG" ((indexOf xml "<a:blip r:embed=\"rIdImg1\"><a:extLst>") > 0))
+        def rels:string (pkg.readXml("ppt/slides/_rels/slide1.xml.rels"))
+        this.check("the slide relates to an .svg part" ((indexOf rels ".svg\"") > 0))
+        def types:string (pkg.readXml("[Content_Types].xml"))
+        this.check("svg has a content type" ((indexOf types "Extension=\"svg\" ContentType=\"image/svg+xml\"") > 0))
+        pkg.close()
+
+        def p2 (new PptxParser())
+        def ok:boolean (p2.openParts("gallery/pptx/bin" "svg-picture.pptx"))
+        this.check("the deck reopens" ok)
+        if (ok == false) {
+            return
+        }
+        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def s2:PptxSlide (itemAt after.slides 0)
+        def sa:PptxShape (itemAt s2.shapes 0)
+        this.check("and its picture is still the PNG" ((this.pngMark(sa.imageBytes)) == 33))
         p2.close()
     }
 
@@ -1614,6 +1676,71 @@ class PptxWriterTest {
         }
         out.close()
         parser.close()
+    }
+
+    ; A run's link: an address as an external hyperlink, a slide of the deck
+    ; as a slide jump, each named once in the slide's relationships.
+    fn linkBox:PptxShape (words:[string] urls:[string] slides:[int]) {
+        def a (new PptxShape())
+        a.x = 40.0
+        a.y = 40.0
+        a.width = 400.0
+        a.height = 80.0
+        a.hasXfrm = true
+        a.hasText = true
+        def para (new PptxParagraph())
+        def i:int 0
+        while (i < (array_length words)) {
+            def r (new PptxTextRun())
+            r.text = (itemAt words i)
+            r.fontFamily = "Lato"
+            r.link = (itemAt urls i)
+            r.linkSlide = (itemAt slides i)
+            push para.runs r
+            i = (i + 1)
+        }
+        push a.text.paragraphs para
+        return a
+    }
+
+    fn testLinks:void () {
+        print "--- links: a hyperlink, a slide jump ---"
+        def pres (new PptxPresentation())
+        def s1 (new PptxSlide())
+        s1.width = 720.0
+        s1.height = 540.0
+        def words:[string] ([] _:string ( "see " "docs" " and " "again" " or " "the end" " and " "#nowhere" ))
+        def urls:[string] ([] _:string ( "" "https://example.com/a?b=1&c=2" "" "https://example.com/a?b=1&c=2" "" "" "" "#nowhere" ))
+        def slides:[int] ([] _:int ( -1 -1 -1 -1 -1 1 -1 -1 ))
+        push s1.shapes (this.linkBox(words urls slides))
+        push pres.slides s1
+        def s2 (new PptxSlide())
+        s2.width = 720.0
+        s2.height = 540.0
+        def w2:[string] ([] _:string ( "gone" ))
+        def u2:[string] ([] _:string ( "" ))
+        def j2:[int] ([] _:int ( 7 ))
+        push s2.shapes (this.linkBox(w2 u2 j2))
+        push pres.slides s2
+        def writer (new PptxWriter())
+        writer.save(pres "gallery/pptx/bin" "links.pptx")
+        def pkg (new OpcPackage())
+        if ((pkg.openParts("gallery/pptx/bin" "links.pptx")) == false) {
+            this.check("the deck with links reopens" false)
+            return
+        }
+        def xml:string (pkg.readXml("ppt/slides/slide1.xml"))
+        def rels:string (pkg.readXml("ppt/slides/_rels/slide1.xml.rels"))
+        this.check("the address is clicked through" ((indexOf xml "<a:latin typeface=\"Lato\"/><a:hlinkClick r:id=\"rIdLink1\"/></a:rPr><a:t xml:space=\"preserve\">docs</a:t>") > 0))
+        this.check("one relationship for the address used twice" ((PptxWriterTest.countOf(xml "r:id=\"rIdLink1\"")) == 2))
+        this.check("and only one" ((PptxWriterTest.countOf(rels "/hyperlink\"")) == 1))
+        this.check("it is external, its & escaped" ((indexOf rels "<Relationship Id=\"rIdLink1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://example.com/a?b=1&amp;c=2\" TargetMode=\"External\"/>") > 0))
+        this.check("the slide is jumped to" ((indexOf xml "<a:hlinkClick r:id=\"rIdJump1\" action=\"ppaction://hlinksldjump\"/>") > 0))
+        this.check("by a relationship to the slide" ((indexOf rels "<Relationship Id=\"rIdJump1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide\" Target=\"../slides/slide2.xml\"/>") > 0))
+        this.check("a fragment nobody resolved is plain text" ((PptxWriterTest.countOf(xml "hlinkClick")) == 3))
+        def xml2:string (pkg.readXml("ppt/slides/slide2.xml"))
+        this.check("a jump past the deck names no relationship" ((indexOf xml2 "hlinkClick") < 0))
+        pkg.close()
     }
 
     sfn countOf:int (haystack:string needle:string) {

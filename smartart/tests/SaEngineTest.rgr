@@ -221,6 +221,7 @@ class SaEngineTest {
         def r2:SaResult (SaEngineTest.draw((SaKit.data("process1" "" ""))))
         c.ok("a diagram with no items is drawn" r2.ok)
         c.eqInt("as nothing" (array_length r2.shape.children) 0)
+        c.ok("and says why, for a host to show in its place" (((array_length r2.warnings) == 1) && ((itemAt r2.warnings 0) == (SaEngine.noItems()))))
     }
 
     sfn testOptions:void (c:SaKit) {
@@ -282,6 +283,60 @@ class SaEngineTest {
         c.ok("a narrow frame still holds all of it" (((itemAt tall 2).x + (itemAt tall 2).width) <= 200.01))
     }
 
+    sfn wrapped:SaResult (lay:string n:int w:double h:double) {
+        def o (new SaOptions())
+        o.wrap = true
+        return (SaEngine.layout((SaKit.flat(lay n)) o w h))
+    }
+
+    sfn rowsOf:int (l:[PptxShape]) {
+        def rows:int 0
+        def lastY:double -1000000.0
+        def i:int 0
+        while (i < (array_length l)) {
+            def s:PptxShape (itemAt l i)
+            if (s.y > (lastY + 1.0)) {
+                rows = (rows + 1)
+                lastY = s.y
+            }
+            i = (i + 1)
+        }
+        return rows
+    }
+
+    sfn testWrap:void (c:SaKit) {
+        print "-- a long row wraps on a slide --"
+        def flat:SaResult (SaEngineTest.draw((SaKit.flat("process1" 8))))
+        def wr:SaResult (SaEngineTest.wrapped("process1" 8 480.0 270.0))
+        def a:[PptxShape] (SaKit.shapes(flat "node"))
+        def b:[PptxShape] (SaKit.shapes(wr "node"))
+        c.eqInt("PowerPoint's way: one row" (SaEngineTest.rowsOf(a)) 1)
+        c.ok(("eight steps in a tall box: rows (" + (to_string (SaEngineTest.rowsOf(b))) + ")") ((SaEngineTest.rowsOf(b)) >= 2))
+        def a0:PptxShape (itemAt a 0)
+        def b0:PptxShape (itemAt b 0)
+        def b1:PptxShape (itemAt b 1)
+        def b7:PptxShape (itemAt b 7)
+        c.ok(("the steps are larger (" + (to_string b0.width) + " > " + (to_string a0.width) + ")") (b0.width > (a0.width * 1.2)))
+        c.ok("in reading order" ((b1.x > b0.x) && (b7.y > b0.y)))
+        c.ok("all of it inside the box" (SaEngineTest.allInside(wr)))
+        def big:double (SaKit.sizeOf(b0))
+        def small:double (SaKit.sizeOf(a0))
+        c.ok(("and so is the text (" + (to_string big) + " > " + (to_string small) + ")") (big > small))
+        ; arrows still between the steps, one per gap
+        c.eqInt("an arrow per step but the last" (array_length (SaKit.shapes(wr "sibTrans"))) 7)
+        ; three steps in a wide box gain nothing from rows
+        def three:SaResult (SaEngineTest.wrapped("process1" 3 480.0 270.0))
+        def plain3:SaResult (SaEngineTest.draw((SaKit.flat("process1" 3))))
+        c.eqStr("three steps in a wide box: the one row" (SaEngineTest.sig(three)) (SaEngineTest.sig(plain3)))
+        ; chevrons wrap the same way
+        def ch:SaResult (SaEngineTest.wrapped("chevron1" 8 480.0 270.0))
+        c.ok("chevrons too" ((SaEngineTest.rowsOf((SaKit.shapes(ch "node")))) >= 2))
+        ; a list's columns are as tall as the box: never wrapped
+        def hl:SaResult (SaEngineTest.wrapped("hList1" 8 480.0 270.0))
+        def hp:SaResult (SaEngineTest.draw((SaKit.flat("hList1" 8))))
+        c.eqStr("columns as tall as the box do not wrap" (SaEngineTest.sig(hl)) (SaEngineTest.sig(hp)))
+    }
+
     sfn sig:string (r:SaResult) {
         def out:string ""
         def i:int 0
@@ -339,6 +394,7 @@ class SaEngineTest {
         SaEngineTest.testHList(c)
         SaEngineTest.testGroup(c)
         SaEngineTest.testOptions(c)
+        SaEngineTest.testWrap(c)
         SaEngineTest.testDeterministic(c)
         SaEngineTest.testStyle(c)
         c.finish("SaEngineTest")

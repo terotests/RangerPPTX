@@ -250,6 +250,8 @@ class PptxClone {
         s.imagePart = src.imagePart
         s.imageBytes = src.imageBytes
         s.imageOk = src.imageOk
+        s.svgBytes = src.svgBytes
+        s.svgPart = src.svgPart
         s.locked = src.locked
         s.altText = src.altText
         ; Provenance travels with the shape. A copy that dropped it would turn

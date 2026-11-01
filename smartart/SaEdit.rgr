@@ -114,8 +114,8 @@ class SaEdit {
         while (i < (array_length paras)) {
             def src:PptxParagraph (itemAt paras i)
             def text:string (SaEdit.plain(src))
-            def np (SaPara.new_())
-            def run (SaRun.new_())
+            def np (new SaPara())
+            def run (new SaRun())
             if same {
                 def old:SaPara (itemAt p.paras i)
                 np.level = old.level

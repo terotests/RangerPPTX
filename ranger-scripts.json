@@ -51,7 +51,6 @@
     "pptx:playground:test": "bash gallery/pptx/web/playground/build.sh && node gallery/pptx/web/playground/smoke.mjs",
     "pptx:probe": "bash scripts/rgr-suite.sh ./gallery/pptx/tools/pptx_probe.rgr ./gallery/pptx/bin pptx_probe.js",
     "pptx:rotate:test": "bash scripts/rgr-suite.sh ./gallery/pptx/tests/PptxRotateTest.rgr ./gallery/pptx/bin PptxRotateTest.js",
-    "pptx:rs:check": "bash gallery/pptx/tools/rs_check.sh go",
     "pptx:scene:bench": "bash gallery/pptx/api/js/build.sh && node gallery/pptx/tools/chart_deck.mjs && bash scripts/rgr-suite.sh ./gallery/pptx/tools/scene_bench.rgr ./gallery/pptx/bin scene_bench.js",
     "pptx:scene:check": "bash gallery/pptx/web/standalone/build.sh && node gallery/pptx/web/host/scene-binary-check.mjs",
     "pptx:seam:scan": "node gallery/pptx/tools/seam_scan.mjs",

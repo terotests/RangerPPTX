@@ -2693,38 +2693,49 @@ class PptxApp {
         return "shape"
     }
 
+    ; specials replaced, the rest copied with `substring` (not rebuilt one
+    ; `strfromcode` at a time, which splits "ä" into bytes on Go)
     fn jsonEscape:string (v:string) {
         def out:string "\""
+        def from:int 0
         def i:int 0
-        while (i < (strlen v)) {
+        def n:int (strlen v)
+        while (i < n) {
             def c:int (charAt v i)
+            def rep:string ""
+            def special:boolean true
             if (c == 34) {
-                out = (out + "\\\"")
+                rep = "\\\""
             } {
                 if (c == 92) {
-                    out = (out + "\\\\")
+                    rep = "\\\\"
                 } {
                     if (c == 10) {
-                        out = (out + "\\n")
+                        rep = "\\n"
                     } {
                         if (c == 13) {
-                            out = (out + "\\r")
+                            rep = "\\r"
                         } {
                             if (c == 9) {
-                                out = (out + "\\t")
+                                rep = "\\t"
                             } {
                                 if (c < 32) {
-                                    out = (out + " ")
+                                    rep = " "
                                 } {
-                                    out = (out + (strfromcode c))
+                                    special = false
                                 }
                             }
                         }
                     }
                 }
             }
+            if special {
+                out = (out + (substring v from i) + rep)
+                from = (i + 1)
+            }
             i = (i + 1)
         }
+        out = (out + (substring v from n))
         return (out + "\"")
     }
 

@@ -508,7 +508,23 @@ class PptxTextLayout {
                     indent = (indent + (12.0 * scale))
                 }
             }
-            def avail:double (contentW - indent - bulletW)
+            ; Where the bullet hangs. With an `indent` the deck says it: that
+            ; far from the text's left edge, to the left for the hanging
+            ; bullet every list has, and the text keeps its own edge. Without
+            ; one the bullet sits where the level's indent began and the text
+            ; follows it.
+            def bulletAt:double ((contentX + indent) - (12.0 * scale))
+            def textShift:double bulletW
+            if para.indentSet {
+                bulletAt = ((contentX + indent) + (para.indentPt * scale))
+                ; a bullet that does not hang (indent ≥ 0) pushes the first
+                ; line's text past itself, never under it
+                textShift = 0.0
+                if ((bulletW > 0.0) && ((bulletAt + bulletW) > (contentX + indent))) {
+                    textShift = ((bulletAt + bulletW) - (contentX + indent))
+                }
+            }
+            def avail:double (contentW - indent - textShift)
             if (avail < 8.0) {
                 avail = 8.0
             }
@@ -595,10 +611,7 @@ class PptxTextLayout {
                 line.h = lineH
                 def visibleEnd:int (PptxTextLayout.trimEndCol(text start end))
                 line.w = (PptxTextLayout.measureSlice(para start visibleEnd m scale))
-                def lineX:double (contentX + indent)
-                if (para.indentSet == false) {
-                    lineX = ((contentX + indent) + bulletW)
-                }
+                def lineX:double ((contentX + indent) + textShift)
                 if (align == "ctr") {
                     lineX = (lineX + ((avail - line.w) * 0.5))
                 }
@@ -610,17 +623,7 @@ class PptxTextLayout {
                 line.scale = scale
                 if firstLine {
                     line.bullet = bullet
-                    ; A hanging indent puts the bullet where `indent` says, to
-                    ; the LEFT of the text; without one it sits immediately in
-                    ; front of it.
-                    if para.indentSet {
-                        line.bulletX = ((contentX + indent) + (para.indentPt * scale))
-                    } {
-                        line.bulletX = ((contentX + indent) - bulletW)
-                    }
-                    if (bulletW > 0.0) {
-                        line.bulletX = (contentX + ((to_double para.level) * 18.0 * scale))
-                    }
+                    line.bulletX = bulletAt
                     line.bulletSize = bulletSize
                 }
                 push out line

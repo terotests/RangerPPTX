@@ -24,7 +24,7 @@ class SaConstraintTest {
     sfn first:SaInst (c:SaConstraints name:string) {
         def l:[SaInst] (SaKit.byName(c.ptree name))
         if ((array_length l) == 0) {
-            return (SaInst.new_())
+            return (new SaInst())
         }
         return (itemAt l 0)
     }

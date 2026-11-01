@@ -1,9 +1,0 @@
-; SPDX-License-Identifier: AGPL-3.0-or-later
-; Compiles the Rust-syntax crate (src/lib.rs) on its own: tools/rs_check.sh.
-Import "../src/lib.rs"
-
-class RsCheck {
-    sfn main@(main):void () {
-        print "ok"
-    }
-}

@@ -22,6 +22,18 @@ class PptxParser {
     Constructor () {
     }
 
+    ; `a:srcRect` side, thousandths of a percent, as a fraction
+    sfn cropOf:double (v:string) {
+        if ((strlen v) == 0) {
+            return 0.0
+        }
+        def n@(optional):int (str2int (trim v))
+        if (null? n) {
+            return 0.0
+        }
+        return ((to_double (unwrap n)) / 100000.0)
+    }
+
     fn close:void () {
         pkg.close()
     }
@@ -1241,6 +1253,15 @@ class PptxParser {
                         shape.imageBytes = (pkg.readBinary(shape.imagePart))
                     }
                 }
+            }
+            ; the part shown: `a:srcRect`, thousandths of a percent a side
+            def sr@(optional):XmlNode (bf.firstChild("srcRect"))
+            if (!null? sr) {
+                def r:XmlNode (unwrap sr)
+                shape.cropL = (PptxParser.cropOf((r.attr("l"))))
+                shape.cropT = (PptxParser.cropOf((r.attr("t"))))
+                shape.cropR = (PptxParser.cropOf((r.attr("r"))))
+                shape.cropB = (PptxParser.cropOf((r.attr("b"))))
             }
         }
         def spPr@(optional):XmlNode (pic.firstChild("spPr"))

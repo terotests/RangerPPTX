@@ -20,6 +20,7 @@ Import "../src/PptxFromEvg.rgr"
 Import "../src/PptxToEvg.rgr"
 Import "pkg:evg/EVGElement.rgr"
 Import "../api/PptxApi.rgr"
+Import "../src/PptxWriter.rgr"
 
 class PptxFromEvgTest {
     def passed:int 0
@@ -94,6 +95,7 @@ class PptxFromEvgTest {
         this.testWhatCannotBeSaid()
         this.testRoundTripThroughEvg()
         this.testCustomGeometryReadsBack()
+        this.testCroppedPicture()
         print ""
         print ("passed = " + (to_string passed) + "  failed = " + (to_string failed))
         if (failed == 0) {
@@ -101,6 +103,51 @@ class PptxFromEvgTest {
         } {
             print "SOME FAILED"
         }
+    }
+
+    ; --- a picture shown in part ----------------------------------------------
+    ; A display list's crop window (a gallery's `fit=cover`) is the picture's
+    ; `a:srcRect`: the same part of the pixels, as a cut off each side.
+    fn testCroppedPicture:void () {
+        print "--- a cropped picture ---"
+        def v (new Vfs())
+        def mem (new VfsMemory())
+        def blob (new VfsBlob())
+        def buf:buffer (buffer_alloc 4)
+        blob.bytes = buf
+        blob.contentType = "image/png"
+        blob.pixelW = 400
+        blob.pixelH = 100
+        mem.put("/p.png" blob)
+        v.mount("/" mem)
+        def dl (new EVGDisplayList())
+        def c (new EVGDrawCmd())
+        c.kind = 2
+        c.x = 10.0
+        c.y = 10.0
+        c.w = 100.0
+        c.h = 100.0
+        c.src = "/p.png"
+        c.hasCrop = true
+        c.cropX = 0.5
+        c.cropY = 0.0
+        c.cropW = 0.25
+        c.cropH = 1.0
+        push dl.cmds c
+        def conv (new PptxFromEvg())
+        conv.setImages(v)
+        def group:PptxShape (conv.build(dl 0.0 0.0))
+        this.check("one picture" ((array_length group.children) == 1))
+        def pic:PptxShape (itemAt group.children 0)
+        this.check("cut from the left" (PptxFromEvgTest.near(pic.cropL 0.5)))
+        this.check("cut from the right" (PptxFromEvgTest.near(pic.cropR 0.25)))
+        this.check("nothing off the top" (PptxFromEvgTest.near(pic.cropT 0.0)))
+        def xml:string (PptxWriter.srcRectXml(pic))
+        this.check("a:srcRect l" ((indexOf xml "l=\"50000\"") > 0))
+        this.check("a:srcRect r" ((indexOf xml "r=\"25000\"") > 0))
+        this.check("no t for nothing cut" ((indexOf xml " t=") < 0))
+        def whole (new PptxShape())
+        this.check("a whole picture has none" ((strlen (PptxWriter.srcRectXml(whole))) == 0))
     }
 
     ; --- one of every kind ----------------------------------------------------

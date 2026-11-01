@@ -141,7 +141,7 @@ class SaRenderTest {
         def inner:double ((sh.width - sh.text.insetL) - sh.text.insetR)
         c.ok(("no line is wider, in that font, than the box (" + (to_string widest) + " <= " + (to_string inner) + ")") (widest <= (inner + 0.01)))
         ; the painter broke the lines where the engine counted them
-        def t (SaText.new_())
+        def t (new SaText())
         t.measure = r.measure
         def lines:int (t.wrapOne(run.text run.fontSizePt inner false))
         c.eqInt("as many lines as the engine fitted" (array_length cmds) lines)
@@ -153,13 +153,185 @@ class SaRenderTest {
         c.eqStr("and names its family" (hc.measure.drawnFamily("" false false)) "Wide")
     }
 
+    ; A sub-item's bullet hangs in front of its text, never over its first
+    ; letter (vList2 and hList1 drew "•" on top of every sub-item).
+    sfn bulletsClear:void (c:SaKit lay:string) {
+        def r:SaResult (SaEngine.layout((SaKit.twoLevels(lay 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r.shape (SaRenderTest.palette()))
+        def out (new EVGDisplayList())
+        SaRender.drawWith(out r.shape 0.0 0.0 r.measure)
+        def cmds:[EVGDrawCmd] (SaRenderTest.texts(out))
+        def m:PptxToEvg (SaRender.painter())
+        def bullets:int 0
+        def clear:int 0
+        def i:int 0
+        while ((i + 1) < (array_length cmds)) {
+            def b:EVGDrawCmd (itemAt cmds i)
+            if ((indexOf b.text "•") == 0) {
+                bullets = (bullets + 1)
+                def t:EVGDrawCmd (itemAt cmds (i + 1))
+                def bw:double (m.measure.widthOf("•" b.fontSize false false))
+                if ((b.x + bw) <= (t.x + 0.01)) {
+                    clear = (clear + 1)
+                }
+            }
+            i = (i + 1)
+        }
+        c.eqInt((lay + ": a bullet per sub-item") bullets 6)
+        c.eqInt((lay + ": every bullet left of its text") clear 6)
+    }
+
+    ; hList1 on a dark slide: light 1 is the dark paper, dark 1 the light
+    ; ink, and the columns' pale tint of the accent carried light text.
+    sfn testReadable:void (c:SaKit) {
+        print "-- text reads on its fill, on a dark slide too --"
+        def dark (new SaPalette())
+        dark.set("accent1" "#E07A2F")
+        dark.set("lt1" "#0B1030")
+        dark.set("dk1" "#E8ECFF")
+        def r:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r.shape dark)
+        def body:PptxShape (itemAt (SaKit.shapes(r "desTx")) 0)
+        def para:PptxParagraph (itemAt body.text.paragraphs 0)
+        def run:PptxTextRun (itemAt para.runs 0)
+        def fill:string (SaRender.over(body.fill.srgb body.fill.alpha "0B1030"))
+        c.ok(("before: pale text on the pale column (" + (to_string (SaRender.contrast(run.color.srgb fill))) + ")") ((SaRender.contrast(run.color.srgb fill)) < 3.0))
+        SaRender.keepReadable(r.shape dark "0B1030")
+        c.ok(("after: it reads (" + (to_string (SaRender.contrast(run.color.srgb fill))) + ")") ((SaRender.contrast(run.color.srgb fill)) >= 4.5))
+        c.eqStr("in the dark of the two" run.color.srgb "0B1030")
+        ; the same diagram on a light slide is left as it is
+        def r2:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r2.shape (SaRenderTest.palette()))
+        def before:string (SaRenderTest.runColours(r2.shape))
+        SaRender.keepReadable(r2.shape (SaRenderTest.palette()) "FFFFFF")
+        c.eqStr("text that reads is not touched" (SaRenderTest.runColours(r2.shape)) before)
+        c.near("contrast: black on white" (SaRender.contrast("000000" "FFFFFF")) 21.0)
+        ; lProcess2's heading has no fill of its own: it sits on the pale
+        ; column, not on the dark slide
+        def r3:SaResult (SaEngine.layout((SaKit.twoLevels("lProcess2" 3 2)) (new SaOptions()) 480.0 270.0))
+        SaRender.resolveAll(r3.shape dark)
+        SaRender.keepReadable(r3.shape dark "0B1030")
+        def col:PptxShape (itemAt (SaKit.shapes(r3 "bg")) 0)
+        def head:PptxShape (itemAt (SaKit.shapes(r3 "header")) 0)
+        c.ok("the heading has no fill" ((SaRender.filled(head)) == false))
+        def hp:PptxParagraph (itemAt head.text.paragraphs 0)
+        def hr:PptxTextRun (itemAt hp.runs 0)
+        def colFill:string (SaRender.over(col.fill.srgb col.fill.alpha "0B1030"))
+        c.ok(("the heading reads on its column (" + (to_string (SaRender.contrast(hr.color.srgb colFill))) + ")") ((SaRender.contrast(hr.color.srgb colFill)) >= 4.5))
+    }
+
+    ; Text beside a shape is on the slide, not on the shape: what is under it
+    ; is the shape's outline, not its box. arrow2's labels on a dark slide
+    ; were judged against the pale arrow whose box held them, and set dark
+    ; on the dark slide.
+    sfn testOutline:void (c:SaKit) {
+        print "-- text judged by the outline under it, not the box --"
+        def dark (new SaPalette())
+        dark.set("accent1" "#E07A2F")
+        dark.set("lt1" "#0B1030")
+        dark.set("dk1" "#E8ECFF")
+        def r:SaResult (SaEngine.layout((SaKit.flat("arrow2" 5)) (new SaOptions()) 960.0 400.0))
+        SaRender.resolveAll(r.shape dark)
+        SaRender.keepReadable(r.shape dark "0B1030")
+        def reads:int 0
+        def i:int 0
+        while (i < (array_length r.shape.children)) {
+            def l:PptxShape (itemAt r.shape.children i)
+            if ((indexOf l.name "label") == 0) {
+                def para:PptxParagraph (itemAt l.text.paragraphs 0)
+                def run:PptxTextRun (itemAt para.runs 0)
+                if ((SaRender.contrast(run.color.srgb "0B1030")) >= 4.5) {
+                    reads = (reads + 1)
+                }
+            }
+            i = (i + 1)
+        }
+        c.eqInt("every arrow2 label reads on the dark slide" reads 5)
+        ; an ellipse's box corner is not the ellipse
+        def geo (new OfficePresetShapes())
+        geo.load((SaPresets.text()))
+        def e (new PptxShape())
+        e.x = 0.0
+        e.y = 0.0
+        e.width = 100.0
+        e.height = 100.0
+        e.preset = "ellipse"
+        c.ok("the middle of a circle is in it" (SaRender.covers(e 50.0 50.0 geo)))
+        c.ok("the corner of its box is not" ((SaRender.covers(e 5.0 5.0 geo)) == false))
+        e.preset = "rect"
+        c.ok("a rectangle's corner is" (SaRender.covers(e 5.0 5.0 geo)))
+        ; a quarter turned: the wedge's corner moves with it
+        def w (new PptxShape())
+        w.x = 0.0
+        w.y = 0.0
+        w.width = 100.0
+        w.height = 100.0
+        w.preset = "pieWedge"
+        def before:boolean (SaRender.covers(w 90.0 90.0 geo))
+        w.rotation = 180.0
+        def after:boolean (SaRender.covers(w 90.0 90.0 geo))
+        c.ok("a turned shape is tested turned" (before != after))
+    }
+
+    ; simple3 … simple5 cast a shadow; black, on a dark slide, is not seen.
+    sfn testShadows:void (c:SaKit) {
+        print "-- a style's shadow shows on a dark slide --"
+        def dark (new SaPalette())
+        dark.set("accent1" "#E07A2F")
+        dark.set("lt1" "#0B1030")
+        dark.set("dk1" "#E8ECFF")
+        def o (new SaOptions())
+        o.style = "simple5"
+        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) o 480.0 270.0))
+        SaRender.resolveAll(r.shape dark)
+        def node:PptxShape (itemAt (SaKit.shapes(r "node")) 0)
+        c.ok("simple5 has a shadow" node.shadow.isSet)
+        c.eqStr("black" node.shadow.color.srgb "000000")
+        SaRender.shadowsOn(r.shape dark "0B1030")
+        c.eqStr("on a dark slide, in the ink" node.shadow.color.srgb "E8ECFF")
+        def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) o 480.0 270.0))
+        SaRender.resolveAll(r2.shape (SaRenderTest.palette()))
+        SaRender.shadowsOn(r2.shape (SaRenderTest.palette()) "FFFFFF")
+        def n2:PptxShape (itemAt (SaKit.shapes(r2 "node")) 0)
+        c.eqStr("on a light one, black" n2.shadow.color.srgb "000000")
+    }
+
+    sfn runColours:string (s:PptxShape) {
+        def out:string ""
+        def p:int 0
+        while (p < (array_length s.text.paragraphs)) {
+            def para:PptxParagraph (itemAt s.text.paragraphs p)
+            def r:int 0
+            while (r < (array_length para.runs)) {
+                def run:PptxTextRun (itemAt para.runs r)
+                out = (out + run.color.srgb + ";")
+                r = (r + 1)
+            }
+            p = (p + 1)
+        }
+        def i:int 0
+        while (i < (array_length s.children)) {
+            out = (out + (SaRenderTest.runColours((itemAt s.children i))))
+            i = (i + 1)
+        }
+        return out
+    }
+
+    sfn testBullets:void (c:SaKit) {
+        print "-- bullets beside their text --"
+        SaRenderTest.bulletsClear(c "vList2")
+        SaRenderTest.bulletsClear(c "hList1")
+    }
+
     sfn testFile:void (c:SaKit) {
         print "-- a file in a deck --"
         def xml:string (SaKit.flat("process1" 2))
         c.ok("its own type" (SaFile.isSmartArt("x.bin" (SaFile.TYPE()) "")))
         c.ok(".xml with a data model in it" (SaFile.isSmartArt("media/Steps.XML" "" xml)))
         c.ok(".xml sent as application/xml" (SaFile.isSmartArt("a.xml" "application/xml" xml)))
-        c.ok(".xml that is something else" ((SaFile.isSmartArt("a.xml" "" "<svg/>")) == false))
+        c.ok("SVG named .xml stays a picture" ((SaFile.isSmartArt("a.xml" "" "<svg/>")) == false))
+        ; another kind of XML is taken, so the engine says why it is not one
+        c.ok(".xml that is something else is refused, not drawn blank" (SaFile.isSmartArt("a.xml" "" "<ostoslista><tuote>maito</tuote></ostoslista>")))
         c.ok("a picture named .xml" ((SaFile.isSmartArt("a.xml" "image/png" xml)) == false))
         c.ok("a data model not named .xml" ((SaFile.isSmartArt("a.txt" "" xml)) == false))
         def utf:string (EVGCodepoint.encodeUtf8("Hämeenlinna – Ω"))
@@ -167,6 +339,15 @@ class SaRenderTest {
         c.eqStr("its text is UTF-8" (SaFile.textOf(bytes)) "Hämeenlinna – Ω")
         c.eqStr("nothing is nothing" (SaFile.textOf((buffer_from_string ""))) "")
         c.ok("a head, not the whole file" ((strlen (SaFile.headOf((buffer_from_string (SaKit.flat("process1" 200)))))) <= 2048))
+        def big:string (SaKit.flat("process1" 200))
+        c.ok("whose data model it names" ((indexOf (SaFile.headOf((buffer_from_string big))) "dataModel") >= 0))
+        ; a character across the 2048th byte is left out, not cut in two
+        def pad:string ""
+        while ((strlen pad) < 2047) {
+            pad = (pad + "a")
+        }
+        def cut:string (SaFile.headOf((buffer_from_string (EVGCodepoint.encodeUtf8((pad + "äöå"))))))
+        c.eqStr("cut before a character, not inside it" cut pad)
         c.eqInt("16:9, wider than any column" ((SaFile.naturalW()) * 9) ((SaFile.naturalH()) * 16))
         ; the whole road: bytes in, a drawing out, the Finnish intact
         def fi:string (SaKit.data("process1" (SaKit.pt("a" "Hämeenlinna")) (SaKit.cx("0" "a"))))
@@ -205,6 +386,10 @@ class SaRenderTest {
         SaRenderTest.testPaint(c)
         SaRenderTest.testHostFonts(c)
         SaRenderTest.testFile(c)
+        SaRenderTest.testBullets(c)
+        SaRenderTest.testReadable(c)
+        SaRenderTest.testOutline(c)
+        SaRenderTest.testShadows(c)
         SaRenderTest.testPresets(c)
         c.finish("SaRenderTest")
     }

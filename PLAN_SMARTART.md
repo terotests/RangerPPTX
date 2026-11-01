@@ -384,10 +384,30 @@ Sliqtly takes a whole-diagram file like the data alone
 through the MCP server, reported as a diagram and read back from storage.
 
 Not done in phase 4: the 3-D quick styles (polished, inset, cartoon, …);
-pictures in bList2; the oracle comparison. Several group 3 layouts are
+pictures in bList2 (drawn as text cells); the oracle comparison. Several group 3 layouts are
 drawn from what PowerPoint shows rather than its definitions (the Venn
 labels sit in each circle's middle; Upward Arrow's points follow a fixed
 curve); the oracle will say how close they are.
+
+## Test-deck fixes (2026-10-07)
+
+From Tero's 32-slide test deck:
+
+- Items a layout has no place for (gear1's fourth, matrix1's fifth, an
+  assistant in radial1) are named in a warning: `SaEngine.notShown`.
+- matrix1 with four flat items draws them as the quadrants, no title.
+- Text on a shape is judged against what is under each part of the text
+  box, through the preset's own outline (`SaRender.readableIn`, `covers`):
+  arrow2's labels under the swoosh turn light on a dark slide.
+- simple3–5 shadows on a dark slide are cast in the ink (`shadowsOn`).
+- Round layouts keep their aspect (`ar` composite param, `keepAspect`) and
+  fill the height: gear1, funnel1 (balls as big as the mouth), cycle2,
+  radial1, cycle4 (labels in the inscribed square of each quarter).
+- bList2 has no picture circles; the text takes the cell.
+- A wrapping row in a wide, low frame is tried taller (×1.4, 1.8, 2.4)
+  when its words break; kept when the least font grows 12 % without new
+  warnings. A taller chevron keeps its point depth. One long word still
+  limits the size.
 
 ## Phases
 
