@@ -109,18 +109,16 @@ tests, MFilesAPI, Sliqtly and RangerMarkdown.
   `pptx_resolver.rs`, `pptx_text_layout.rs`, `pptx_chart_vela.rs`,
   `pptx_to_evg.rs`; `src/pptx_geom.rs` is PptxGeom.
 - The editor is a second crate, `edit/src/lib.rs` (`edit/Cargo.toml`, depends
-  on the core crate as `pptx`): PptxView, PptxTextEdit, PptxWriter,
+  on the core crate as `pptx`): PptxEdit, PptxView, PptxTextEdit, PptxWriter,
   PptxFromEvg, PptxCss, PptxVegaShapes, PptxShapeInk, PptxA11y, PptxStripUi
   and `api/` PptxApi and PptxChartApi. `edit/src/rgr.rs` imports its `.rgr`
   classes.
 - Still `.rgr`:
-  - PptxEdit: it uses the generic `OfficeHistory@(T)`, and a generic `.rgr`
-    class used from Rust syntax crashes Ranger.
   - `api/PptxRenderApi.rgr`: it imports `pdf_writer` (EVGPDFRenderer) and
     the PNG encoder, which declare classes the crate already imports.
-  - PptxApp, PptxChrome, PptxStripView and the tools (`pptx_demo`,
-    `pptx_editor_shots`, ...): they build on PptxEditor and were not
-    converted.
+  - PptxApp and PptxStripView subclass `.rgr` classes, which the Rust
+    frontend has no form for; PptxChrome and the tools (`pptx_demo`,
+    `pptx_editor_shots`, ...) were not converted.
 - `src/rgr.rs` imports the `.rgr` classes the crate uses (EVG, `xml`, `ooxml`,
   `office`, `vela`) once. `src/PptxHost.rgr` is what Rust syntax has no form
   for: reading a file (`buffer_read_file`).
@@ -138,7 +136,8 @@ tests, MFilesAPI, Sliqtly and RangerMarkdown.
 
 It needs a Ranger with Ranger PR #1250 (`Vec<u8>` as `buffer`) and #1251
 (`Rc::ptr_eq`, `&mut Vec` parameters of associated functions), and #1253
-(two crates in one program) for the editor crate.
+(two crates in one program) and #1256 (generic `.rgr` classes such as
+`OfficeHistory@(T)`) for the editor crate.
 
 ## Fidelity (current)
 

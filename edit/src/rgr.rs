@@ -14,6 +14,7 @@ mod rgr {
     ranger::import_rgr!("../../../game_engine/ui/UIContext");
     ranger::import_rgr!("../../../game_engine/ui/UITextRenderer");
     ranger::import_rgr!("../../../office/assets/OfficeAsset");
+    ranger::import_rgr!("../../../office/editor/OfficeHistory");
     ranger::import_rgr!("../../../office/text/OfficeCaretMotion");
     ranger::import_rgr!("../../../vela/src/VlShape");
     ranger::import_rgr!("../../../vfs/src/Vfs");

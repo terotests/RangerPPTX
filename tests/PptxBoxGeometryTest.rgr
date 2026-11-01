@@ -517,7 +517,7 @@ class PptxBoxGeometryTest {
         if ((array_length slide.shapes) == 0) {
             return
         }
-        def editor (new PptxEditor())
+        def editor (PptxEditor.new_())
         def names:[string] ([] _:string ( "Title 1" "Content 2" "OffOnly" "NoXfrm" "ZeroExt" "Stated" ))
         def i:int 0
         while (i < (array_length names)) {

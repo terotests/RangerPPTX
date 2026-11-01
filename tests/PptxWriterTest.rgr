@@ -358,7 +358,7 @@ class PptxWriterTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         def id:int (ed.addShapeAt("roundRect" 120.0 200.0 300.0 90.0))
         ed.setFillHex("C00000")
@@ -862,7 +862,7 @@ class PptxWriterTest {
         second.width = 720.0
         second.height = 540.0
         push pres.slides second
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         ed.setNotes("Open with the numbers\nThen the demo")
@@ -898,7 +898,7 @@ class PptxWriterTest {
             push pres.slides sl
             k = (k + 1)
         }
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(1)
         ed.setNotes("Only the middle one")
@@ -931,7 +931,7 @@ class PptxWriterTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(1)
         ed.setNotes("Said out loud, not on the slide")
@@ -1018,7 +1018,7 @@ class PptxWriterTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.applyPalette("berry")
         def wanted:string (ed.themeColor("accent1"))
@@ -1064,7 +1064,7 @@ class PptxWriterTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ; Touch slide 2 and nothing else.
         ed.gotoSlide(1)
@@ -1194,7 +1194,7 @@ class PptxWriterTest {
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def before:int (pres.slideCount())
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         ed.duplicateSlide()
@@ -1232,7 +1232,7 @@ class PptxWriterTest {
         def p3 (PptxParser.new_())
         p3.openParts("gallery/pptx/bin" "over-multi.pptx")
         def pres3:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p3.parsePresentation())))
-        def ed3 (new PptxEditor())
+        def ed3 (PptxEditor.new_())
         ed3.attach(pres3)
         ed3.gotoSlide(1)
         def goneName:string ((itemAt pres3.slides 1).partPath)
@@ -1264,7 +1264,7 @@ class PptxWriterTest {
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         this.check("slides come back with ids" (((itemAt pres.slides 0).slideId) > 0))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         ed.addSection("Opening")
@@ -1288,7 +1288,7 @@ class PptxWriterTest {
         if ((array_length back.sections) == 2) {
             this.check("with their names" (((itemAt back.sections 0).name) == "Opening"))
             this.check("and the second one too" (((itemAt back.sections 1).name) == "The rest"))
-            def ed2 (new PptxEditor())
+            def ed2 (PptxEditor.new_())
             ed2.attach(back)
             this.check("slide one is in the first section" ((ed2.sectionOfSlide(0)) == 0))
             if ((back.slideCount()) > 1) {
@@ -1320,7 +1320,7 @@ class PptxWriterTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         def master:string ((itemAt pres.slides 0).masterPart)
@@ -1374,7 +1374,7 @@ class PptxWriterTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(1)
         this.check("page numbers can be turned on" (ed.showSlideNumbers(true)))
@@ -1392,7 +1392,7 @@ class PptxWriterTest {
             return
         }
         def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
-        def ed2 (new PptxEditor())
+        def ed2 (PptxEditor.new_())
         ed2.attach(back)
         ed2.gotoSlide(1)
         this.check("the footer came back" ((ed2.footerText()) == "Q3 review — internal"))
@@ -1434,7 +1434,7 @@ class PptxWriterTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ; Touch both slides so both parts are rewritten from the model rather
         ; than copied through — otherwise the check proves nothing.
@@ -1473,7 +1473,7 @@ class PptxWriterTest {
             this.check("it fades" (step.kind == "fade"))
             ; The file renumbers shapes on every save, so the step has to name
             ; the shape it was about and not the number it had before.
-            def ed2 (new PptxEditor())
+            def ed2 (PptxEditor.new_())
             ed2.attach(back)
             ed2.gotoSlide(1)
             def found@(optional):PptxShape (ed2.findShape(step.editId))
@@ -1585,7 +1585,7 @@ class PptxWriterTest {
         }
 
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation(raw))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         def shapes:[PptxShape] (ed.editableShapes())

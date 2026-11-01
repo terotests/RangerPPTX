@@ -273,7 +273,7 @@ class PptxTextEditTest {
         push box.text.paragraphs para
         push slide.shapes box
         push pres.slides slide
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         def id:int box.editId
 
@@ -783,7 +783,7 @@ class PptxTextEditTest {
         sh.text = (this.linkAndProse())
         push slide.shapes sh
         push pres.slides slide
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.select(sh.editId)
 

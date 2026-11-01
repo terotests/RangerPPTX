@@ -283,7 +283,7 @@ class PptxApp {
     def fileRequest:string ""
     ; Editing. The viewer is the default and the editor is a mode on top of
     ; it — a deck you opened to read cannot be changed by a stray click.
-    def editor:PptxEditor (new PptxEditor())
+    def editor:PptxEditor (PptxEditor.new_())
     ; Pictures the host handed in, identified by their content. Nothing here
     ; is used for drawing — it is what stops one inserted file from being
     ; mistaken for another because they were called the same thing.
