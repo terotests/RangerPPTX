@@ -215,7 +215,7 @@ class PptxBench {
 
         ; --- saving ------------------------------------------------------------
         def tG:double (wall_clock_ms)
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "bench-out.pptx")
         def tH:double (wall_clock_ms)
         PptxBench.report("save the deck" (tH - tG))

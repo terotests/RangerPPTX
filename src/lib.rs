@@ -4,7 +4,7 @@
 
 pub mod smartart;
 pub mod text;
-mod rgr;
+pub mod rgr;
 pub mod pptx_geom;
 pub mod pptx_model;
 pub mod pptx_resolver;

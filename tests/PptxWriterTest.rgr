@@ -166,7 +166,7 @@ class PptxWriterTest {
         push second.shapes grp
         push pres.slides second
 
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "roundtrip.pptx")
 
         def parser (PptxParser.new_())
@@ -247,7 +247,7 @@ class PptxWriterTest {
             return
         }
         def before:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(before "gallery/pptx/bin" ("rt-" + name))
         parser.close()
 
@@ -325,7 +325,7 @@ class PptxWriterTest {
             i = (i + 1)
         }
         this.check("the deck we read inherits chrome" (inheritedBefore > 0))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(before "gallery/pptx/bin" "rt-flat.pptx")
         parser.close()
         def p2 (PptxParser.new_())
@@ -364,7 +364,7 @@ class PptxWriterTest {
         ed.setFillHex("C00000")
         ed.setShapeText(id "Written by the editor")
         ed.moveSelection(20.0 10.0)
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "edited.pptx")
         parser.close()
 
@@ -421,7 +421,7 @@ class PptxWriterTest {
         def moved:PptxShape (itemAt slide.shapes 0)
         moved.x = (moved.x + 12.0)
         slide.dirty = true
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "inherit-29.pptx")
         parser.close()
 
@@ -482,7 +482,7 @@ class PptxWriterTest {
         def moved:PptxShape (itemAt slide.shapes 0)
         moved.x = (moved.x + 8.0)
         slide.dirty = true
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "inherit-20.pptx")
         parser.close()
 
@@ -565,7 +565,7 @@ class PptxWriterTest {
         push slide.shapes c
         push pres.slides slide
 
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "two-logos.pptx")
         this.check("the two different pictures are two entries" ((array_length writer.media) == 2))
 
@@ -620,7 +620,7 @@ class PptxWriterTest {
         push slide.shapes a
         push pres.slides slide
 
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "svg-picture.pptx")
         this.check("the PNG and the SVG are two media entries" ((array_length writer.media) == 2))
 
@@ -695,7 +695,7 @@ class PptxWriterTest {
             return
         }
         def before:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(before "gallery/pptx/bin" "rt-images.pptx")
         this.check("the media were collected" ((array_length writer.media) > 0))
         parser.close()
@@ -755,7 +755,7 @@ class PptxWriterTest {
         b.fill = (PptxColor.srgbOf("ED7D31"))
         push slide.shapes b
         push pres.slides slide
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "locks.pptx")
         def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "locks.pptx"))
@@ -811,7 +811,7 @@ class PptxWriterTest {
         b.fill = (PptxColor.srgbOf("ED7D31"))
         push slide.shapes b
         push pres.slides slide
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "flips.pptx")
         def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "flips.pptx"))
@@ -866,7 +866,7 @@ class PptxWriterTest {
         ed.attach(pres)
         ed.gotoSlide(0)
         ed.setNotes("Open with the numbers\nThen the demo")
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "notes.pptx")
         def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "notes.pptx"))
@@ -902,7 +902,7 @@ class PptxWriterTest {
         ed.attach(pres)
         ed.gotoSlide(1)
         ed.setNotes("Only the middle one")
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "notes-middle.pptx")
         def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "notes-middle.pptx"))
@@ -935,7 +935,7 @@ class PptxWriterTest {
         ed.attach(pres)
         ed.gotoSlide(1)
         ed.setNotes("Said out loud, not on the slide")
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-notes.pptx")
         parser.close()
         def p2 (PptxParser.new_())
@@ -972,7 +972,7 @@ class PptxWriterTest {
         slide.width = 960.0
         slide.height = 540.0
         push pres.slides slide
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "untitled.pptx")
 
         def p (PptxParser.new_())
@@ -1022,7 +1022,7 @@ class PptxWriterTest {
         ed.attach(pres)
         ed.applyPalette("berry")
         def wanted:string (ed.themeColor("accent1"))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "themed.pptx")
         parser.close()
         def p2 (PptxParser.new_())
@@ -1081,7 +1081,7 @@ class PptxWriterTest {
         this.check("the edited slide is marked" slide2.dirty)
         this.check("and the others are not" (slide1.dirty == false))
 
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-business.pptx")
         PptxWriter.markSaved(pres)
         this.check("saving clears the marks" (slide2.dirty == false))
@@ -1200,7 +1200,7 @@ class PptxWriterTest {
         ed.duplicateSlide()
         def id:int (ed.addShapeAt("roundRect" 60.0 60.0 200.0 80.0))
         ed.setShapeText(id "On a slide that did not exist")
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-multi.pptx")
         parser.close()
 
@@ -1237,7 +1237,7 @@ class PptxWriterTest {
         ed3.gotoSlide(1)
         def goneName:string ((itemAt pres3.slides 1).partPath)
         ed3.deleteSlide()
-        def w3 (new PptxWriter())
+        def w3 (PptxWriter.new_())
         w3.saveOver(pres3 p3.pkg "gallery/pptx/bin" "over-multi-less.pptx")
         p3.close()
         def out3 (new OpcPackage())
@@ -1273,7 +1273,7 @@ class PptxWriterTest {
             ed.addSection("The rest")
         }
         this.check("two sections were made" ((ed.sectionCount()) == 2))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-sections.pptx")
         parser.close()
 
@@ -1297,7 +1297,7 @@ class PptxWriterTest {
             ; Taking every section away leaves a file that still opens.
             ed2.removeSection(1)
             ed2.removeSection(0)
-            def w2 (new PptxWriter())
+            def w2 (PptxWriter.new_())
             w2.saveOver(back p2.pkg "gallery/pptx/bin" "over-unsectioned.pptx")
             def p3 (PptxParser.new_())
             if (p3.openParts("gallery/pptx/bin" "over-unsectioned.pptx")) {
@@ -1333,7 +1333,7 @@ class PptxWriterTest {
         ed.setShapeText(id "Drawn on the master")
         ed.exitSheet()
         this.check("and editing it ends" ((ed.isEditingSheet()) == false))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-master.pptx")
         parser.close()
 
@@ -1381,7 +1381,7 @@ class PptxWriterTest {
         this.check("and they read as on" (ed.slideNumbersShown()))
         this.check("a footer can be set" (ed.setFooter("Q3 review — internal")))
         this.check("and reads back" ((ed.footerText()) == "Q3 review — internal"))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-footer.pptx")
         parser.close()
 
@@ -1449,7 +1449,7 @@ class PptxWriterTest {
         def sh:PptxShape (itemAt shapes 0)
         ed.select(sh.editId)
         ed.animateSelection("fade" 0.6)
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-show.pptx")
         parser.close()
 
@@ -1604,7 +1604,7 @@ class PptxWriterTest {
         this.check("the edit marked the slide" slide.dirty)
         this.check("and history kept the unmodelled children" ((array_length slide.opaque) == 3))
 
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-unmodelled.pptx")
         def out (new OpcPackage())
         if ((out.openParts("gallery/pptx/bin" "over-unmodelled.pptx")) == false) {
@@ -1722,7 +1722,7 @@ class PptxWriterTest {
         def j2:[int] ([] _:int ( 7 ))
         push s2.shapes (this.linkBox(w2 u2 j2))
         push pres.slides s2
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "links.pptx")
         def pkg (new OpcPackage())
         if ((pkg.openParts("gallery/pptx/bin" "links.pptx")) == false) {

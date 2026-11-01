@@ -44,7 +44,7 @@ class PptxRenderer {
     ; The slide painter — the same one the desktop editor and the browser build
     ; draw with, so a PNG from here and a screenshot of the editor are the same
     ; picture.
-    def view:PptxView (new PptxView())
+    def view:PptxView (PptxView.new_())
     def ready:boolean false
     def error:string ""
     ; Whether the last PDF carried the deck's pictures. True since

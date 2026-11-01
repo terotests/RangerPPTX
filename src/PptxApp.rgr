@@ -245,7 +245,7 @@ class PptxApp {
     def odpThumbW:int 0
     def resolver:PptxResolver (PptxResolver.new_())
     def presentation:PptxPresentation (PptxPresentation.new_())
-    def view:PptxView (new PptxView())
+    def view:PptxView (PptxView.new_())
     def converter:PptxToEvg (PptxToEvg.new_())
     def index:int 0
     def W:int 960
@@ -276,7 +276,7 @@ class PptxApp {
     ; The five bands the strip's theme does not cover. See PptxChromeTheme.
     def skin:PptxChromeTheme (new PptxChromeTheme)
     ; The strip, as a component tree. See PptxStripUi.
-    def stripUi:PptxStripUi (new PptxStripUi)
+    def stripUi:PptxStripUi (PptxStripUi.new_())
     def toolbarH:int 30
     def statusH:int 22
     def status:string ""
@@ -4592,7 +4592,7 @@ class PptxApp {
         if (loaded == false) {
             return false
         }
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         if (parser.pkg.isOpen) {
             writer.saveOver(presentation parser.pkg path name)
         } {
@@ -4606,7 +4606,7 @@ class PptxApp {
 
     ; The same package as bytes, for a host with no file system.
     fn deckBytes:buffer () {
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         if (loaded == false) {
             return (buffer_alloc 0)
         }

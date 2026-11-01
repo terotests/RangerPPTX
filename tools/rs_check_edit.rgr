@@ -1,0 +1,9 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; Compiles the editor crate (edit/src/lib.rs) with the core crate: tools/rs_check.sh edit.
+Import "../edit/src/lib.rs"
+
+class RsCheckEdit {
+    sfn main@(main):void () {
+        print "ok"
+    }
+}

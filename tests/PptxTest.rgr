@@ -660,7 +660,7 @@ class PptxTest {
             ; `false` is "do not write down what the master would have said"
             ; — this checks the break, not the inheritance, and the flat form
             ; would bury it in resolved properties.
-            def brXml:string (PptxWriter.paraXml(brPara false false (new PptxRunLinks())))
+            def brXml:string (PptxWriter.paraXml(brPara false false (PptxRunLinks.new_())))
             this.check("and it is written back as a br" ((indexOf brXml "<a:br/>") > 0))
             this.check("not as whitespace in a run" ((indexOf brXml ">\n<") < 0))
         }
@@ -956,7 +956,7 @@ class PptxTest {
 
         ; And it survives a save: writing nothing where a run said "not bold"
         ; lets the placeholder's weight back in on the next open.
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-unbold.pptx")
         def again (PptxParser.new_())
         if (again.openParts("gallery/pptx/bin" "over-unbold.pptx")) {
