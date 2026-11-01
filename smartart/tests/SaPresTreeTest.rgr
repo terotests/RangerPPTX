@@ -27,7 +27,7 @@ class SaPresTreeTest {
     }
 
     sfn iter:SaIter (axis:string ptType:string) {
-        def it (new SaIter())
+        def it (SaIter.new_())
         def a:[string] (SaLayoutReader.words(axis))
         def p:[string] (SaLayoutReader.words(ptType))
         def i:int 0
@@ -93,7 +93,7 @@ class SaPresTreeTest {
         c.eqStr("a transition's parent is its connection's source" (SaPresTreeTest.join(t (t.walk(pcB.sibTransId (SaPresTreeTest.iter("par" "all")))))) "doc")
         c.eqStr("two steps: children of children" (SaPresTreeTest.w(t "0" "ch ch" "node node")) "a1 a2 b1 c1")
         c.eqStr("none is the point itself" (SaPresTreeTest.w(t "b" "none" "all")) "b")
-        c.eqStr("no axis at all: the point, if it is of the type" (SaPresTreeTest.join(t (t.walk("b" (new SaIter()))))) "b")
+        c.eqStr("no axis at all: the point, if it is of the type" (SaPresTreeTest.join(t (t.walk("b" (SaIter.new_()))))) "b")
     }
 
     sfn cnt:SaIter (it:SaIter n:int) {

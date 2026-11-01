@@ -50,7 +50,7 @@ class SaDataTest {
     sfn pt:SaPoint (m:SaModel id:string) {
         def p@(optional):SaPoint (m.pointById(id))
         if (null? p) {
-            return (new SaPoint())
+            return (SaPoint.new_())
         }
         return (unwrap p)
     }
