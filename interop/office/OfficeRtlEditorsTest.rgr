@@ -172,7 +172,7 @@ class OfficeRtlEditorsTest {
 
     fn testPptx:void () {
         print "--- PowerPoint ---"
-        def conv (new PptxToEvg)
+        def conv (PptxToEvg.new_())
         def dl (new EVGDisplayList)
         conv.pushTextCmd(dl (OfficeRtlEditorsTest.source()) 10.0 20.0 18.0
             (EVGColor.rgb(0 0 0)) "Calibri" 0.0 "left" 200.0 false 0.0)
@@ -206,12 +206,12 @@ class OfficeRtlEditorsTest {
     ; made it look like a font problem when it was a layout one.
     fn testPptxBody:void () {
         print "--- and a slide's own text body ---"
-        def conv (new PptxToEvg)
-        def shape (new PptxShape())
+        def conv (PptxToEvg.new_())
+        def shape (PptxShape.new_())
         shape.width = 400.0
         shape.height = 80.0
         shape.hasText = true
-        def para (new PptxParagraph())
+        def para (PptxParagraph.new_())
         para.rtl = 1
         def src:string (OfficeRtlEditorsTest.source())
         push para.runs (OfficeRtlEditorsTest.arabicRun(src false))
@@ -249,11 +249,11 @@ class OfficeRtlEditorsTest {
 
         ; And an ordinary English body is drawn in the order it is stored,
         ; runs and all — the fast path has to stay a fast path.
-        def eshape (new PptxShape())
+        def eshape (PptxShape.new_())
         eshape.width = 400.0
         eshape.height = 80.0
         eshape.hasText = true
-        def epara (new PptxParagraph())
+        def epara (PptxParagraph.new_())
         push epara.runs (OfficeRtlEditorsTest.arabicRun("Hello " false))
         push epara.runs (OfficeRtlEditorsTest.arabicRun("world" true))
         push eshape.text.paragraphs epara
@@ -266,7 +266,7 @@ class OfficeRtlEditorsTest {
     }
 
     sfn arabicRun:PptxTextRun (t:string bold:boolean) {
-        def r (new PptxTextRun())
+        def r (PptxTextRun.new_())
         r.text = t
         r.fontSizePt = 18.0
         r.fontFamily = "El Messiri"

@@ -357,7 +357,7 @@ class PptxWriter {
         def dist:double (sqrt ((dx * dx) + (dy * dy)))
         def ang:double (atan2 dy dx)
         def deg:double ((ang * 180.0) / 3.141592653589793)
-        def col (new PptxColor())
+        def col (PptxColor.new_())
         col.isSet = true
         col.isScheme = shape.shadow.color.isScheme
         col.scheme = shape.shadow.color.scheme
@@ -1169,7 +1169,7 @@ class PptxWriter {
         def out:string "<p:style>"
         out = (out + (PptxWriter.styleRef("a:lnRef" shape.lineRef shape.lineRefColor "")))
         out = (out + (PptxWriter.styleRef("a:fillRef" shape.fillRef shape.fillRefColor "")))
-        out = (out + (PptxWriter.styleRef("a:effectRef" shape.effectRef (new PptxColor()) "")))
+        out = (out + (PptxWriter.styleRef("a:effectRef" shape.effectRef (PptxColor.new_()) "")))
         def fontIdx:string shape.fontRef
         if ((strlen fontIdx) == 0) {
             fontIdx = "minor"
@@ -1301,7 +1301,7 @@ class PptxWriter {
         if ((buffer_length shape.imageBytes) == 0) {
             ; No bytes to write: an outline where the picture was is more
             ; honest than a missing relationship.
-            def ghost (new PptxShape())
+            def ghost (PptxShape.new_())
             ghost.kind = 0
             ghost.name = shape.name
             ghost.x = shape.x
@@ -1441,7 +1441,7 @@ class PptxWriter {
             def cc:int 0
             while (cc < cols) {
                 def idx:int ((r * cols) + cc)
-                def cell (new PptxTableCell())
+                def cell (PptxTableCell.new_())
                 if (idx < (array_length shape.tableCells)) {
                     cell = (itemAt shape.tableCells idx)
                 }
@@ -1462,7 +1462,7 @@ class PptxWriter {
                         bodyXml = ((substring bodyXml 0 close) + "</a:txBody>")
                     }
                 } {
-                    def run (new PptxTextRun())
+                    def run (PptxTextRun.new_())
                     run.text = cell.text
                     run.bold = cell.bold
                     run.fontSizePt = cell.fontSizePt
@@ -1727,7 +1727,7 @@ class PptxWriter {
             def step:PptxBuildStep (itemAt slide.build i)
             def hit@(optional):PptxShape (PptxWriter.findTarget(slide.shapes step))
             if (null? hit) {
-                def missing (new PptxShape())
+                def missing (PptxShape.new_())
                 missing.shapeId = 0
                 push out missing
             } {

@@ -61,7 +61,7 @@ class OdpPptxParityTest {
         print "--- one document, two formats, two readers ---"
         def op (new OdpParser())
         def ook:boolean (op.openParts("gallery/odp/fixtures" "01-text.odp"))
-        def pp (new PptxParser())
+        def pp (PptxParser.new_())
         def pok:boolean (pp.openParts("gallery/pptx/fixtures" "01-text.pptx"))
         c.ok("the .odp opens" ook)
         c.ok("the .pptx opens" pok)
@@ -70,7 +70,7 @@ class OdpPptxParityTest {
         }
         def odp:OdpPresentation (op.parsePresentation())
         def raw:PptxPresentation (pp.parsePresentation())
-        def resolver (new PptxResolver())
+        def resolver (PptxResolver.new_())
         def deck:PptxPresentation (resolver.resolvePresentation(raw))
 
         c.eqInt("the same number of pages" (odp.pageCount()) (deck.slideCount()))

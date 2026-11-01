@@ -39,7 +39,7 @@ class PptxShapeSheet {
             def nm:string (cat.nameAt(i))
             def cx:int ((i % cols) * cellW)
             def cy:int ((idiv i cols) * cellH)
-            def sh (new PptxShape())
+            def sh (PptxShape.new_())
             sh.preset = nm
             sh.x = 0.0
             sh.y = 0.0

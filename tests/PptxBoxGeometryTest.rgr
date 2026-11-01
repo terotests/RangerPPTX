@@ -97,10 +97,10 @@ class PptxBoxGeometryTest {
         def p (new XmlParser())
         def node@(optional):XmlNode (p.parse(xml))
         if (null? node) {
-            def empty (new PptxShape())
+            def empty (PptxShape.new_())
             return empty
         }
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         def out:PptxShape (parser.parseShape((unwrap node)))
         return out
     }
@@ -121,7 +121,7 @@ class PptxBoxGeometryTest {
 
     ; A placeholder as a sheet holds one: with a box, or with only a name.
     sfn ph:PptxShape (phType:string idx:int) {
-        def s (new PptxShape())
+        def s (PptxShape.new_())
         s.isPlaceholder = true
         s.phType = phType
         s.phIdx = idx
@@ -142,7 +142,7 @@ class PptxBoxGeometryTest {
     }
 
     sfn sheetWith:PptxSheet (part:string shape:PptxShape) {
-        def sheet (new PptxSheet())
+        def sheet (PptxSheet.new_())
         sheet.partPath = part
         push sheet.shapes shape
         return sheet
@@ -150,7 +150,7 @@ class PptxBoxGeometryTest {
 
     ; The slide, its layout and its master, resolved the way a deck is.
     fn resolveOne:PptxShape (shape:PptxShape layoutPh:PptxSheet masterPh:PptxSheet) {
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         slide.width = 720.0
         slide.height = 540.0
         slide.layoutPart = "ppt/slideLayouts/slideLayout1.xml"
@@ -160,8 +160,8 @@ class PptxBoxGeometryTest {
         set layouts "ppt/slideLayouts/slideLayout1.xml" layoutPh
         def masters:[string:PptxSheet]
         set masters "ppt/slideMasters/slideMaster1.xml" masterPh
-        def theme (new PptxTheme())
-        def resolver (new PptxResolver())
+        def theme (PptxTheme.new_())
+        def resolver (PptxResolver.new_())
         resolver.resolveSlide(slide theme layouts masters)
         def out:PptxShape (itemAt slide.shapes 0)
         return out
@@ -206,8 +206,8 @@ class PptxBoxGeometryTest {
         ; nothing about where it is; the master is where the box lives.
         def slideShape:PptxShape (PptxBoxGeometryTest.ph("title" (0 - 1)))
         slideShape.hasText = true
-        def para (new PptxParagraph())
-        def run (new PptxTextRun())
+        def para (PptxParagraph.new_())
+        def run (PptxTextRun.new_())
         run.text = "Inherited title"
         run.fontSizePt = 32.0
         run.sizeSet = true
@@ -296,8 +296,8 @@ class PptxBoxGeometryTest {
 
     fn testFallbackBox:void () {
         print "--- a box for a shape nothing ever gave one ---"
-        def empty (new PptxSheet())
-        def empty2 (new PptxSheet())
+        def empty (PptxSheet.new_())
+        def empty2 (PptxSheet.new_())
 
         def loose:PptxShape (this.shapeOf((PptxBoxGeometryTest.boxXml("NoXfrm" ""
             "The quick brown fox jumps over the lazy dog"))))
@@ -352,15 +352,15 @@ class PptxBoxGeometryTest {
     ; geometry is two steps up, a box that says only where it goes, one that
     ; says nothing, one that says zero, and one ordinary box as a control.
     fn deck:PptxSlide () {
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         def ok:boolean (parser.openParts("gallery/pptx/fixtures" "37-loose-geometry.pptx"))
         this.check("open 37-loose-geometry" ok)
         if (ok == false) {
-            def empty (new PptxSlide())
+            def empty (PptxSlide.new_())
             return empty
         }
         def raw:PptxPresentation (parser.parsePresentation())
-        def resolver (new PptxResolver())
+        def resolver (PptxResolver.new_())
         def pres:PptxPresentation (resolver.resolvePresentation(raw))
         parser.close()
         def slide:PptxSlide (itemAt pres.slides 0)
@@ -385,7 +385,7 @@ class PptxBoxGeometryTest {
         def hit@(optional):PptxShape (this.shapeNamed(slide name))
         this.check((name + " is on the slide") (!null? hit))
         if (null? hit) {
-            def empty (new PptxShape())
+            def empty (PptxShape.new_())
             return empty
         }
         def out:PptxShape (unwrap hit)
@@ -471,12 +471,12 @@ class PptxBoxGeometryTest {
     ; which is why the two are checked together.
     fn testSavingKeepsTheFileHonest:void () {
         print "--- and saving does not write the guess into the file ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "37-loose-geometry.pptx")) == false) {
             this.check("open 37-loose-geometry to save it" false)
             return
         }
-        def resolver (new PptxResolver())
+        def resolver (PptxResolver.new_())
         def pres:PptxPresentation (resolver.resolvePresentation((parser.parsePresentation())))
         def slide:PptxSlide (itemAt pres.slides 0)
         slide.dirty = true
@@ -485,7 +485,7 @@ class PptxBoxGeometryTest {
         parser.close()
 
         ; Read back WITHOUT resolving: this is what the file itself says now.
-        def again (new PptxParser())
+        def again (PptxParser.new_())
         if ((again.openParts("gallery/pptx/bin" "loose-geometry-saved.pptx")) == false) {
             this.check("the saved deck reopens" false)
             return
@@ -529,7 +529,7 @@ class PptxBoxGeometryTest {
             i = (i + 1)
         }
         ; …and through the editor, which is what the pointer actually calls.
-        def deck (new PptxPresentation())
+        def deck (PptxPresentation.new_())
         deck.slideWidth = slide.width
         deck.slideHeight = slide.height
         push deck.slides slide

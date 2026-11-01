@@ -1,0 +1,11 @@
+; SPDX-License-Identifier: AGPL-3.0-or-later
+; What the Rust-syntax crate asks of the host that Ranger's Rust subset has
+; no form for: reading a file. src/rgr.rs imports it like the other .rgr
+; classes the crate uses.
+
+class PptxHost {
+    ; the bytes of dir/name, empty when there is no such file (a browser)
+    sfn readBytes:buffer (dir:string name:string) {
+        return (buffer_read_file dir name)
+    }
+}

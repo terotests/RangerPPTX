@@ -14,7 +14,7 @@ Import "SaTestKit.rgr"
 class SaEngineTest {
 
     sfn draw:SaResult (xml:string) {
-        return (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+        return (SaEngine.layout(xml (SaOptions.new_()) 480.0 270.0))
     }
 
     sfn inside:boolean (s:PptxShape) {
@@ -226,11 +226,11 @@ class SaEngineTest {
 
     sfn testOptions:void (c:SaKit) {
         print "-- what the Markdown can say --"
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.layout = "chevron1"
         def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) o 480.0 270.0))
         c.eqStr("another layout than the file's" r.layoutUsed "chevron1")
-        def o2 (new SaOptions())
+        def o2 (SaOptions.new_())
         o2.colors = "colorful1"
         def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 6)) o2 480.0 270.0))
         def nodes:[PptxShape] (SaKit.shapes(r2 "node"))
@@ -241,12 +241,12 @@ class SaEngineTest {
         c.eqStr("and goes to accent6" n4.fill.scheme "accent6")
         c.eqStr("then round again" n5.fill.scheme "accent2")
         c.eqInt("with nothing to warn about" (array_length r2.warnings) 0)
-        def o3 (new SaOptions())
+        def o3 (SaOptions.new_())
         o3.colors = "accent4_2"
         def r3:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o3 480.0 270.0))
         def m0:PptxShape (itemAt (SaKit.shapes(r3 "node")) 0)
         c.eqStr("accent4_2: the fourth accent" m0.fill.scheme "accent4")
-        def o4 (new SaOptions())
+        def o4 (SaOptions.new_())
         o4.colors = "gradient9"
         def r4:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o4 480.0 270.0))
         c.eqInt("a colour set it does not know: a warning" (array_length r4.warnings) 1)
@@ -262,7 +262,7 @@ class SaEngineTest {
         c.eqStr("no layout named: default" r6.layoutUsed "default")
         c.eqInt("quietly" (array_length r6.warnings) 0)
         ; a whole definition passed in
-        def o7 (new SaOptions())
+        def o7 (SaOptions.new_())
         o7.layoutXml = "<dgm:layoutDef xmlns:dgm=\"x\" uniqueId=\"mine\"><dgm:layoutNode name=\"r\"><dgm:alg type=\"lin\"><dgm:param type=\"linDir\" val=\"fromT\"/></dgm:alg><dgm:forEach axis=\"ch\" ptType=\"node\"><dgm:layoutNode name=\"n\" styleLbl=\"node1\"><dgm:shape type=\"ellipse\"/><dgm:presOf axis=\"self\"/></dgm:layoutNode><dgm:forEach axis=\"followSib\" ptType=\"sibTrans\" cnt=\"1\"><dgm:layoutNode name=\"a\" styleLbl=\"sibTrans2D1\"><dgm:alg type=\"conn\"/><dgm:shape type=\"conn\"/></dgm:layoutNode></dgm:forEach></dgm:forEach></dgm:layoutNode></dgm:layoutDef>"
         def r7:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o7 480.0 270.0))
         c.eqStr("a definition passed in is the one used" r7.layoutUsed "mine")
@@ -270,7 +270,7 @@ class SaEngineTest {
         c.eqStr("its shapes" e0.preset "ellipse")
         def a0:PptxShape (itemAt (SaKit.shapes(r7 "a")) 0)
         c.eqStr("a connector in a column points down" a0.preset "downArrow")
-        def o8 (new SaOptions())
+        def o8 (SaOptions.new_())
         o8.layoutXml = "<dgm:nope/>"
         def r8:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o8 480.0 270.0))
         c.ok(("a bad definition is an error (" + r8.error + ")") ((r8.ok == false) && ((indexOf r8.error "the layout definition") >= 0)))
@@ -278,13 +278,13 @@ class SaEngineTest {
         def r9:SaResult (SaEngineTest.draw("<dgm:dataModel/>"))
         c.ok(("bad data is refused (" + r9.error + ")") ((r9.ok == false) && ((indexOf r9.error "ptLst") >= 0)))
         ; the frame's shape changes the drawing, not the content
-        def r10:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) (new SaOptions()) 200.0 400.0))
+        def r10:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) (SaOptions.new_()) 200.0 400.0))
         def tall:[PptxShape] (SaKit.shapes(r10 "node"))
         c.ok("a narrow frame still holds all of it" (((itemAt tall 2).x + (itemAt tall 2).width) <= 200.01))
     }
 
     sfn wrapped:SaResult (lay:string n:int w:double h:double) {
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.wrap = true
         return (SaEngine.layout((SaKit.flat(lay n)) o w h))
     }

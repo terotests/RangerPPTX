@@ -450,8 +450,8 @@ class PptxShapeRef {
             return this
         }
         def sh:PptxShape (this.model())
-        def protoRun (new PptxTextRun())
-        def protoPara (new PptxParagraph())
+        def protoRun (PptxTextRun.new_())
+        def protoPara (PptxParagraph.new_())
         if (sh.hasText && ((array_length sh.text.paragraphs) > 0)) {
             def p0:PptxParagraph (itemAt sh.text.paragraphs 0)
             protoPara = p0
@@ -459,7 +459,7 @@ class PptxShapeRef {
                 protoRun = (itemAt p0.runs 0)
             }
         }
-        def body (new PptxTextBody())
+        def body (PptxTextBody.new_())
         if sh.hasText {
             body = sh.text
         }
@@ -467,7 +467,7 @@ class PptxShapeRef {
         def lines:[string] (PptxApi.lines(s))
         def i:int 0
         while (i < (array_length lines)) {
-            def para (new PptxParagraph())
+            def para (PptxParagraph.new_())
             protoPara.copyFormatTo(para)
             def run:PptxTextRun (PptxTextEdit.emptyLike(protoRun))
             run.text = (itemAt lines i)
@@ -524,16 +524,16 @@ class PptxShapeRef {
         }
         def sh:PptxShape (this.model())
         if (sh.hasText == false) {
-            def body (new PptxTextBody())
+            def body (PptxTextBody.new_())
             sh.text = body
             sh.hasText = true
         }
         while ((array_length sh.text.paragraphs) <= para) {
-            def p (new PptxParagraph())
+            def p (PptxParagraph.new_())
             push sh.text.paragraphs p
         }
         def target:PptxParagraph (itemAt sh.text.paragraphs para)
-        def run (new PptxTextRun())
+        def run (PptxTextRun.new_())
         if ((array_length target.runs) > 0) {
             def lastAt:int ((array_length target.runs) - 1)
             def last:PptxTextRun (itemAt target.runs lastAt)
@@ -700,7 +700,7 @@ class PptxSlideRef {
             return (this.shapeAt(0 - 1))
         }
         def s:PptxSlide (this.model())
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.preset = preset
         sh.x = x
@@ -768,10 +768,10 @@ class PptxDeck {
     ; false when opening failed. `error` says why; nothing else is usable.
     def ok:boolean false
     def error:string ""
-    def pres:PptxPresentation (new PptxPresentation())
+    def pres:PptxPresentation (PptxPresentation.new_())
     ; The package this deck was read from, kept open so `save` can copy the
     ; parts nothing here models.
-    def parser:PptxParser (new PptxParser())
+    def parser:PptxParser (PptxParser.new_())
     def opened:boolean false
     ; The stylesheet, empty until `addStyleSheet` is called. Resolving an empty
     ; sheet over a deck sets nothing and costs one walk, so a deck that never
@@ -871,7 +871,7 @@ class PptxDeck {
     }
 
     fn addSlide:PptxSlideRef () {
-        def s (new PptxSlide())
+        def s (PptxSlide.new_())
         s.width = pres.slideWidth
         s.height = pres.slideHeight
         s.dirty = true
@@ -977,7 +977,7 @@ class PptxApi {
     ; HTTP. A caller with a path reads it and hands the bytes over.
     sfn open:PptxDeck (bytes:buffer) {
         def deck (new PptxDeck())
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         def got:boolean (parser.openBytes(bytes "deck.pptx"))
         if (got == false) {
             deck.ok = false
@@ -985,7 +985,7 @@ class PptxApi {
             return deck
         }
         def raw:PptxPresentation (parser.parsePresentation())
-        def resolver (new PptxResolver())
+        def resolver (PptxResolver.new_())
         deck.pres = (resolver.resolvePresentation(raw))
         deck.parser = parser
         deck.opened = true
@@ -1034,7 +1034,7 @@ class PptxApi {
     sfn colorOf:PptxColor (hex:string) {
         def s:string (trim hex)
         if ((strlen s) == 0) {
-            def none (new PptxColor())
+            def none (PptxColor.new_())
             return none
         }
         ; `charAt` answers a CODEPOINT, not a one-character string — 35 is '#'.

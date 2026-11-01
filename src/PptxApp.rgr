@@ -227,7 +227,7 @@ class PptxToolbar extends EVGToolbar {
 }
 
 class PptxApp {
-    def parser:PptxParser (new PptxParser())
+    def parser:PptxParser (PptxParser.new_())
     ; --- the other presentation format ---------------------------------------
     ; A second READER and a second painter, never a second half of one model.
     ; `gallery/odp` imports nothing from here and this imports nothing of its
@@ -243,10 +243,10 @@ class PptxApp {
     def isOdp:boolean false
     def odpThumbs:[int:EVGDisplayList]
     def odpThumbW:int 0
-    def resolver:PptxResolver (new PptxResolver())
-    def presentation:PptxPresentation (new PptxPresentation())
+    def resolver:PptxResolver (PptxResolver.new_())
+    def presentation:PptxPresentation (PptxPresentation.new_())
     def view:PptxView (new PptxView())
-    def converter:PptxToEvg (new PptxToEvg())
+    def converter:PptxToEvg (PptxToEvg.new_())
     def index:int 0
     def W:int 960
     def H:int 720
@@ -880,7 +880,7 @@ class PptxApp {
     fn load:boolean (fullPath:string) {
         lastPath = fullPath
         parser.close()
-        parser = (new PptxParser())
+        parser = (PptxParser.new_())
         def ok:boolean (parser.open(fullPath))
         if (ok == false) {
             loaded = false
@@ -901,7 +901,7 @@ class PptxApp {
     fn loadParts:boolean (path:string name:string) {
         lastPath = (path + "/" + name)
         parser.close()
-        parser = (new PptxParser())
+        parser = (PptxParser.new_())
         def ok:boolean (parser.openParts(path name))
         if (ok == false) {
             loaded = false
@@ -933,7 +933,7 @@ class PptxApp {
         isOdp = false
         lastPath = name
         parser.close()
-        parser = (new PptxParser())
+        parser = (PptxParser.new_())
         def ok:boolean (parser.openBytes(bytes name))
         if (ok == false) {
             loaded = false

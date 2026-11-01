@@ -16,7 +16,7 @@ Import "pkg:evg/EVGDisplayList.rgr"
 class PptxView {
     def canvas:SoftCanvas (new SoftCanvas)
     def ctx:UIContext (new UIContext)
-    def converter:PptxToEvg (new PptxToEvg())
+    def converter:PptxToEvg (PptxToEvg.new_())
     def pageW:int 960
     def pageH:int 720
     ; Room the frame takes out of the window, so the fit-to-window scale

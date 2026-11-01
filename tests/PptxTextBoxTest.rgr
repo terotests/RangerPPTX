@@ -292,7 +292,7 @@ class PptxTextBoxTest {
         ; paragraph that had lost its bullet COLOUR — the dash went from the
         ; deck's white to a default black — along with its bullet font, its
         ; indent, its numbering scheme and its direction.
-        def src (new PptxParagraph())
+        def src (PptxParagraph.new_())
         src.hasBullet = true
         src.bulletChar = "-"
         src.bulletFont = "Arial"
@@ -308,7 +308,7 @@ class PptxTextBoxTest {
         src.bulletAutoNum = true
         src.bulletScheme = "alphaLcParenR"
         src.bulletStartAt = 3
-        def copy (new PptxParagraph())
+        def copy (PptxParagraph.new_())
         src.copyFormatTo(copy)
         c.ok("the bullet colour survives" (copy.bulletColor.isSet))
         c.eqInt("and is the same colour" (strlen copy.bulletColor.srgb) 6)
@@ -328,7 +328,7 @@ class PptxTextBoxTest {
         ; A run: toggling bold on PART of a line splits the run, and a half
         ; that lost its resolution signatures is one the resolver re-inherits
         ; from the layout — so the text jumped to the layout's size.
-        def r (new PptxTextRun())
+        def r (PptxTextRun.new_())
         r.fontSizePt = 28.0
         r.sizeSet = true
         r.bold = true
@@ -336,7 +336,7 @@ class PptxTextBoxTest {
         r.resolvedSizeSig = "body:28"
         r.resolvedColorSig = "scheme:tx1"
         r.resolvedFontSig = "+mn-lt"
-        def r2 (new PptxTextRun())
+        def r2 (PptxTextRun.new_())
         r.copyStyleTo(r2)
         c.eqInt("the size survives a split" (to_int r2.fontSizePt) 28)
         c.ok("and so does the record of where it came from"

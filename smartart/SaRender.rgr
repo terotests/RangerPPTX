@@ -450,7 +450,7 @@ class SaRender {
 
     ; …measuring text as `m` does
     sfn painterWith:PptxToEvg (m:SaMeasure) {
-        def conv (new PptxToEvg())
+        def conv (PptxToEvg.new_())
         if m.hasHost {
             def pm (new SaPaintMeasure())
             pm.sa = m

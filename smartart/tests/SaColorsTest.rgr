@@ -9,7 +9,7 @@ Import "../SaPackage.rgr"
 class SaColorsTest {
 
     sfn list:SaClrList (meth:string names:[string]) {
-        def l (new SaClrList())
+        def l (SaClrList.new_())
         l.meth = meth
         def i:int 0
         while (i < (array_length names)) {
@@ -41,11 +41,11 @@ class SaColorsTest {
         c.eqStr("span, two theme colours: split in half" (SaColorsTest.picks((SaColorsTest.list("span" ([] _:string ("accent1" "accent2")))) 4)) "accent1 accent1 accent2 accent2")
         def one:[string] ([] _:string ("accent4"))
         c.eqStr("one colour: every one" (SaColorsTest.picks((SaColorsTest.list("repeat" one)) 3)) "accent4 accent4 accent4")
-        def none (new SaClrList())
+        def none (SaClrList.new_())
         def np0:PptxColor (none.pick(0 1))
         c.ok("an empty list: an unset colour" (np0.isSet == false))
         ; a shade to a tint of one colour, blended
-        def g (new SaClrList())
+        def g (SaClrList.new_())
         g.meth = "span"
         def dark:PptxColor (PptxColor.schemeOf("accent1"))
         dark.shade = 0.8
@@ -65,7 +65,7 @@ class SaColorsTest {
         ; a quarter: -0.075, a shade of 0.925
         c.near("a quarter of the way" q.shade 0.925)
         c.eqStr("still accent1" q.scheme "accent1")
-        def a (new SaClrList())
+        def a (SaClrList.new_())
         a.meth = "span"
         def a1:PptxColor (PptxColor.schemeOf("accent1"))
         a1.alpha = 0.9
@@ -230,7 +230,7 @@ class SaColorsTest {
 
     sfn testEngine:void (c:SaKit) {
         print "-- in a diagram --"
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.colors = "accent2_3"
         o.style = "simple4"
         def r:SaResult (SaEngine.layout((SaKit.flat("process1" 4)) o 480.0 270.0))
@@ -247,14 +247,14 @@ class SaColorsTest {
         c.ok("the arrows' shadow too: they are filled" a0.shadow.isSet)
         c.eqStr("the style it was drawn with" r.shape.diagramStyleId "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple4")
         c.eqStr("the colours" r.shape.diagramColorsId "urn:microsoft.com/office/officeart/2005/8/colors/accent2_3")
-        def o2 (new SaOptions())
+        def o2 (SaOptions.new_())
         o2.style = "polished1"
         def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o2 480.0 270.0))
         c.eqInt("a style it does not have: one warning" (array_length r2.warnings) 1)
         c.ok("naming it" ((indexOf (itemAt r2.warnings 0) "polished1") >= 0))
         c.eqStr("drawn as simple1" r2.shape.diagramStyleId "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple1")
         ; a file's own set and style
-        def o3 (new SaOptions())
+        def o3 (SaOptions.new_())
         o3.colorsXml = "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/mine\"><dgm:styleLbl name=\"node1\"><dgm:fillClrLst><a:srgbClr val=\"123456\"/></dgm:fillClrLst><dgm:linClrLst/><dgm:txFillClrLst><a:schemeClr val=\"lt1\"/></dgm:txFillClrLst></dgm:styleLbl></dgm:colorsDef>"
         o3.colors = "unknownSet9"
         def r3:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o3 480.0 270.0))

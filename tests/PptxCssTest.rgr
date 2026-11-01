@@ -277,14 +277,14 @@ class PptxCssTest {
     sfn firstRun:PptxTextRun (shape:PptxShapeRef) {
         def sh:PptxShape (shape.model())
         if (sh.hasText == false) {
-            return (new PptxTextRun())
+            return (PptxTextRun.new_())
         }
         if ((array_length sh.text.paragraphs) == 0) {
-            return (new PptxTextRun())
+            return (PptxTextRun.new_())
         }
         def para:PptxParagraph (itemAt sh.text.paragraphs 0)
         if ((array_length para.runs) == 0) {
-            return (new PptxTextRun())
+            return (PptxTextRun.new_())
         }
         return (itemAt para.runs 0)
     }

@@ -77,7 +77,7 @@ class PptxRotateTest {
         def a:PptxApp (PptxRotateTest.app())
         def conv:PptxToEvg a.view.converter
 
-        def grp (new PptxShape())
+        def grp (PptxShape.new_())
         grp.kind = (PptxShapeKind.group())
         grp.x = 0.0
         grp.y = 0.0
@@ -89,7 +89,7 @@ class PptxRotateTest {
         grp.chH = 200.0
         ; One child in the top-left quarter, well away from the centre, so
         ; that moving it is unmistakable.
-        def kid (new PptxShape())
+        def kid (PptxShape.new_())
         kid.x = 20.0
         kid.y = 20.0
         kid.width = 40.0
@@ -117,7 +117,7 @@ class PptxRotateTest {
 
         ; A child AT the centre stays there whatever the group does — the one
         ; point a rotation about a point does not move.
-        def mid (new PptxShape())
+        def mid (PptxShape.new_())
         mid.x = 80.0
         mid.y = 80.0
         mid.width = 40.0

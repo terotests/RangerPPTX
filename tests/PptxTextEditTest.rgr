@@ -39,12 +39,12 @@ class PptxTextEditTest {
 
     ; "Hello " plain, "world" bold — two runs, one paragraph.
     fn twoRuns:PptxTextBody () {
-        def body (new PptxTextBody())
-        def para (new PptxParagraph())
-        def a (new PptxTextRun())
+        def body (PptxTextBody.new_())
+        def para (PptxParagraph.new_())
+        def a (PptxTextRun.new_())
         a.text = "Hello "
         a.fontSizePt = 18.0
-        def b (new PptxTextRun())
+        def b (PptxTextRun.new_())
         b.text = "world"
         b.bold = true
         b.fontSizePt = 18.0
@@ -127,7 +127,7 @@ class PptxTextEditTest {
         this.check("the second line is there" ((PptxTextEdit.paraText(multi 1)) == "second"))
         this.check("the caret is on it" ((end.para == 1) && (end.col == 6)))
         ; An empty body types into a paragraph of its own.
-        def empty (new PptxTextBody())
+        def empty (PptxTextBody.new_())
         def fresh:PptxTextPos (PptxTextEdit.insertAt(empty (PptxTextPos.of(0 0)) "hi"))
         this.check("typing into nothing makes a paragraph" ((PptxTextEdit.paraText(empty 0)) == "hi"))
         this.check("with the caret after it" (fresh.col == 2))
@@ -144,17 +144,17 @@ class PptxTextEditTest {
         this.check("what is left is still bold" (((itemAt para.runs 0).bold)))
         ; Across paragraphs: the join keeps the head of the first and the tail
         ; of the last.
-        def multi (new PptxTextBody())
-        def p1 (new PptxParagraph())
-        def r1 (new PptxTextRun())
+        def multi (PptxTextBody.new_())
+        def p1 (PptxParagraph.new_())
+        def r1 (PptxTextRun.new_())
         r1.text = "first line"
         push p1.runs r1
-        def p2 (new PptxParagraph())
-        def r2 (new PptxTextRun())
+        def p2 (PptxParagraph.new_())
+        def r2 (PptxTextRun.new_())
         r2.text = "second line"
         push p2.runs r2
-        def p3 (new PptxParagraph())
-        def r3 (new PptxTextRun())
+        def p3 (PptxParagraph.new_())
+        def r3 (PptxTextRun.new_())
         r3.text = "third line"
         push p3.runs r3
         push multi.paragraphs p1
@@ -201,9 +201,9 @@ class PptxTextEditTest {
         def wl:PptxTextPos (PptxTextEdit.wordLeft(body (PptxTextPos.of(0 11))))
         this.check("and back to the start of it" (wl.col == 6))
         ; A caret never lands inside a surrogate pair.
-        def emoji (new PptxTextBody())
-        def p (new PptxParagraph())
-        def r (new PptxTextRun())
+        def emoji (PptxTextBody.new_())
+        def p (PptxParagraph.new_())
+        def r (PptxTextRun.new_())
         r.text = "a😀b"
         push p.runs r
         push emoji.paragraphs p
@@ -223,9 +223,9 @@ class PptxTextEditTest {
 
     fn testStyleRange:void () {
         print "--- styling a selection ---"
-        def body (new PptxTextBody())
-        def para (new PptxParagraph())
-        def r (new PptxTextRun())
+        def body (PptxTextBody.new_())
+        def para (PptxParagraph.new_())
+        def r (PptxTextRun.new_())
         r.text = "one two three"
         r.fontSizePt = 18.0
         push para.runs r
@@ -256,18 +256,18 @@ class PptxTextEditTest {
 
     fn testEditorCaret:void () {
         print "--- the editor's caret ---"
-        def pres (new PptxPresentation())
-        def slide (new PptxSlide())
+        def pres (PptxPresentation.new_())
+        def slide (PptxSlide.new_())
         slide.width = 720.0
         slide.height = 540.0
-        def box (new PptxShape())
+        def box (PptxShape.new_())
         box.x = 100.0
         box.y = 100.0
         box.width = 300.0
         box.height = 100.0
         box.hasText = true
-        def para (new PptxParagraph())
-        def run (new PptxTextRun())
+        def para (PptxParagraph.new_())
+        def run (PptxTextRun.new_())
         run.text = "Title"
         push para.runs run
         push box.text.paragraphs para
@@ -372,13 +372,13 @@ class PptxTextEditTest {
     }
 
     fn wrapBody:PptxTextBody (text:string sizePt:double) {
-        def body (new PptxTextBody())
+        def body (PptxTextBody.new_())
         body.insetL = 0.0
         body.insetT = 0.0
         body.insetR = 0.0
         body.insetB = 0.0
-        def para (new PptxParagraph())
-        def run (new PptxTextRun())
+        def para (PptxParagraph.new_())
+        def run (PptxTextRun.new_())
         run.text = text
         run.fontSizePt = sizePt
         run.sizeSet = true
@@ -567,9 +567,9 @@ class PptxTextEditTest {
         ; character typed into it goes through `ensureRun`, which builds a run
         ; out of the BODY's defaults and knows nothing about the line the
         ; caret just left.
-        def listBody (new PptxTextBody())
-        def item (new PptxParagraph())
-        def white (new PptxTextRun())
+        def listBody (PptxTextBody.new_())
+        def item (PptxParagraph.new_())
+        def white (PptxTextRun.new_())
         white.text = "first item"
         white.fontSizePt = 18.0
         white.sizeSet = true
@@ -601,9 +601,9 @@ class PptxTextEditTest {
 
         ; The same at the START of a line: everything moves to the new
         ; paragraph and the one left behind is the empty one.
-        def startBody (new PptxTextBody())
-        def line2 (new PptxParagraph())
-        def w2 (new PptxTextRun())
+        def startBody (PptxTextBody.new_())
+        def line2 (PptxParagraph.new_())
+        def w2 (PptxTextRun.new_())
         w2.text = "an item"
         w2.fontSizePt = 18.0
         w2.sizeSet = true
@@ -740,13 +740,13 @@ class PptxTextEditTest {
     ; entirely orange and its empty paragraphs were gone — on the first
     ; backspace, before a single character had been typed.
     fn linkAndProse:PptxTextBody () {
-        def body (new PptxTextBody())
-        def p0 (new PptxParagraph())
-        def link (new PptxTextRun())
+        def body (PptxTextBody.new_())
+        def p0 (PptxParagraph.new_())
+        def link (PptxTextRun.new_())
         link.text = "www.trello.com"
         link.color = (PptxColor.srgbOf("E8A33D"))
         link.fontSizePt = 18.0
-        def prose (new PptxTextRun())
+        def prose (PptxTextRun.new_())
         prose.text = " a wall of notes"
         prose.color = (PptxColor.srgbOf("FFFFFF"))
         prose.fontSizePt = 18.0
@@ -755,10 +755,10 @@ class PptxTextEditTest {
         push body.paragraphs p0
         ; The blank line between items — a paragraph with nothing in it, which
         ; a round trip through plain text does not survive either.
-        def blank (new PptxParagraph())
+        def blank (PptxParagraph.new_())
         push body.paragraphs blank
-        def p1 (new PptxParagraph())
-        def bold (new PptxTextRun())
+        def p1 (PptxParagraph.new_())
+        def bold (PptxTextRun.new_())
         bold.text = "Free."
         bold.bold = true
         bold.color = (PptxColor.srgbOf("FFFFFF"))
@@ -770,9 +770,9 @@ class PptxTextEditTest {
 
     fn testSelectedShapeTyping:void () {
         print "--- typing into a selected shape keeps its formatting ---"
-        def pres (new PptxPresentation())
-        def slide (new PptxSlide())
-        def sh (new PptxShape())
+        def pres (PptxPresentation.new_())
+        def slide (PptxSlide.new_())
+        def sh (PptxShape.new_())
         sh.kind = 0
         sh.x = 10.0
         sh.y = 10.0
@@ -824,7 +824,7 @@ class PptxTextEditTest {
     ; to compare is formatting the next keystroke destroys. These are the
     ; comparisons it used to be missing.
     fn styledRun:PptxTextRun (text:string) {
-        def r (new PptxTextRun())
+        def r (PptxTextRun.new_())
         r.text = text
         r.fontSizePt = 18.0
         return r
@@ -864,8 +864,8 @@ class PptxTextEditTest {
             ((PptxTextEdit.sameStyle(g h)) == false))
 
         ; And splitting a highlighted run must leave both halves highlighted.
-        def para (new PptxParagraph())
-        def marked (new PptxTextRun())
+        def para (PptxParagraph.new_())
+        def marked (PptxTextRun.new_())
         marked.text = "highlighted"
         marked.fontSizePt = 18.0
         marked.highlight = (PptxColor.srgbOf("FFFF00"))

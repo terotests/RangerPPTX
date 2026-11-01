@@ -68,7 +68,7 @@ class PptxEditRect {
 ; ------------------------------------------------------------------------------
 class PptxClone {
     sfn color:PptxColor (src:PptxColor) {
-        def c (new PptxColor())
+        def c (PptxColor.new_())
         c.isSet = src.isSet
         c.isScheme = src.isScheme
         c.scheme = src.scheme
@@ -80,7 +80,7 @@ class PptxClone {
     }
 
     sfn gradient:PptxGradient (src:PptxGradient) {
-        def g (new PptxGradient())
+        def g (PptxGradient.new_())
         g.isSet = src.isSet
         g.dir = src.dir
         g.c1 = (PptxClone.color(src.c1))
@@ -89,7 +89,7 @@ class PptxClone {
     }
 
     sfn shadow:PptxShadow (src:PptxShadow) {
-        def s (new PptxShadow())
+        def s (PptxShadow.new_())
         s.isSet = src.isSet
         s.offsetXPt = src.offsetXPt
         s.offsetYPt = src.offsetYPt
@@ -100,7 +100,7 @@ class PptxClone {
     }
 
     sfn run:PptxTextRun (src:PptxTextRun) {
-        def r (new PptxTextRun())
+        def r (PptxTextRun.new_())
         r.text = src.text
         r.field = src.field
         r.fontFamily = src.fontFamily
@@ -120,7 +120,7 @@ class PptxClone {
     }
 
     sfn paragraph:PptxParagraph (src:PptxParagraph) {
-        def p (new PptxParagraph())
+        def p (PptxParagraph.new_())
         p.align = src.align
         p.alignSet = src.alignSet
         p.spaceBeforePt = src.spaceBeforePt
@@ -148,7 +148,7 @@ class PptxClone {
     }
 
     sfn textBody:PptxTextBody (src:PptxTextBody) {
-        def t (new PptxTextBody())
+        def t (PptxTextBody.new_())
         t.insetL = src.insetL
         t.insetT = src.insetT
         t.insetR = src.insetR
@@ -174,7 +174,7 @@ class PptxClone {
     }
 
     sfn tableCell:PptxTableCell (src:PptxTableCell) {
-        def c (new PptxTableCell())
+        def c (PptxTableCell.new_())
         c.text = src.text
         c.fill = (PptxClone.color(src.fill))
         c.bold = src.bold
@@ -184,7 +184,7 @@ class PptxClone {
     }
 
     sfn chart:PptxChart (src:PptxChart) {
-        def c (new PptxChart())
+        def c (PptxChart.new_())
         c.chartType = src.chartType
         c.title = src.title
         def i:int 0
@@ -195,7 +195,7 @@ class PptxClone {
         def j:int 0
         while (j < (array_length src.series)) {
             def s:PptxChartSeries (itemAt src.series j)
-            def out (new PptxChartSeries())
+            def out (PptxChartSeries.new_())
             out.name = s.name
             def k:int 0
             while (k < (array_length s.values)) {
@@ -211,7 +211,7 @@ class PptxClone {
     ; Image bytes are shared on purpose: the parser owns them, nothing edits
     ; them, and copying a JPEG per undo step is the one copy worth avoiding.
     sfn shape:PptxShape (src:PptxShape) {
-        def s (new PptxShape())
+        def s (PptxShape.new_())
         s.kind = src.kind
         s.editId = src.editId
         s.shapeId = src.shapeId
@@ -325,7 +325,7 @@ class PptxClone {
     }
 
     sfn sheet:PptxSheet (src:PptxSheet) {
-        def out (new PptxSheet())
+        def out (PptxSheet.new_())
         out.partPath = src.partPath
         out.dirty = src.dirty
         out.bg = (PptxClone.color(src.bg))
@@ -338,7 +338,7 @@ class PptxClone {
     }
 
     sfn section:PptxSection (src:PptxSection) {
-        def out (new PptxSection())
+        def out (PptxSection.new_())
         out.name = src.name
         out.id = src.id
         def i:int 0
@@ -353,7 +353,7 @@ class PptxClone {
         def i:int 0
         while (i < (array_length src)) {
             def so:PptxOpaque (itemAt src i)
-            def op (new PptxOpaque())
+            def op (PptxOpaque.new_())
             op.name = so.name
             op.afterShapes = so.afterShapes
             op.source.copyFrom(so.source)
@@ -363,7 +363,7 @@ class PptxClone {
     }
 
     sfn slide:PptxSlide (src:PptxSlide) {
-        def sl (new PptxSlide())
+        def sl (PptxSlide.new_())
         sl.partPath = src.partPath
         sl.dirty = src.dirty
         sl.revision = src.revision
@@ -376,7 +376,7 @@ class PptxClone {
         sl.notesPart = src.notesPart
         sl.slideId = src.slideId
         sl.key = src.key
-        def tr (new PptxTransition())
+        def tr (PptxTransition.new_())
         tr.isSet = src.transition.isSet
         tr.kind = src.transition.kind
         tr.dir = src.transition.dir
@@ -387,7 +387,7 @@ class PptxClone {
         def bi:int 0
         while (bi < (array_length src.build)) {
             def b:PptxBuildStep (itemAt src.build bi)
-            def step (new PptxBuildStep())
+            def step (PptxBuildStep.new_())
             step.editId = b.editId
             step.shapeId = b.shapeId
             step.kind = b.kind
@@ -419,18 +419,18 @@ class PptxClone {
 ; What the format painter carries: how a shape is filled, outlined, shadowed
 ; and lettered, with none of its geometry and none of its words.
 class PptxFormat {
-    def fill:PptxColor (new PptxColor())
-    def grad:PptxGradient (new PptxGradient())
-    def line:PptxColor (new PptxColor())
+    def fill:PptxColor (PptxColor.new_())
+    def grad:PptxGradient (PptxGradient.new_())
+    def line:PptxColor (PptxColor.new_())
     def lineWidthPt:double 0.0
-    def shadow:PptxShadow (new PptxShadow())
+    def shadow:PptxShadow (PptxShadow.new_())
     def hasText:boolean false
     def bold:boolean false
     def italic:boolean false
     def sizePt:double 18.0
     def sizeSet:boolean false
     def family:string ""
-    def color:PptxColor (new PptxColor())
+    def color:PptxColor (PptxColor.new_())
     def align:string "l"
     def alignSet:boolean false
 
@@ -468,7 +468,7 @@ class PptxEditSnapshot {
 }
 
 class PptxEditor {
-    def doc:PptxPresentation (new PptxPresentation())
+    def doc:PptxPresentation (PptxPresentation.new_())
     def slideIndex:int 0
     def selection:[int]
     ; The snapshots and the cap — `gallery/office/editor`, the same file the
@@ -543,11 +543,11 @@ class PptxEditor {
     def cloneRev:[int:int]
     def cloneVal:[int:PptxSlide]
     ; For re-resolving a palette colour; the same mapping the loader used.
-    def resolver:PptxResolver (new PptxResolver())
+    def resolver:PptxResolver (PptxResolver.new_())
     ; Editing a master or a layout: the sheet stands in for the slide, so
     ; every operation that knows how to move a shape works on it unchanged.
     def sheetPart:string ""
-    def sheetSlide:PptxSlide (new PptxSlide())
+    def sheetSlide:PptxSlide (PptxSlide.new_())
 
     Constructor () {
     }
@@ -1772,7 +1772,7 @@ class PptxEditor {
             return 0
         }
         def s:PptxSlide (unwrap slide)
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.editId = nextId
         nextId = (nextId + 1)
@@ -1791,7 +1791,7 @@ class PptxEditor {
         ; which no editor does and nobody means.
         sh.text.anchor = "ctr"
         sh.text.anchorSet = true
-        def para (new PptxParagraph())
+        def para (PptxParagraph.new_())
         para.align = "ctr"
         para.alignSet = true
         push sh.text.paragraphs para
@@ -1818,7 +1818,7 @@ class PptxEditor {
             return 0
         }
         def s:PptxSlide (unwrap slide)
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.editId = nextId
         nextId = (nextId + 1)
@@ -1856,7 +1856,7 @@ class PptxEditor {
             return 0
         }
         def s:PptxSlide (unwrap slide)
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.editId = nextId
         nextId = (nextId + 1)
@@ -1881,7 +1881,7 @@ class PptxEditor {
             return 0
         }
         def s:PptxSlide (unwrap slide)
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.picture())
         sh.editId = nextId
         nextId = (nextId + 1)
@@ -2127,7 +2127,7 @@ class PptxEditor {
         }
         def s:PptxSlide (unwrap slide)
         def b:PptxEditRect (this.selectionBounds())
-        def grp (new PptxShape())
+        def grp (PptxShape.new_())
         grp.kind = (PptxShapeKind.group())
         grp.editId = nextId
         nextId = (nextId + 1)
@@ -2468,7 +2468,7 @@ class PptxEditor {
         def i:int 0
         while (i < (array_length shapes)) {
             def sh:PptxShape (itemAt shapes i)
-            def none (new PptxColor())
+            def none (PptxColor.new_())
             sh.fill = none
             sh.fillGrad.isSet = false
             i = (i + 1)
@@ -2503,7 +2503,7 @@ class PptxEditor {
         def i:int 0
         while (i < (array_length shapes)) {
             def sh:PptxShape (itemAt shapes i)
-            def none (new PptxColor())
+            def none (PptxColor.new_())
             sh.line = none
             sh.lineWidthPt = 0.0
             i = (i + 1)
@@ -2591,7 +2591,7 @@ class PptxEditor {
     ; Replace a body with one paragraph per line, keeping the first run's look
     ; so retyping a title does not reset it to 18pt black.
     sfn setBodyText:void (body:PptxTextBody text:string) {
-        def proto (new PptxTextRun())
+        def proto (PptxTextRun.new_())
         def existing@(optional):PptxTextRun (PptxEditor.firstRun(body))
         if (!null? existing) {
             def e:PptxTextRun (unwrap existing)
@@ -2625,10 +2625,10 @@ class PptxEditor {
             }
             if (atEnd || isBreak) {
                 def piece:string (substring text start i)
-                def para (new PptxParagraph())
+                def para (PptxParagraph.new_())
                 para.align = align
                 para.alignSet = alignSet
-                def run (new PptxTextRun())
+                def run (PptxTextRun.new_())
                 run.text = piece
                 run.fontFamily = proto.fontFamily
                 run.fontSizePt = proto.fontSizePt
@@ -2878,7 +2878,7 @@ class PptxEditor {
     ; --- slides --------------------------------------------------------------
 
     fn addSlide:boolean () {
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         slide.dirty = true
         this.freshKey(slide)
         slide.width = doc.slideWidth
@@ -3139,7 +3139,7 @@ class PptxEditor {
         }
         sh.hasText = true
         if ((array_length sh.text.paragraphs) == 0) {
-            def para (new PptxParagraph())
+            def para (PptxParagraph.new_())
             para.align = sh.text.defAlign
             push sh.text.paragraphs para
         }
@@ -4269,7 +4269,7 @@ class PptxEditor {
             return false
         }
         def s:PptxSlide (unwrap slide)
-        def c (new PptxColor())
+        def c (PptxColor.new_())
         c.isSet = true
         c.isScheme = true
         c.scheme = scheme
@@ -4285,7 +4285,7 @@ class PptxEditor {
             return false
         }
         def s:PptxSlide (unwrap slide)
-        def none (new PptxColor())
+        def none (PptxColor.new_())
         s.bg = none
         this.pushSnapshot("background")
         return true
@@ -4305,7 +4305,7 @@ class PptxEditor {
         }
         s.notes.hasText = true
         if ((array_length s.notes.text.paragraphs) == 0) {
-            def para (new PptxParagraph())
+            def para (PptxParagraph.new_())
             push s.notes.text.paragraphs para
         }
         def hit@(optional):PptxShape s.notes
@@ -4382,7 +4382,7 @@ class PptxEditor {
             return false
         }
         def sh:PptxSheet (unwrap sheet)
-        def stand (new PptxSlide())
+        def stand (PptxSlide.new_())
         stand.partPath = part
         stand.width = doc.slideWidth
         stand.height = doc.slideHeight
@@ -4559,7 +4559,7 @@ class PptxEditor {
         def ms:PptxSheet (unwrap sheet)
         this.dropNamed(ms "Slide Number Placeholder")
         if on {
-            def sh (new PptxShape())
+            def sh (PptxShape.new_())
             sh.name = "Slide Number Placeholder"
             sh.kind = (PptxShapeKind.shape())
             sh.hasXfrm = true
@@ -4568,10 +4568,10 @@ class PptxEditor {
             sh.x = ((doc.slideWidth - sh.width) - 24.0)
             sh.y = ((doc.slideHeight - sh.height) - 12.0)
             sh.hasText = true
-            def para (new PptxParagraph())
+            def para (PptxParagraph.new_())
             para.align = "r"
             para.alignSet = true
-            def run (new PptxTextRun())
+            def run (PptxTextRun.new_())
             run.field = "slidenum"
             run.text = (to_string (slideIndex + 1))
             run.fontSizePt = 12.0
@@ -4606,7 +4606,7 @@ class PptxEditor {
         def ms:PptxSheet (unwrap sheet)
         this.dropNamed(ms "Footer Placeholder")
         if ((strlen text) > 0) {
-            def sh (new PptxShape())
+            def sh (PptxShape.new_())
             sh.name = "Footer Placeholder"
             sh.kind = (PptxShapeKind.shape())
             sh.hasXfrm = true
@@ -4615,10 +4615,10 @@ class PptxEditor {
             sh.x = ((doc.slideWidth - sh.width) * 0.5)
             sh.y = ((doc.slideHeight - sh.height) - 12.0)
             sh.hasText = true
-            def para (new PptxParagraph())
+            def para (PptxParagraph.new_())
             para.align = "ctr"
             para.alignSet = true
-            def run (new PptxTextRun())
+            def run (PptxTextRun.new_())
             run.text = text
             run.fontSizePt = 12.0
             run.sizeSet = true
@@ -4745,7 +4745,7 @@ class PptxEditor {
                 k = (k + 1)
             }
             if (already == false) {
-                def step (new PptxBuildStep())
+                def step (PptxBuildStep.new_())
                 step.editId = id
                 step.kind = kind
                 if (seconds > 0.0) {
@@ -4942,7 +4942,7 @@ class PptxEditor {
             }
             li = (li + 1)
         }
-        def sec (new PptxSection())
+        def sec (PptxSection.new_())
         sec.name = name
         def i:int slideIndex
         while (i < limit) {

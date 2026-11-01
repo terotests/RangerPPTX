@@ -16,7 +16,7 @@ Import "../SaRender.rgr"
 class SaLayout3Test {
 
     sfn draw:SaResult (xml:string) {
-        return (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+        return (SaEngine.layout(xml (SaOptions.new_()) 480.0 270.0))
     }
 
     sfn allInside:boolean (r:SaResult) {
@@ -326,7 +326,7 @@ class SaLayout3Test {
         while (fi < (array_length frames)) {
             def fw:double (itemAt frames fi)
             def fh:double (itemAt frames (fi + 1))
-            def rf:SaResult (SaEngine.layout((SaKit.flat("arrow2" 5)) (new SaOptions()) fw fh))
+            def rf:SaResult (SaEngine.layout((SaKit.flat("arrow2" 5)) (SaOptions.new_()) fw fh))
             def swf:PptxShape (itemAt (SaLayout3Test.like(rf "swoosh")) 0)
             c.near(("the arrow 1.8 times as wide as tall in " + (to_string fw) + "×" + (to_string fh)) (swf.width / swf.height) 1.8)
             def dl:[PptxShape] (SaLayout3Test.like(rf "dot"))
@@ -459,8 +459,8 @@ class SaLayout3Test {
         def pts:string ((SaKit.pt("1" "Kerää tarpeet ja tee niistä analyysi")) + (SaKit.pt("2" "Suunnittele ratkaisu yhdessä asiakkaan kanssa")) + (SaKit.pt("3" "Toteuta, testaa ja vie se tuotantoon")))
         def cs:string ((SaKit.cx("0" "1")) + (SaKit.cx("0" "2")) + (SaKit.cx("0" "3")))
         def xml:string (SaKit.data("chevron1" pts cs))
-        def plain:SaResult (SaEngine.layout(xml (new SaOptions()) 852.0 350.0))
-        def o (new SaOptions())
+        def plain:SaResult (SaEngine.layout(xml (SaOptions.new_()) 852.0 350.0))
+        def o (SaOptions.new_())
         o.wrap = true
         def tall:SaResult (SaEngine.layout(xml o 852.0 350.0))
         def p0:PptxShape (itemAt (SaLayout3Test.like(plain "node")) 0)

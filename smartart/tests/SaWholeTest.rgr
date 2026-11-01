@@ -85,7 +85,7 @@ class SaWholeTest {
 
     sfn testDrawn:void (c:SaKit) {
         print "-- drawn as PowerPoint drew it --"
-        def r:SaResult (SaWhole.layout((SaWholeTest.whole(true)) (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaWhole.layout((SaWholeTest.whole(true)) (SaOptions.new_()) 480.0 270.0))
         c.ok("drawn" r.ok)
         def g:PptxShape r.shape
         c.ok("a diagram" g.isDiagram)
@@ -110,7 +110,7 @@ class SaWholeTest {
 
     sfn testEngine:void (c:SaKit) {
         print "-- laid out with the file's own definitions --"
-        def r:SaResult (SaWhole.layout((SaWholeTest.whole(false)) (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaWhole.layout((SaWholeTest.whole(false)) (SaOptions.new_()) 480.0 270.0))
         c.ok("no drawing: laid out" r.ok)
         c.eqStr("with the file's layout, not the id its data names" r.layoutUsed "myChevrons")
         def n0:PptxShape (itemAt (SaKit.shapes(r "node")) 0)
@@ -120,7 +120,7 @@ class SaWholeTest {
         c.eqInt("nothing to warn about" (array_length r.warnings) 0)
         c.ok("it carries the file's parts to write back" (((indexOf r.shape.diagramColorsXml "AA3300") >= 0) && ((indexOf r.shape.diagramLayoutXml "myChevrons") >= 0)))
         ; the Markdown names another layout: the engine, that layout
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.layout = "process1"
         def r2:SaResult (SaWhole.layout((SaWholeTest.whole(true)) o 480.0 270.0))
         c.eqStr("an override: laid out, not drawn" r2.layoutUsed "process1")
@@ -128,7 +128,7 @@ class SaWholeTest {
         c.eqStr("as the override says" m0.preset "roundRect")
         c.eqStr("still in the file's colours" m0.fill.srgb "AA3300")
         c.ok("the file's layout not carried: the override's is" ((indexOf r2.shape.diagramLayoutXml "myChevrons") < 0))
-        def o2 (new SaOptions())
+        def o2 (SaOptions.new_())
         o2.colors = "colorful1"
         def r3:SaResult (SaWhole.layout((SaWholeTest.whole(true)) o2 480.0 270.0))
         def k0:PptxShape (itemAt (SaKit.shapes(r3 "node")) 0)
@@ -137,13 +137,13 @@ class SaWholeTest {
         c.eqStr("the file's colours not carried" r3.shape.diagramColorsXml "")
         ; a layout part the engine refuses: its own for the id, said
         def bad:string (SaWholeTest.pkg(((SaWholeTest.part((SaWholeTest.ct("diagramData")) (SaKit.flat("process1" 2)))) + (SaWholeTest.part((SaWholeTest.ct("diagramLayout")) "<dgm:layoutDef uniqueId=\"urn:x\"><dgm:layoutNode name=\"a\"><dgm:alg type=\"nope\"/></dgm:layoutNode></dgm:layoutDef>")))))
-        def r4:SaResult (SaWhole.layout(bad (new SaOptions()) 480.0 270.0))
+        def r4:SaResult (SaWhole.layout(bad (SaOptions.new_()) 480.0 270.0))
         c.ok("a layout it refuses: still drawn" r4.ok)
         c.eqStr("with the engine's own" r4.layoutUsed "process1")
         c.ok("and it says so" (((array_length r4.warnings) == 1) && ((indexOf (itemAt r4.warnings 0) "could not be used") >= 0)))
-        def r5:SaResult (SaWhole.layout((SaWholeTest.pkg("")) (new SaOptions()) 480.0 270.0))
+        def r5:SaResult (SaWhole.layout((SaWholeTest.pkg("")) (SaOptions.new_()) 480.0 270.0))
         c.ok("an empty package: refused, with the reason" ((r5.ok == false) && ((strlen r5.error) > 0)))
-        def r6:SaResult (SaWhole.layout((SaKit.flat("process1" 2)) (new SaOptions()) 480.0 270.0))
+        def r6:SaResult (SaWhole.layout((SaKit.flat("process1" 2)) (SaOptions.new_()) 480.0 270.0))
         c.eqStr("the data alone: the engine, as before" r6.layoutUsed "process1")
     }
 

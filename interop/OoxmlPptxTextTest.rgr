@@ -66,7 +66,7 @@ class OoxmlPptxTextTest {
         c.eqInt("21 characters, whatever a unit is" wantGlyphs 21)
 
         print "-- .pptx --"
-        def pp:PptxParser (new PptxParser)
+        def pp:PptxParser (PptxParser.new_())
         def pok:boolean (pp.openParts("gallery/pptx/fixtures" "27-accented-text.pptx"))
         c.ok("the deck opened" pok)
         if pok {

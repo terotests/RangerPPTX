@@ -53,16 +53,16 @@ class PptxBench {
     ; about what a real deck carries, and enough of them that a per-frame walk
     ; over the whole document is visible in the number.
     sfn buildDeck:PptxPresentation (n:int) {
-        def pres (new PptxPresentation())
+        def pres (PptxPresentation.new_())
         pres.slideWidth = 720.0
         pres.slideHeight = 405.0
         def i:int 0
         while (i < n) {
-            def slide (new PptxSlide())
+            def slide (PptxSlide.new_())
             slide.width = pres.slideWidth
             slide.height = pres.slideHeight
             slide.partPath = ("ppt/slides/slide" + (to_string (i + 1)) + ".xml")
-            def title (new PptxShape())
+            def title (PptxShape.new_())
             title.name = ("Title " + (to_string (i + 1)))
             title.hasXfrm = true
             title.x = 40.0
@@ -72,7 +72,7 @@ class PptxBench {
             title.hasText = true
             PptxEditor.setBodyText(title.text ("Slide " + (to_string (i + 1)) + " of " + (to_string n)))
             push slide.shapes title
-            def body (new PptxShape())
+            def body (PptxShape.new_())
             body.name = "Body"
             body.hasXfrm = true
             body.x = 40.0
@@ -84,7 +84,7 @@ class PptxBench {
             push slide.shapes body
             def k:int 0
             while (k < 3) {
-                def box (new PptxShape())
+                def box (PptxShape.new_())
                 box.name = ("Box " + (to_string k))
                 box.hasXfrm = true
                 box.x = (450.0 + ((to_double k) * 10.0))

@@ -88,7 +88,7 @@ class PptxFromEvg {
         textCount = 0
         clipped = 0
         unresolvedImages = 0
-        def group (new PptxShape())
+        def group (PptxShape.new_())
         group.kind = (PptxShapeKind.group())
         group.name = "Drawing"
         group.hasXfrm = true
@@ -178,7 +178,7 @@ class PptxFromEvg {
     ; A filled box. Rounded corners are a `roundRect`, which is a preset an
     ; author can drag rather than a polygon they cannot.
     fn emitRect:void (group:PptxShape c:EVGDrawCmd ox:double oy:double) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         sh.preset = "rect"
@@ -226,7 +226,7 @@ class PptxFromEvg {
     ; An outline. One rectangle with a line and no fill rather than four
     ; segments: it is a quarter of the XML and it stays one thing to select.
     fn emitBorder:void (group:PptxShape c:EVGDrawCmd ox:double oy:double) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         sh.preset = "rect"
@@ -433,7 +433,7 @@ class PptxFromEvg {
         def bytes:buffer (images.read(c.src))
         if ((buffer_length bytes) == 0) { return false }
         def st:VfsStat (images.stat(c.src))
-        def pic (new PptxShape())
+        def pic (PptxShape.new_())
         pic.kind = (PptxShapeKind.picture())
         pic.name = ("Picture " + (to_string ((array_length group.children) + 1)))
         pic.hasXfrm = true
