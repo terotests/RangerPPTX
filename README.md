@@ -108,8 +108,19 @@ tests, MFilesAPI, Sliqtly and RangerMarkdown.
 - The preview chain is Rust syntax too: `pptx_model.rs`, `pptx_parser.rs`,
   `pptx_resolver.rs`, `pptx_text_layout.rs`, `pptx_chart_vela.rs`,
   `pptx_to_evg.rs`; `src/pptx_geom.rs` is PptxGeom.
-- Still `.rgr`: the editor (PptxApp, PptxEdit, PptxTextEdit, PptxView and the
-  rest of the UI), PptxWriter, PptxFromEvg, PptxCss, PptxVegaShapes and `api/`.
+- The editor is a second crate, `edit/src/lib.rs` (`edit/Cargo.toml`, depends
+  on the core crate as `pptx`): PptxView, PptxTextEdit, PptxWriter,
+  PptxFromEvg, PptxCss, PptxVegaShapes, PptxShapeInk, PptxA11y, PptxStripUi
+  and `api/` PptxApi and PptxChartApi. `edit/src/rgr.rs` imports its `.rgr`
+  classes.
+- Still `.rgr`:
+  - PptxEdit: it uses the generic `OfficeHistory@(T)`, and a generic `.rgr`
+    class used from Rust syntax crashes Ranger.
+  - `api/PptxRenderApi.rgr`: it imports `pdf_writer` (EVGPDFRenderer) and
+    the PNG encoder, which declare classes the crate already imports.
+  - PptxApp, PptxChrome, PptxStripView and the tools (`pptx_demo`,
+    `pptx_editor_shots`, ...): they build on PptxEditor and were not
+    converted.
 - `src/rgr.rs` imports the `.rgr` classes the crate uses (EVG, `xml`, `ooxml`,
   `office`, `vela`) once. `src/PptxHost.rgr` is what Rust syntax has no form
   for: reading a file (`buffer_read_file`).
@@ -122,10 +133,12 @@ tests, MFilesAPI, Sliqtly and RangerMarkdown.
 - A field is not set from an expression that borrows the same object
   (`a.borrow_mut().f = a.borrow().g`): on the Rust target that panics, so the
   value goes to a `let` first.
-- `npm run pptx:rs:check` compiles the crate alone (Go by default).
+- `npm run pptx:rs:check` compiles the core crate alone (Go by default);
+  `bash tools/rs_check.sh es6 edit` compiles the editor crate.
 
 It needs a Ranger with Ranger PR #1250 (`Vec<u8>` as `buffer`) and #1251
-(`Rc::ptr_eq`, `&mut Vec` parameters of associated functions).
+(`Rc::ptr_eq`, `&mut Vec` parameters of associated functions), and #1253
+(two crates in one program) for the editor crate.
 
 ## Fidelity (current)
 

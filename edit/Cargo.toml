@@ -1,0 +1,14 @@
+# RangerPPTX's editor, writer and api modules (edit/src/lib.rs), over the
+# crate in src/. Paths are those of the checkout layout <Ranger>/gallery/pptx.
+[package]
+name = "pptx_edit"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ranger = { path = "../../../runtime/rust/ranger" }
+pptx = { path = ".." }

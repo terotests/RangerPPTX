@@ -480,7 +480,7 @@ class PptxBoxGeometryTest {
         def pres:PptxPresentation (resolver.resolvePresentation((parser.parsePresentation())))
         def slide:PptxSlide (itemAt pres.slides 0)
         slide.dirty = true
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "loose-geometry-saved.pptx")
         parser.close()
 

@@ -181,7 +181,7 @@ class PptxSmartArtTest {
     }
 
     sfn save:string (pres:PptxPresentation parser:PptxParser name:string) {
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" name)
         def out (new OpcPackage())
         if ((out.openParts("gallery/pptx/bin" name)) == false) {
@@ -270,7 +270,7 @@ class PptxSmartArtTest {
         print "-- written as a new file --"
         def parser:PptxParser (PptxSmartArtTest.open())
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "smartart-new.pptx")
         def out (new OpcPackage())
         def ok:boolean (out.openParts("gallery/pptx/bin" "smartart-new.pptx"))
@@ -314,7 +314,7 @@ class PptxSmartArtTest {
         ; NoDrawing, as data2 …
         def parser:PptxParser (PptxSmartArtTest.open())
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(pres "gallery/pptx/bin" "smartart-native.pptx")
         def out (new OpcPackage())
         out.openParts("gallery/pptx/bin" "smartart-native.pptx")
@@ -410,7 +410,7 @@ class PptxSmartArtTest {
         def pres2:PptxPresentation ((PptxResolver.new_()).resolvePresentation(raw))
         def sl2:PptxSlide (itemAt pres2.slides 0)
         sl2.dirty = true
-        def w2 (new PptxWriter())
+        def w2 (PptxWriter.new_())
         w2.saveOver(pres2 again.pkg "gallery/pptx/bin" "smartart-native-twice.pptx")
         def out2 (new OpcPackage())
         out2.openParts("gallery/pptx/bin" "smartart-native-twice.pptx")
@@ -554,7 +554,7 @@ class PptxSmartArtTest {
         def d2:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
         c.eqStr("laid out again with the edit" (PptxSmartArtTest.texts(d2)) "Early spring|Summer|Autumn")
         c.ok("no longer PowerPoint's drawing of it" (d2.diagramHadDrawing == false))
-        def w (new PptxWriter())
+        def w (PptxWriter.new_())
         w.saveOver(pres parser.pkg "gallery/pptx/bin" "smartart-reopened.pptx")
         def again (PptxParser.new_())
         again.openParts("gallery/pptx/bin" "smartart-reopened.pptx")
@@ -604,7 +604,7 @@ class PptxSmartArtTest {
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
         def slide:PptxSlide (itemAt pres.slides 0)
         push slide.shapes g
-        def w (new PptxWriter())
+        def w (PptxWriter.new_())
         w.save(pres "gallery/pptx/bin" "smartart-whole.pptx")
         def out (new OpcPackage())
         out.openParts("gallery/pptx/bin" "smartart-whole.pptx")
@@ -656,7 +656,7 @@ class PptxSmartArtTest {
         bare.kind = (PptxShapeKind.group())
         bare.isDiagram = true
         bare.name = "Bare"
-        def w (new PptxWriter())
+        def w (PptxWriter.new_())
         c.eqStr("no source, no SmartArt" (w.smartArtXml(bare)) "")
     }
 

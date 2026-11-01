@@ -78,7 +78,7 @@ class PptxVegaTest {
         print "--- a chart is a group of shapes ---"
         def deck:PptxDeck (PptxApi.create())
         def slide:PptxSlideRef (deck.addSlide())
-        def vega (new PptxVega())
+        def vega (PptxVega.new_())
         def ref:PptxShapeRef (vega.addTo(slide (PptxVegaTest.barSpec()) 60.0 60.0 600.0 360.0))
         this.check("the specification compiled" vega.ok)
         this.check("the handle is real" (ref.exists()))
@@ -104,7 +104,7 @@ class PptxVegaTest {
         print "--- written out and read back ---"
         def deck:PptxDeck (PptxApi.create())
         def slide:PptxSlideRef (deck.addSlide())
-        def vega (new PptxVega())
+        def vega (PptxVega.new_())
         def made:PptxShapeRef (vega.addTo(slide (PptxVegaTest.barSpec()) 60.0 60.0 600.0 360.0))
         def before:int vega.shapeCount
         def bytes:buffer (deck.saveNew())
@@ -133,7 +133,7 @@ class PptxVegaTest {
         print "--- a line mark stays open ---"
         def deck:PptxDeck (PptxApi.create())
         def slide:PptxSlideRef (deck.addSlide())
-        def vega (new PptxVega())
+        def vega (PptxVega.new_())
         def made:PptxShapeRef (vega.addTo(slide (PptxVegaTest.lineSpec()) 40.0 40.0 400.0 300.0))
         this.check("the specification compiled" vega.ok)
         def group:PptxShape (made.model())
@@ -154,14 +154,14 @@ class PptxVegaTest {
         print "--- a bad specification says so ---"
         def deck:PptxDeck (PptxApi.create())
         def slide:PptxSlideRef (deck.addSlide())
-        def vega (new PptxVega())
+        def vega (PptxVega.new_())
         def bad:PptxShapeRef (vega.addTo(slide "{not json" 0.0 0.0 100.0 100.0))
         this.check("it did not pretend to work" (vega.ok == false))
         this.check("and said why" ((strlen vega.error) > 0))
         this.check("the handle is dead" ((bad.exists()) == false))
         this.eqInt("and nothing was put on the slide" (slide.shapeCount()) 0)
 
-        def gone (new PptxVega())
+        def gone (PptxVega.new_())
         def noSlide:PptxSlideRef (deck.slideAt(9))
         def nope:PptxShapeRef (gone.addTo(noSlide (PptxVegaTest.barSpec()) 0.0 0.0 100.0 100.0))
         this.check("a slide that is not there is not a crash" (gone.ok == false))
@@ -172,7 +172,7 @@ class PptxVegaTest {
         print "--- the box and the fit ---"
         def deck:PptxDeck (PptxApi.create())
         def slide:PptxSlideRef (deck.addSlide())
-        def vega (new PptxVega())
+        def vega (PptxVega.new_())
         def made:PptxShapeRef (vega.addTo(slide (PptxVegaTest.barSpec()) 60.0 50.0 600.0 360.0))
         def group:PptxShape (made.model())
         this.check("the group is where it was asked for" ((PptxVegaTest.near(group.x 60.0)) && (PptxVegaTest.near(group.y 50.0))))
@@ -186,7 +186,7 @@ class PptxVegaTest {
         this.eqInt("nothing drawn outside the box" outside 0)
 
         ; The aspect ratio is the specification's, not the box's.
-        def tall (new PptxVega())
+        def tall (PptxVega.new_())
         def deck2:PptxDeck (PptxApi.create())
         def slide2:PptxSlideRef (deck2.addSlide())
         def wide:PptxShapeRef (tall.addTo(slide2 (PptxVegaTest.barSpec()) 0.0 0.0 600.0 100.0))
@@ -197,7 +197,7 @@ class PptxVegaTest {
 
         print "--- one config for the whole deck ---"
         ; The specification says nothing about its axes; the deck does.
-        def themed (new PptxVega())
+        def themed (PptxVega.new_())
         themed.config("{\"axis\":{\"labelColor\":\"#AA0000\"},\"view\":{\"stroke\":null}}")
         def deck4:PptxDeck (PptxApi.create())
         def slide4:PptxSlideRef (deck4.addSlide())
@@ -208,7 +208,7 @@ class PptxVegaTest {
         this.check("the deck's axis colour reached the labels" (red > 0))
 
         ; …and a chart that states one of the blocks keeps the others.
-        def partly (new PptxVega())
+        def partly (PptxVega.new_())
         partly.config("{\"axis\":{\"labelColor\":\"#AA0000\"},\"view\":{\"stroke\":null}}")
         def deck5:PptxDeck (PptxApi.create())
         def slide5:PptxSlideRef (deck5.addSlide())
@@ -220,7 +220,7 @@ class PptxVegaTest {
         this.check("the block it did not state survived" (stillRed > 0))
 
         print "--- the font is stated ---"
-        def named (new PptxVega())
+        def named (PptxVega.new_())
         named.font("Arial")
         def deck3:PptxDeck (PptxApi.create())
         def slide3:PptxSlideRef (deck3.addSlide())

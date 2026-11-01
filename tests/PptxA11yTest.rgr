@@ -171,7 +171,7 @@ class PptxA11yTest {
     fn testAltTextSurvivesASave:void () {
         print "--- and it is still there after a save ---"
         def app:PptxApp (PptxA11yTest.open("34-alt-text.pptx"))
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(app.presentation "gallery/pptx/bin" "alt-roundtrip.pptx")
 
         def app2:PptxApp (new PptxApp)

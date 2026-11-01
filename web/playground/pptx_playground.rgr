@@ -32,7 +32,7 @@ class PptxPlayground {
     ; @internal The viewer, so the page can hand a generated deck straight to it.
     def viewer:PptxWeb (new PptxWeb)
     ; @internal The renderer, for the PNG and PDF buttons.
-    def renderer:PptxRenderer (new PptxRenderer)
+    def renderer:PptxRenderer (new PptxRenderer())
 
     Constructor () {
     }

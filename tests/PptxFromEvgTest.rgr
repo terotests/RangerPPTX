@@ -134,7 +134,7 @@ class PptxFromEvgTest {
         c.cropW = 0.25
         c.cropH = 1.0
         push dl.cmds c
-        def conv (new PptxFromEvg())
+        def conv (PptxFromEvg.new_())
         conv.setImages(v)
         def group:PptxShape (conv.build(dl 0.0 0.0))
         this.check("one picture" ((array_length group.children) == 1))
@@ -236,7 +236,7 @@ class PptxFromEvgTest {
         stroke.a = 1.0
         push dl.cmds stroke
 
-        def conv (new PptxFromEvg())
+        def conv (PptxFromEvg.new_())
         def group:PptxShape (conv.build(dl 40.0 30.0))
         this.eqInt("a shape for every drawable command" (array_length group.children) 6)
         this.eqInt("and the group knows it" conv.shapeCount 6)
@@ -295,7 +295,7 @@ class PptxFromEvgTest {
         pop.a = 1.0
         push dl.cmds pop
 
-        def conv (new PptxFromEvg())
+        def conv (PptxFromEvg.new_())
         def group:PptxShape (conv.build(dl 0.0 0.0))
         this.eqInt("nothing was drawn" (array_length group.children) 0)
         this.eqInt("the clip was counted" conv.clipped 1)
@@ -319,7 +319,7 @@ class PptxFromEvgTest {
 
         ; The slide's display list is in PIXELS — `PptxToEvg.ptToPx` — so the
         ; default 0.75 points per unit is exactly the way back.
-        def back (new PptxFromEvg())
+        def back (PptxFromEvg.new_())
         def group:PptxShape (back.build(dl 0.0 0.0))
         this.check("and it came back as shapes" ((array_length group.children) > 0))
         this.check("with its words intact" ((indexOf (PptxFromEvgTest.wordsIn(group)) "display list") >= 0))

@@ -74,7 +74,7 @@ class PptxSeamTest {
     ; test can read pixels off it. The size is small: this is about which
     ; pixel gets painted, not about a picture.
     sfn render:PptxView (dl:EVGDisplayList w:int h:int) {
-        def v (new PptxView())
+        def v (PptxView.new_())
         v.canvas.init(w h)
         v.ctx.attach(v.canvas)
         v.paintSoftCanvas(dl)

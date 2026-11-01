@@ -122,7 +122,7 @@ class BookToPptx {
     fn addPage:void (d:PptxDeck doc:BookDocument flow:BookFlowResult engine:BookFlowEngine page:BookPage pageNo:int result:BookSlideResult) {
         def dl:EVGDisplayList (this.pageList(doc flow engine page))
 
-        def conv (new PptxFromEvg())
+        def conv (PptxFromEvg.new_())
         def group:PptxShape (conv.build(dl 0.0 0.0))
 
         def ref:PptxSlideRef (d.addSlide())

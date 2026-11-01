@@ -94,13 +94,13 @@ class PptxWriteVisual {
             failed = (failed + 1)
             return
         }
-        def writer (new PptxWriter())
+        def writer (PptxWriter.new_())
         writer.save(before.presentation "gallery/pptx/bin" ("vis-" + name))
 
         ; …and the same deck saved the other way: over the package it came
         ; from, which keeps the master and the layouts and writes no slide at
         ; all, since nothing was edited. It has to draw the same picture too.
-        def keeper (new PptxWriter())
+        def keeper (PptxWriter.new_())
         keeper.saveOver(before.presentation before.parser.pkg "gallery/pptx/bin" ("over-" + name))
 
         def after:PptxApp (new PptxApp)
