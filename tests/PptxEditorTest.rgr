@@ -115,7 +115,7 @@ class PptxEditorTest {
 
     fn testIds:void () {
         print "--- ids ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -133,7 +133,7 @@ class PptxEditorTest {
 
     fn testHitTest:void () {
         print "--- hit test ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -151,7 +151,7 @@ class PptxEditorTest {
 
     fn testSelection:void () {
         print "--- selection ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -177,7 +177,7 @@ class PptxEditorTest {
 
     fn testMoveUndo:void () {
         print "--- move / undo ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -209,7 +209,7 @@ class PptxEditorTest {
 
     fn testResize:void () {
         print "--- resize / rotate ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -237,7 +237,7 @@ class PptxEditorTest {
 
     fn testMultiResize:void () {
         print "--- multi resize ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -254,7 +254,7 @@ class PptxEditorTest {
 
     fn testZOrder:void () {
         print "--- z-order ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -278,7 +278,7 @@ class PptxEditorTest {
 
     fn testGroup:void () {
         print "--- group / ungroup ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -312,7 +312,7 @@ class PptxEditorTest {
 
     fn testAlign:void () {
         print "--- align / distribute ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -350,7 +350,7 @@ class PptxEditorTest {
 
     fn testSnap:void () {
         print "--- snapping ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -376,7 +376,7 @@ class PptxEditorTest {
         ; and drew no guide: a reader could line two boxes up by dragging them
         ; and lose it again the moment they made one wider, with nothing on
         ; screen to say how far out they were.
-        def re (new PptxEditor())
+        def re (PptxEditor.new_())
         def deck2:PptxPresentation (this.buildDeck())
         re.attach(deck2)
         def sl2:PptxSlide (itemAt deck2.slides 0)
@@ -421,7 +421,7 @@ class PptxEditorTest {
 
     fn testStructure:void () {
         print "--- insert / delete / duplicate ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def id:int (ed.addShapeAt("roundRect" 50.0 50.0 80.0 40.0))
@@ -460,7 +460,7 @@ class PptxEditorTest {
 
     fn testStyle:void () {
         print "--- style / text ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -500,7 +500,7 @@ class PptxEditorTest {
 
     fn testSlides:void () {
         print "--- slides ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         this.check("one slide to start" ((ed.slideCount()) == 1))
@@ -543,7 +543,7 @@ class PptxEditorTest {
         def resolver (PptxResolver.new_())
         def raw:PptxPresentation (parser.parsePresentation())
         def pres:PptxPresentation (resolver.resolvePresentation(raw))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         this.check("slides came through" ((ed.slideCount()) > 1))
         def shapes:[PptxShape] (ed.editableShapes())
@@ -579,7 +579,7 @@ class PptxEditorTest {
 
     fn testHistoryLimit:void () {
         print "--- history ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         ed.history.limit = 5
@@ -604,7 +604,7 @@ class PptxEditorTest {
 
     fn testTyping:void () {
         print "--- typing ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -636,7 +636,7 @@ class PptxEditorTest {
 
     fn testDragSeam:void () {
         print "--- drag seam ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -673,7 +673,7 @@ class PptxEditorTest {
 
     fn testMarquee:void () {
         print "--- a rubber band ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -702,7 +702,7 @@ class PptxEditorTest {
 
     fn testClipboard:void () {
         print "--- copy, cut, paste ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -744,7 +744,7 @@ class PptxEditorTest {
 
     fn testLocking:void () {
         print "--- locking ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -794,7 +794,7 @@ class PptxEditorTest {
         this.check("upwards too" (this.near((PptxEditor.snapToStep(14.0 9.0)) 18.0)))
         def negStep:double (PptxEditor.snapToStep((0.0 - 11.0) 9.0))
         this.check("and negatives" (this.near(negStep (0.0 - 9.0))))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -823,7 +823,7 @@ class PptxEditorTest {
 
     fn testFlip:void () {
         print "--- mirroring ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -858,7 +858,7 @@ class PptxEditorTest {
 
     fn testFormatPainter:void () {
         print "--- the format painter ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -911,7 +911,7 @@ class PptxEditorTest {
 
     fn testTheme:void () {
         print "--- re-theming ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ; A shape whose colour came from the palette, the way a real deck's do.
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -960,7 +960,7 @@ class PptxEditorTest {
 
     fn testBackground:void () {
         print "--- the slide's background ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         def slide:PptxSlide (itemAt deck.slides 0)
@@ -981,7 +981,7 @@ class PptxEditorTest {
 
     fn testNotes:void () {
         print "--- the speaker's notes ---"
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         def deck:PptxPresentation (this.buildDeck())
         ed.attach(deck)
         this.check("a slide starts with none" ((ed.notesText()) == ""))
@@ -1018,7 +1018,7 @@ class PptxEditorTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         def parts:[string] (ed.layoutParts())
         this.check("the deck has layouts to pick from" ((array_length parts) > 1))
@@ -1070,7 +1070,7 @@ class PptxEditorTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         def masters:[string] (ed.masterParts())
         this.check("the deck has a master" ((array_length masters) > 0))
@@ -1134,7 +1134,7 @@ class PptxEditorTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         def slide1:PptxSlide (itemAt pres.slides 0)
         this.check("slide one has a transition" slide1.transition.isSet)
@@ -1233,7 +1233,7 @@ class PptxEditorTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         this.check("the deck has several slides" ((ed.slideCount()) > 2))
         this.check("every slide got a key" (PptxEditorTest.allKeyed(pres)))
@@ -1302,7 +1302,7 @@ class PptxEditorTest {
             return
         }
         def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ; Re-theming touches every slide, and a history that shares its copies
         ; would give back the old colours on the slides it thought unchanged.

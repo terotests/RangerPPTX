@@ -6,6 +6,7 @@
 pub mod pptx_shape_ink;
 pub mod pptx_a11y;
 pub mod pptx_text_edit;
+pub mod pptx_edit;
 pub mod pptx_writer;
 pub mod pptx_from_evg;
 pub mod pptx_css;

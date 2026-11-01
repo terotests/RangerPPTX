@@ -198,7 +198,7 @@ class PptxSmartArtTest {
         print "-- saved after it was moved --"
         def parser:PptxParser (PptxSmartArtTest.open())
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         def shapes:[PptxShape] (ed.editableShapes())
@@ -459,7 +459,7 @@ class PptxSmartArtTest {
         def rs (PptxResolver.new_())
         rs.resolveShape(g pres.theme)
         push slide.shapes g
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         def d:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
@@ -545,7 +545,7 @@ class PptxSmartArtTest {
         c.ok("with what it was made from" (SaEdit.canRelayout(d)))
         def f:PptxShape (itemAt (PptxSmartArtTest.texted(d)) 0)
         c.ok("each shape knows its point" ((array_length f.diagramParaPts) == 1))
-        def ed (new PptxEditor())
+        def ed (PptxEditor.new_())
         ed.attach(pres)
         ed.gotoSlide(0)
         def de:PptxShape (PptxSmartArtTest.byName(ed.editableShapes() "Seasons"))
@@ -570,7 +570,7 @@ class PptxSmartArtTest {
         ; again from an edit: its shapes are kept as edited
         def p2:PptxParser (PptxSmartArtTest.open())
         def pres2:PptxPresentation (PptxSmartArtTest.edited(p2))
-        def ed2 (new PptxEditor())
+        def ed2 (PptxEditor.new_())
         ed2.attach(pres2)
         ed2.gotoSlide(0)
         def proc:PptxShape (PptxSmartArtTest.byName(ed2.editableShapes() "Process"))
