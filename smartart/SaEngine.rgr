@@ -42,7 +42,7 @@ class SaOptions {
     ; used instead of the id's built-in one
     def colorsXml:string ""
     def styleXml:string ""
-    def measure:SaMeasure (new SaMeasure())
+    def measure:SaMeasure (SaMeasure.new_())
 
     Constructor () {
     }
@@ -55,10 +55,10 @@ class SaResult {
     def shape:PptxShape (new PptxShape())
     ; the layout that was used, by its short name
     def layoutUsed:string ""
-    def ptree:SaPresTree (new SaPresTree())
+    def ptree:SaPresTree (SaPresTree.new_())
     ; what the text was measured with, which the painter must break its lines
     ; with too (SaRender.drawWith)
-    def measure:SaMeasure (new SaMeasure())
+    def measure:SaMeasure (SaMeasure.new_())
 
     Constructor () {
     }
@@ -127,7 +127,7 @@ class SaEngine {
         def res (new SaResult())
         model.complete()
         ; which layout
-        def lo (new SaLayoutDef())
+        def lo (SaLayoutDef.new_())
         def loXml:string opts.layoutXml
         if ((strlen opts.layoutXml) > 0) {
             def lr:SaLayoutReadResult (SaLayoutReader.read(opts.layoutXml))

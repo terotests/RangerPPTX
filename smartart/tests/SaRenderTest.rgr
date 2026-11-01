@@ -141,7 +141,7 @@ class SaRenderTest {
         def inner:double ((sh.width - sh.text.insetL) - sh.text.insetR)
         c.ok(("no line is wider, in that font, than the box (" + (to_string widest) + " <= " + (to_string inner) + ")") (widest <= (inner + 0.01)))
         ; the painter broke the lines where the engine counted them
-        def t (new SaText())
+        def t (SaText.new_())
         t.measure = r.measure
         def lines:int (t.wrapOne(run.text run.fontSizePt inner false))
         c.eqInt("as many lines as the engine fitted" (array_length cmds) lines)

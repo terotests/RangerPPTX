@@ -81,7 +81,7 @@ class SaPalette {
 ; with, and names the family they were measured in. Without a host measurer
 ; it is the painter's own (the same 0.52 em guess).
 class SaPaintMeasure extends OfficeTextMeasure {
-    def sa:SaMeasure (new SaMeasure())
+    def sa:SaMeasure (SaMeasure.new_())
 
     Constructor () {
     }
@@ -146,7 +146,7 @@ class SaRender {
     ; preset geometries the layouts use are loaded from SaPresets, never from
     ; a file (a browser and the Go server have none to read).
     sfn painter:PptxToEvg () {
-        return (SaRender.painterWith((new SaMeasure())))
+        return (SaRender.painterWith((SaMeasure.new_())))
     }
 
     ; …measuring text as `m` does
@@ -173,7 +173,7 @@ class SaRender {
 
     ; the group drawn as it is: its colours already resolved
     sfn draw:void (out:EVGDisplayList g:PptxShape x:double y:double) {
-        SaRender.drawWith(out g x y (new SaMeasure()))
+        SaRender.drawWith(out g x y (SaMeasure.new_()))
     }
 
     ; …its lines broken with `m`, the measure the engine fitted it with
