@@ -33,7 +33,7 @@ Import "SaStyle.rgr"
 ; A data model numbered for a package, and what each old id became.
 class SaNumbering {
     def ok:boolean false
-    def model:SaModel (new SaModel())
+    def model:SaModel (SaModel.new_())
     def from:[string]
     def to:[string]
 

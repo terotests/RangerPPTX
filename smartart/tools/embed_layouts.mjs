@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// builtin/*.xml → SaBuiltins.rgr: the layout definitions as string constants,
+// builtin/*.xml → src/smartart/sa_builtins.rs: the layout definitions as
+// string constants, in Ranger's Rust syntax like the rest of the crate,
 // so no target reads a file at run time (the Go MCP binary and the browser
 // have no builtin/ directory). Comments and the whitespace between tags are
 // dropped; the XML is otherwise as written.
 //
-// And SaPresets.rgr: the preset geometries those layouts draw with (every
+// And src/smartart/sa_presets.rs: the preset geometries those layouts draw with (every
 // shape type they name, and the four arrows a connector can be), cut from
 // Ranger's gallery/office/geom/assets/presets.txt. The painter has no
 // geometry of its own without that catalogue — a chevron would be a
@@ -19,8 +20,8 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dir = path.join(here, "..", "builtin");
-const out = path.join(here, "..", "SaBuiltins.rgr");
-const presetsOut = path.join(here, "..", "SaPresets.rgr");
+const out = path.join(here, "..", "..", "src", "smartart", "sa_builtins.rs");
+const presetsOut = path.join(here, "..", "..", "src", "smartart", "sa_presets.rs");
 const catalogue = path.join(here, "..", "..", "..", "office", "geom", "assets", "presets.txt");
 
 const files = fs.readdirSync(dir).filter((f) => f.endsWith(".xml")).sort();
@@ -39,33 +40,38 @@ function literal(s) {
   return '"' + s.replace(/"/g, '\\"') + '"';
 }
 
-let src = `; SPDX-License-Identifier: AGPL-3.0-or-later
-; ==============================================================================
-; SaBuiltins — the built-in layout definitions (GENERATED, do not edit)
-; ==============================================================================
-;
-; Made from smartart/builtin/*.xml by smartart/tools/embed_layouts.mjs. Edit
-; the XML and run the tool; npm run pptx:smartart:test fails while this file
-; is out of date.
-; ==============================================================================
+let src = `// SPDX-License-Identifier: AGPL-3.0-or-later
+//! ==============================================================================
+//! SaBuiltins — the built-in layout definitions (GENERATED, do not edit)
+//! ==============================================================================
+//!
+//! Made from smartart/builtin/*.xml by smartart/tools/embed_layouts.mjs. Edit
+//! the XML and run the tool; npm run pptx:smartart:test fails while this file
+//! is out of date.
+//! ==============================================================================
 
-class SaBuiltins {
+use ranger::prelude::*;
 
-    sfn names:string () {
-        return ${literal(names.join(", "))}
+pub struct SaBuiltins {}
+
+impl SaBuiltins {
+    pub fn new() -> Self {
+        Self {}
     }
-
-    sfn layoutXml:string (name:string) {
+    pub fn names() -> String {
+        ${literal(names.join(", "))}.to_string()
+    }
+    pub fn layoutXml(name: &str) -> String {
 `;
-for (const n of names) src += `        if (name == ${literal(n)}) {\n            return (SaBuiltins.${n}())\n        }\n`;
-src += `        return ""\n    }\n`;
+for (const n of names) src += `        if name == ${literal(n)} {\n            return SaBuiltins::${n}();\n        }\n`;
+src += `        String::new()\n    }\n`;
 for (const [i, n] of names.entries()) {
   const xml = compact(fs.readFileSync(path.join(dir, files[i]), "utf8"));
   // in pieces, so no single literal is enormous
   const pieces = xml.match(/[\s\S]{1,160}(?=<|$)|[\s\S]{1,160}/g) || [];
-  src += `\n    sfn ${n}:string () {\n        def s:string ""\n`;
-  for (const p of pieces) src += `        s = (s + ${literal(p)})\n`;
-  src += `        return s\n    }\n`;
+  src += `    pub fn ${n}() -> String {\n        let mut s: String = String::new();\n`;
+  for (const p of pieces) src += `        s.push_str(${literal(p)});\n`;
+  src += `        s\n    }\n`;
 }
 src += `}\n`;
 
@@ -91,34 +97,39 @@ for (const ln of lines) {
 const missing = [...wanted].filter((n) => !blocks.has(n));
 if (missing.length) throw new Error("presets.txt has no " + missing.join(", "));
 const presetNames = [...wanted].sort();
-let psrc = `; SPDX-License-Identifier: AGPL-3.0-or-later
-; ==============================================================================
-; SaPresets — the preset geometries the built-in layouts draw with (GENERATED)
-; ==============================================================================
-;
-; Cut from gallery/office/geom/assets/presets.txt by
-; smartart/tools/embed_layouts.mjs: ${presetNames.join(", ")}.
-; SaRender loads them into the painter it draws a diagram with.
-; ==============================================================================
+let psrc = `// SPDX-License-Identifier: AGPL-3.0-or-later
+//! ==============================================================================
+//! SaPresets — the preset geometries the built-in layouts draw with (GENERATED)
+//! ==============================================================================
+//!
+//! Cut from gallery/office/geom/assets/presets.txt by
+//! smartart/tools/embed_layouts.mjs: ${presetNames.join(", ")}.
+//! SaRender loads them into the painter it draws a diagram with.
+//! ==============================================================================
 
-class SaPresets {
+use ranger::prelude::*;
 
-    sfn names:string () {
-        return ${literal(presetNames.join(", "))}
+pub struct SaPresets {}
+
+impl SaPresets {
+    pub fn new() -> Self {
+        Self {}
     }
-
-    sfn text:string () {
-        def s:string ""
+    pub fn names() -> String {
+        ${literal(presetNames.join(", "))}.to_string()
+    }
+    pub fn text() -> String {
+        let mut s: String = String::new();
 `;
 for (const n of presetNames) {
   for (const ln of blocks.get(n)) {
     if (ln.trim() === "") continue;
-    psrc += `        s = (s + ${literal(ln)} + "\\n")\n`;
+    psrc += `        s.push_str(${literal(ln).slice(0, -1)}\\n");\n`;
   }
 }
-psrc += `        return s\n    }\n}\n`;
+psrc += `        s\n    }\n}\n`;
 
-const outputs = [[out, src, "SaBuiltins.rgr"], [presetsOut, psrc, "SaPresets.rgr"]];
+const outputs = [[out, src, "sa_builtins.rs"], [presetsOut, psrc, "sa_presets.rs"]];
 if (process.argv.includes("--check")) {
   let stale = false;
   for (const [file, text, name] of outputs) {
@@ -129,8 +140,8 @@ if (process.argv.includes("--check")) {
     }
   }
   if (stale) process.exit(1);
-  console.log("SaBuiltins.rgr and SaPresets.rgr are up to date");
+  console.log("sa_builtins.rs and sa_presets.rs are up to date");
 } else {
   for (const [file, text] of outputs) fs.writeFileSync(file, text);
-  console.log(`wrote SaBuiltins.rgr (${names.join(", ")}) and SaPresets.rgr (${presetNames.join(", ")})`);
+  console.log(`wrote sa_builtins.rs (${names.join(", ")}) and sa_presets.rs (${presetNames.join(", ")})`);
 }
