@@ -124,7 +124,7 @@ class PptxVegaShapes {
         error = ""
         shapeCount = 0
         textCount = 0
-        def group (new PptxShape())
+        def group (PptxShape.new_())
         group.kind = (PptxShapeKind.group())
         group.name = "Chart"
         group.x = x
@@ -280,7 +280,7 @@ class PptxVegaShapes {
     ; most worth spelling as a preset: `<a:prstGeom prst="rect"/>` is eleven
     ; bytes larger than nothing and it is a rectangle an author can drag.
     fn emitRect:void (group:PptxShape cmd:VlDrawCommand ox:double oy:double scale:double wantFill:boolean wantStroke:boolean) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         sh.x = (ox + (cmd.x * scale))
@@ -337,7 +337,7 @@ class PptxVegaShapes {
     fn emitCircle:void (group:PptxShape cmd:VlDrawCommand ox:double oy:double scale:double wantFill:boolean wantStroke:boolean) {
         def side:double (sqrt cmd.size)
         def d:double (side * scale)
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         sh.preset = "ellipse"

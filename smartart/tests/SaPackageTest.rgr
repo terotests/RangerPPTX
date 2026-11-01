@@ -84,7 +84,7 @@ class SaPackageTest {
 
     sfn testEngine:void (c:SaKit) {
         print "-- what the engine says it was made from --"
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.layout = "chevron1"
         o.colors = "colorful1"
         def r:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o 480.0 270.0))
@@ -96,11 +96,11 @@ class SaPackageTest {
         c.ok("the model names them: what the Markdown asked for, not what the file said" ((indexOf g.diagramModelXml "loTypeId=\"urn:microsoft.com/office/officeart/2005/8/layout/chevron1\"") >= 0))
         c.ok("and the colours" ((indexOf g.diagramModelXml "csTypeId=\"urn:microsoft.com/office/officeart/2005/8/colors/colorful1\"") >= 0))
         c.ok("its shapes as made" (g.diagramSig == (g.diagramSignature())))
-        def o2 (new SaOptions())
+        def o2 (SaOptions.new_())
         o2.style = "simple3"
         def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o2 480.0 270.0))
         c.eqStr("a style asked for" r2.shape.diagramStyleId "urn:microsoft.com/office/officeart/2005/8/quickstyle/simple3")
-        def r3:SaResult (SaEngine.layout((SaKit.flat("noSuchLayout9" 2)) (new SaOptions()) 480.0 270.0))
+        def r3:SaResult (SaEngine.layout((SaKit.flat("noSuchLayout9" 2)) (SaOptions.new_()) 480.0 270.0))
         c.eqStr("an unknown layout: default's id, as drawn" r3.shape.diagramLayoutId "urn:microsoft.com/office/officeart/2005/8/layout/default")
     }
 

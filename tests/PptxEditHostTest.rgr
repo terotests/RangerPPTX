@@ -97,12 +97,12 @@ class PptxEditHostTest {
     ; A one-run label naming a face we do NOT have, in a box the author sized
     ; to fit it — which is what makes the layout shrink it.
     sfn calibriLabel:PptxShape (text:string sizePt:double widthPt:double) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.width = widthPt
         sh.height = 40.0
         sh.hasText = true
-        def para (new PptxParagraph())
-        def run (new PptxTextRun())
+        def para (PptxParagraph.new_())
+        def run (PptxTextRun.new_())
         run.text = text
         run.fontSizePt = sizePt
         run.fontFamily = "Calibri"
@@ -134,11 +134,11 @@ class PptxEditHostTest {
     }
 
     sfn numbered:void (body:PptxTextBody level:int text:string) {
-        def para (new PptxParagraph())
+        def para (PptxParagraph.new_())
         para.level = level
         para.hasBullet = true
         para.bulletAutoNum = true
-        def run (new PptxTextRun())
+        def run (PptxTextRun.new_())
         run.text = text
         push para.runs run
         push body.paragraphs para
@@ -642,7 +642,7 @@ class PptxEditHostTest {
         c.ok("and a third Enter is an ordinary newline" ((array_length ks.text.paragraphs) == (before + 2)))
 
         print "-- what a numbered item is numbered --"
-        def body (new PptxTextBody())
+        def body (PptxTextBody.new_())
         PptxEditHostTest.numbered(body 0 "one")
         PptxEditHostTest.numbered(body 0 "two")
         PptxEditHostTest.numbered(body 1 "under two")
@@ -661,16 +661,16 @@ class PptxEditHostTest {
         ; `<a:br/>` — shift+Enter — and a newline left in a run's text. Both
         ; ended a line in PowerPoint and neither did here: the text ran on and
         ; wrapped wherever the box happened to end.
-        def brBody (new PptxTextBody())
+        def brBody (PptxTextBody.new_())
         brBody.wrap = true
-        def brPara (new PptxParagraph())
-        def r1 (new PptxTextRun())
+        def brPara (PptxParagraph.new_())
+        def r1 (PptxTextRun.new_())
         r1.text = "one"
         r1.fontSizePt = 12.0
-        def r2 (new PptxTextRun())
+        def r2 (PptxTextRun.new_())
         r2.text = "\n"
         r2.fontSizePt = 12.0
-        def r3 (new PptxTextRun())
+        def r3 (PptxTextRun.new_())
         r3.text = "two"
         r3.fontSizePt = 12.0
         push brPara.runs r1

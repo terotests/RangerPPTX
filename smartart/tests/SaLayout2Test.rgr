@@ -16,7 +16,7 @@ Import "../SaRender.rgr"
 class SaLayout2Test {
 
     sfn draw:SaResult (xml:string) {
-        return (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+        return (SaEngine.layout(xml (SaOptions.new_()) 480.0 270.0))
     }
 
     sfn allInside:boolean (r:SaResult) {
@@ -181,12 +181,12 @@ class SaLayout2Test {
     ; the checks themselves catch what they are for
     sfn testKit:void (c:SaKit) {
         print "-- the checks --"
-        def a (new PptxShape())
+        def a (PptxShape.new_())
         a.x = 0.0
         a.y = 0.0
         a.width = 10.0
         a.height = 10.0
-        def b (new PptxShape())
+        def b (PptxShape.new_())
         b.x = 5.0
         b.y = 5.0
         b.width = 10.0

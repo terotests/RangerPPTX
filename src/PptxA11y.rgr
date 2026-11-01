@@ -68,7 +68,7 @@ class PptxA11y {
             }
             i = (i + 1)
         }
-        return (new PptxShape())
+        return (PptxShape.new_())
     }
 
     sfn isTitle:boolean (sh:PptxShape) {

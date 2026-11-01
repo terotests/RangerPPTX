@@ -109,7 +109,7 @@ class PptxShapeInk {
     ; which is how PowerPoint itself writes a straight connector, and why a
     ; zero-height box is legal here and would not be for a `custGeom`.
     sfn segment:PptxShape (x1:double y1:double x2:double y2:double) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         sh.preset = "line"
@@ -144,7 +144,7 @@ class PptxShapeInk {
     ; is closed draws a segment from the last point back to the first, and if it
     ; is also filled it paints a blob over half the picture.
     sfn ring:PptxShape (pts:[double] from:int upto:int closed:boolean) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         if ((upto - from) < 4) {
@@ -250,7 +250,7 @@ class PptxShapeInk {
         }
         rx = ((pivotX + rx) - anchorX)
         ry = ((pivotY + ry) - anchorY)
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         sh.preset = "rect"
@@ -262,7 +262,7 @@ class PptxShapeInk {
         sh.noFill = true
         sh.noLine = true
 
-        def tb (new PptxTextBody())
+        def tb (PptxTextBody.new_())
         tb.wrap = false
         tb.anchor = "ctr"
         tb.anchorSet = true
@@ -271,7 +271,7 @@ class PptxShapeInk {
         tb.insetT = 0.0
         tb.insetB = 0.0
         tb.insetsSet = true
-        def para (new PptxParagraph())
+        def para (PptxParagraph.new_())
         para.align = "ctr"
         if (align == "left") {
             para.align = "l"
@@ -280,7 +280,7 @@ class PptxShapeInk {
             para.align = "r"
         }
         para.alignSet = true
-        def run (new PptxTextRun())
+        def run (PptxTextRun.new_())
         run.text = body
         run.fontFamily = family
         run.fontSizePt = sizePt

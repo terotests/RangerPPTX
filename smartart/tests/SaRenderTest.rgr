@@ -46,14 +46,14 @@ class SaRenderTest {
         def rgb:PptxColor (PptxColor.srgbOf("ABCDEF"))
         SaRender.resolve(rgb p)
         c.eqStr("an RGB colour is left as it is" rgb.srgb "ABCDEF")
-        def unset (new PptxColor())
+        def unset (PptxColor.new_())
         SaRender.resolve(unset p)
         c.ok("an unset one stays unset" (unset.isSet == false))
     }
 
     sfn testPaint:void (c:SaKit) {
         print "-- painted --"
-        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) (SaOptions.new_()) 480.0 270.0))
         def out (new EVGDisplayList())
         SaRender.paint(out r.shape (SaRenderTest.palette()) 100.0 50.0)
         def texts:string ""
@@ -103,7 +103,7 @@ class SaRenderTest {
     sfn testHostFonts:void (c:SaKit) {
         print "-- measured and drawn in the host's font --"
         def data:string (SaKit.data("vList2" (SaKit.pt("a" "alpha beta gamma delta epsilon zeta eta theta")) (SaKit.cx("0" "a"))))
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.measure = (SaMeasure.over((new SaWideHost()) "Wide"))
         def r:SaResult (SaEngine.layout(data o 300.0 200.0))
         c.ok("laid out" r.ok)
@@ -112,7 +112,7 @@ class SaRenderTest {
         def para:PptxParagraph (itemAt sh.text.paragraphs 0)
         def run:PptxTextRun (itemAt para.runs 0)
         c.eqStr("the run names the family it was measured in" run.fontFamily "Wide")
-        def plain:SaResult (SaEngine.layout(data (new SaOptions()) 300.0 200.0))
+        def plain:SaResult (SaEngine.layout(data (SaOptions.new_()) 300.0 200.0))
         def psh:PptxShape (itemAt plain.shape.children 0)
         def ppara:PptxParagraph (itemAt psh.text.paragraphs 0)
         def prun:PptxTextRun (itemAt ppara.runs 0)
@@ -156,7 +156,7 @@ class SaRenderTest {
     ; A sub-item's bullet hangs in front of its text, never over its first
     ; letter (vList2 and hList1 drew "•" on top of every sub-item).
     sfn bulletsClear:void (c:SaKit lay:string) {
-        def r:SaResult (SaEngine.layout((SaKit.twoLevels(lay 3 2)) (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaEngine.layout((SaKit.twoLevels(lay 3 2)) (SaOptions.new_()) 480.0 270.0))
         SaRender.resolveAll(r.shape (SaRenderTest.palette()))
         def out (new EVGDisplayList())
         SaRender.drawWith(out r.shape 0.0 0.0 r.measure)
@@ -189,7 +189,7 @@ class SaRenderTest {
         dark.set("accent1" "#E07A2F")
         dark.set("lt1" "#0B1030")
         dark.set("dk1" "#E8ECFF")
-        def r:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (SaOptions.new_()) 480.0 270.0))
         SaRender.resolveAll(r.shape dark)
         def body:PptxShape (itemAt (SaKit.shapes(r "desTx")) 0)
         def para:PptxParagraph (itemAt body.text.paragraphs 0)
@@ -200,7 +200,7 @@ class SaRenderTest {
         c.ok(("after: it reads (" + (to_string (SaRender.contrast(run.color.srgb fill))) + ")") ((SaRender.contrast(run.color.srgb fill)) >= 4.5))
         c.eqStr("in the dark of the two" run.color.srgb "0B1030")
         ; the same diagram on a light slide is left as it is
-        def r2:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (new SaOptions()) 480.0 270.0))
+        def r2:SaResult (SaEngine.layout((SaKit.twoLevels("hList1" 3 2)) (SaOptions.new_()) 480.0 270.0))
         SaRender.resolveAll(r2.shape (SaRenderTest.palette()))
         def before:string (SaRenderTest.runColours(r2.shape))
         SaRender.keepReadable(r2.shape (SaRenderTest.palette()) "FFFFFF")
@@ -208,7 +208,7 @@ class SaRenderTest {
         c.near("contrast: black on white" (SaRender.contrast("000000" "FFFFFF")) 21.0)
         ; lProcess2's heading has no fill of its own: it sits on the pale
         ; column, not on the dark slide
-        def r3:SaResult (SaEngine.layout((SaKit.twoLevels("lProcess2" 3 2)) (new SaOptions()) 480.0 270.0))
+        def r3:SaResult (SaEngine.layout((SaKit.twoLevels("lProcess2" 3 2)) (SaOptions.new_()) 480.0 270.0))
         SaRender.resolveAll(r3.shape dark)
         SaRender.keepReadable(r3.shape dark "0B1030")
         def col:PptxShape (itemAt (SaKit.shapes(r3 "bg")) 0)
@@ -230,7 +230,7 @@ class SaRenderTest {
         dark.set("accent1" "#E07A2F")
         dark.set("lt1" "#0B1030")
         dark.set("dk1" "#E8ECFF")
-        def r:SaResult (SaEngine.layout((SaKit.flat("arrow2" 5)) (new SaOptions()) 960.0 400.0))
+        def r:SaResult (SaEngine.layout((SaKit.flat("arrow2" 5)) (SaOptions.new_()) 960.0 400.0))
         SaRender.resolveAll(r.shape dark)
         SaRender.keepReadable(r.shape dark "0B1030")
         def reads:int 0
@@ -250,7 +250,7 @@ class SaRenderTest {
         ; an ellipse's box corner is not the ellipse
         def geo (new OfficePresetShapes())
         geo.load((SaPresets.text()))
-        def e (new PptxShape())
+        def e (PptxShape.new_())
         e.x = 0.0
         e.y = 0.0
         e.width = 100.0
@@ -261,7 +261,7 @@ class SaRenderTest {
         e.preset = "rect"
         c.ok("a rectangle's corner is" (SaRender.covers(e 5.0 5.0 geo)))
         ; a quarter turned: the wedge's corner moves with it
-        def w (new PptxShape())
+        def w (PptxShape.new_())
         w.x = 0.0
         w.y = 0.0
         w.width = 100.0
@@ -280,7 +280,7 @@ class SaRenderTest {
         dark.set("accent1" "#E07A2F")
         dark.set("lt1" "#0B1030")
         dark.set("dk1" "#E8ECFF")
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.style = "simple5"
         def r:SaResult (SaEngine.layout((SaKit.flat("process1" 3)) o 480.0 270.0))
         SaRender.resolveAll(r.shape dark)
@@ -351,7 +351,7 @@ class SaRenderTest {
         c.eqInt("16:9, wider than any column" ((SaFile.naturalW()) * 9) ((SaFile.naturalH()) * 16))
         ; the whole road: bytes in, a drawing out, the Finnish intact
         def fi:string (SaKit.data("process1" (SaKit.pt("a" "Hämeenlinna")) (SaKit.cx("0" "a"))))
-        def r:SaResult (SaEngine.layout((SaFile.textOf((buffer_from_string (EVGCodepoint.encodeUtf8(fi))))) (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaEngine.layout((SaFile.textOf((buffer_from_string (EVGCodepoint.encodeUtf8(fi))))) (SaOptions.new_()) 480.0 270.0))
         def n0:PptxShape (itemAt r.shape.children 0)
         c.eqStr("read from bytes, drawn with its own letters" (n0.text.plainText()) "Hämeenlinna")
     }
@@ -363,7 +363,7 @@ class SaRenderTest {
         def names:string (SaPresets.names())
         c.ok("every shape the built-in layouts name" ((((indexOf names "chevron") >= 0) && ((indexOf names "roundRect") >= 0)) && ((indexOf names "rightArrow") >= 0)))
         ; a chevron drawn is a path with its point, not a box
-        def r:SaResult (SaEngine.layout((SaKit.flat("chevron1" 2)) (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaEngine.layout((SaKit.flat("chevron1" 2)) (SaOptions.new_()) 480.0 270.0))
         def out (new EVGDisplayList())
         SaRender.paint(out r.shape (SaRenderTest.palette()) 0.0 0.0)
         def paths:int 0

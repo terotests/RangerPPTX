@@ -34,7 +34,7 @@ class PptxGeomTest {
     ; falls back to a rectangle for every preset, which is the right answer
     ; for a host that never loaded one and the wrong subject for a test about
     ; how shapes are painted.
-    def conv:PptxToEvg (new PptxToEvg())
+    def conv:PptxToEvg (PptxToEvg.new_())
 
     sfn main:void () {
         def t (new PptxGeomTest())
@@ -144,7 +144,7 @@ class PptxGeomTest {
     ; funnel that is seven boxes drawn over the thing they are supposed to be
     ; tracing.
     fn drawPreset:EVGDisplayList (preset:string) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.preset = preset
         sh.x = 10.0
@@ -157,7 +157,7 @@ class PptxGeomTest {
         sh.line.isSet = true
         sh.line.srgb = "000000"
         sh.lineWidthPt = 1.0
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         push slide.shapes sh
         def dl:EVGDisplayList (conv.slideToDisplayList(slide))
         return dl
@@ -337,7 +337,7 @@ class PptxGeomTest {
     ; took to notice.
     fn testAFlatBoxIsALine:void () {
         print "--- a box with no thickness is a line, not a border ---"
-        def flat (new PptxShape())
+        def flat (PptxShape.new_())
         flat.preset = "line"
         flat.x = 10.0
         flat.y = 50.0
@@ -375,7 +375,7 @@ class PptxGeomTest {
         ; thicker than that means it was drawn on the diagonal.
         this.check("and level, not diagonal" ((bottom - top) < 6.0))
 
-        def upright (new PptxShape())
+        def upright (PptxShape.new_())
         upright.preset = "line"
         upright.x = 40.0
         upright.y = 10.0
@@ -391,7 +391,7 @@ class PptxGeomTest {
     }
 
     fn strokeShape:PptxShape (src:PptxShape) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.hasPath = src.hasPath
         sh.pathUnit = src.pathUnit
         sh.pathClosed = src.pathClosed
@@ -405,7 +405,7 @@ class PptxGeomTest {
     }
 
     fn emit:EVGDisplayList (sh:PptxShape) {
-        def conv (new PptxToEvg)
+        def conv (PptxToEvg.new_())
         def dl (new EVGDisplayList)
         conv.emitShape(dl sh 0.0 0.0)
         return dl
@@ -485,7 +485,7 @@ class PptxGeomTest {
         def i:int 0
         while (i < (cat.count())) {
             def nm:string (cat.nameAt(i))
-            def sh (new PptxShape())
+            def sh (PptxShape.new_())
             sh.preset = nm
             sh.width = 200.0
             sh.height = 120.0
@@ -532,7 +532,7 @@ class PptxGeomTest {
         this.check(("and none of them comes out as a plain box (first: " + firstFlat + ")") (flat == 0))
 
         ; The shape that started this, checked for what makes it a star.
-        def star (new PptxShape())
+        def star (PptxShape.new_())
         star.preset = "star7"
         star.width = 200.0
         star.height = 200.0
@@ -548,7 +548,7 @@ class PptxGeomTest {
         ; And the two that stay on the primitive really do stay on it: a
         ; rounded rectangle has to keep its corner radius, which a polygon
         ; would have to approximate.
-        def rr (new PptxShape())
+        def rr (PptxShape.new_())
         rr.preset = "roundRect"
         rr.width = 200.0
         rr.height = 100.0
@@ -571,7 +571,7 @@ class PptxGeomTest {
 
         ; A cube is one colour with one face darker and one lighter. Drawing
         ; all three the same draws a hexagon.
-        def cube (new PptxShape())
+        def cube (PptxShape.new_())
         cube.preset = "cube"
         cube.width = 150.0
         cube.height = 150.0
@@ -584,7 +584,7 @@ class PptxGeomTest {
 
         ; A shape that states no fill is not filled, whatever its preset says
         ; about the paths.
-        def hollow (new PptxShape())
+        def hollow (PptxShape.new_())
         hollow.preset = "star7"
         hollow.width = 150.0
         hollow.height = 150.0
@@ -601,7 +601,7 @@ class PptxGeomTest {
         ; A shape with no line of its own gets no outline, whatever the
         ; preset's paths say — `stroke="true"` is permission, not an order.
         ; This put a black box round every text frame in a deck.
-        def plain (new PptxShape())
+        def plain (PptxShape.new_())
         plain.preset = "ellipse"
         plain.width = 150.0
         plain.height = 150.0
@@ -1054,7 +1054,7 @@ class PptxGeomTest {
         def app:PptxApp (new PptxApp)
         app.init("gallery/pdf_writer/assets/fonts")
         app.resize(200 200)
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.preset = "donut"
         sh.width = 120.0
         sh.height = 120.0
@@ -1077,7 +1077,7 @@ class PptxGeomTest {
         ; The shape the report was about: an action button's face, with its
         ; glyph cut out of it as a second contour. The corner of the face has
         ; to be painted — that is where the pale wedge appeared.
-        def btn (new PptxShape())
+        def btn (PptxShape.new_())
         btn.preset = "actionButtonBackPrevious"
         btn.width = 120.0
         btn.height = 120.0
@@ -1143,11 +1143,11 @@ class PptxGeomTest {
         def xml:string (("<p:spPr><a:custGeom><a:pathLst><a:path w=\"100\" h=\"100\">" + inner) + "</a:path></a:pathLst></a:custGeom></p:spPr>")
         def p (new XmlParser())
         def root@(optional):XmlNode (p.parse(xml))
-        def shape (new PptxShape())
+        def shape (PptxShape.new_())
         if (null? root) {
             return shape
         }
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         parser.parseCustGeomPath((unwrap root) shape)
         return shape
     }

@@ -55,7 +55,7 @@ class PptxFromEvgTest {
     ; nothing — and a deck nobody can look at is a deck nobody knows is right.
     fn testCustomGeometryReadsBack:void () {
         print "-- a custom outline, read back into EVG"
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.kind = (PptxShapeKind.shape())
         sh.hasXfrm = true
         sh.width = 100.0
@@ -74,7 +74,7 @@ class PptxFromEvgTest {
         sh.line = (PptxShapeInk.rgbaOf(10 20 30 1.0))
         sh.lineWidthPt = 2.0
 
-        def conv (new PptxToEvg())
+        def conv (PptxToEvg.new_())
         def el:EVGElement (conv.shapeElement(sh))
         this.eqStr("it is a path, not a box" el.tagName "path")
         this.check(("it carries an outline: " + el.svgPath) ((strlen el.svgPath) > 0))
@@ -146,7 +146,7 @@ class PptxFromEvgTest {
         this.check("a:srcRect l" ((indexOf xml "l=\"50000\"") > 0))
         this.check("a:srcRect r" ((indexOf xml "r=\"25000\"") > 0))
         this.check("no t for nothing cut" ((indexOf xml " t=") < 0))
-        def whole (new PptxShape())
+        def whole (PptxShape.new_())
         this.check("a whole picture has none" ((strlen (PptxWriter.srcRectXml(whole))) == 0))
     }
 
@@ -313,7 +313,7 @@ class PptxFromEvgTest {
         def t1:PptxShapeRef (slide.addTextBox(40.0 160.0 400.0 60.0 "Through the display list"))
         def model:PptxSlide (slide.model())
 
-        def conv (new PptxToEvg())
+        def conv (PptxToEvg.new_())
         def dl:EVGDisplayList (conv.slideToDisplayList(model))
         this.check("the slide drew something" ((array_length dl.cmds) > 0))
 

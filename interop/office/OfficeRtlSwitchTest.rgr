@@ -188,10 +188,10 @@ class OfficeRtlSwitchTest {
         ; mirrored the interface for the rest of the session.
         def deck (new PptxApp)
         deck.toolbar.build()
-        def arabic (new PptxPresentation)
-        def s1 (new PptxSlide)
-        def sh1 (new PptxShape)
-        def p1 (new PptxParagraph)
+        def arabic (PptxPresentation.new_())
+        def s1 (PptxSlide.new_())
+        def sh1 (PptxShape.new_())
+        def p1 (PptxParagraph.new_())
         p1.rtl = 1
         push sh1.text.paragraphs p1
         push s1.shapes sh1
@@ -200,10 +200,10 @@ class OfficeRtlSwitchTest {
         deck.adoptDeckDirection()
         c.ok("PowerPoint: an RTL deck turns it on" deck.uiRtl)
 
-        def english (new PptxPresentation)
-        def s2 (new PptxSlide)
-        def sh2 (new PptxShape)
-        def p2 (new PptxParagraph)
+        def english (PptxPresentation.new_())
+        def s2 (PptxSlide.new_())
+        def sh2 (PptxShape.new_())
+        def p2 (PptxParagraph.new_())
         push sh2.text.paragraphs p2
         push s2.shapes sh2
         push english.slides s2
@@ -215,12 +215,12 @@ class OfficeRtlSwitchTest {
         ; A paragraph does not stop being Arabic for being inside a group, and
         ; the walk that only looked at a slide's top-level shapes missed
         ; exactly the shapes a diagram keeps its text in.
-        def grouped (new PptxPresentation)
-        def s3 (new PptxSlide)
-        def grp (new PptxShape)
+        def grouped (PptxPresentation.new_())
+        def s3 (PptxSlide.new_())
+        def grp (PptxShape.new_())
         grp.kind = (PptxShapeKind.group())
-        def kid (new PptxShape)
-        def p3 (new PptxParagraph)
+        def kid (PptxShape.new_())
+        def p3 (PptxParagraph.new_())
         p3.rtl = 1
         push kid.text.paragraphs p3
         push grp.children kid

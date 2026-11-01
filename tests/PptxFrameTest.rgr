@@ -59,12 +59,12 @@ class PptxFrameTest {
     ; A one-run label in a box of a stated width, naming Calibri — which is
     ; what the decks that show this up actually contain.
     sfn labelShape:PptxShape (text:string sizePt:double widthPt:double) {
-        def sh (new PptxShape())
+        def sh (PptxShape.new_())
         sh.width = widthPt
         sh.height = 40.0
         sh.hasText = true
-        def para (new PptxParagraph())
-        def run (new PptxTextRun())
+        def para (PptxParagraph.new_())
+        def run (PptxTextRun.new_())
         run.text = text
         run.fontSizePt = sizePt
         run.fontFamily = "Calibri"

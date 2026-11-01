@@ -179,7 +179,7 @@ class PptxTextEdit {
         if ((array_length para.runs) > 0) {
             return (itemAt para.runs 0)
         }
-        def run (new PptxTextRun())
+        def run (PptxTextRun.new_())
         run.fontSizePt = body.defFontSizePt
         run.sizeSet = body.hasDefRPr
         run.bold = body.defBold
@@ -217,8 +217,8 @@ class PptxTextEdit {
             if (found == false) {
                 if (col < endsAt) {
                     if (col > startsAt) {
-                        def left (new PptxTextRun())
-                        def right (new PptxTextRun())
+                        def left (PptxTextRun.new_())
+                        def right (PptxTextRun.new_())
                         PptxTextEdit.copyStyle(run left)
                         PptxTextEdit.copyStyle(run right)
                         left.text = (substring run.text 0 (col - startsAt))
@@ -262,7 +262,7 @@ class PptxTextEdit {
     }
 
     sfn copyColor:PptxColor (src:PptxColor) {
-        def c (new PptxColor())
+        def c (PptxColor.new_())
         c.isSet = src.isSet
         c.isScheme = src.isScheme
         c.scheme = src.scheme
@@ -302,7 +302,7 @@ class PptxTextEdit {
     sfn insertAt:PptxTextPos (body:PptxTextBody pos:PptxTextPos text:string) {
         PptxTextEdit.clamp(body pos)
         if ((array_length body.paragraphs) == 0) {
-            def fresh (new PptxParagraph())
+            def fresh (PptxParagraph.new_())
             fresh.align = body.defAlign
             push body.paragraphs fresh
         }
@@ -346,7 +346,7 @@ class PptxTextEdit {
         }
         def proto@(optional):PptxTextRun (PptxTextEdit.styleRunAt(para pos.col))
         def at:int (PptxTextEdit.splitRunsAt(para pos.col))
-        def run (new PptxTextRun())
+        def run (PptxTextRun.new_())
         if (!null? proto) {
             PptxTextEdit.copyStyle((unwrap proto) run)
         }
@@ -392,7 +392,7 @@ class PptxTextEdit {
             i = (i + 1)
         }
         if ((array_length out) == 0) {
-            def keep (new PptxTextRun())
+            def keep (PptxTextRun.new_())
             if ((array_length para.runs) > 0) {
                 PptxTextEdit.copyStyle((itemAt para.runs 0) keep)
             }
@@ -490,7 +490,7 @@ class PptxTextEdit {
     ; first run it finds — so a paragraph seeded with one keeps its formatting
     ; through the merge, and one seeded with nothing does not.
     sfn emptyLike:PptxTextRun (proto:PptxTextRun) {
-        def out (new PptxTextRun())
+        def out (PptxTextRun.new_())
         PptxTextEdit.copyStyle(proto out)
         out.text = ""
         return out
@@ -508,7 +508,7 @@ class PptxTextEdit {
         ; from it below — see there for why.
         def protoOpt@(optional):PptxTextRun (PptxTextEdit.styleRunAt(para pos.col))
         def at:int (PptxTextEdit.splitRunsAt(para pos.col))
-        def tail (new PptxParagraph())
+        def tail (PptxParagraph.new_())
         ; ALL of the paragraph's formatting, not the seven fields somebody
         ; remembered. See PptxParagraph.copyFormatTo: the hand-written list
         ; this replaces had gone stale, and pressing Enter on a bulleted line

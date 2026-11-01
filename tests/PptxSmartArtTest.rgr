@@ -86,11 +86,11 @@ class PptxSmartArtTest {
             }
             i = (i + 1)
         }
-        return (new PptxShape())
+        return (PptxShape.new_())
     }
 
     sfn open:PptxParser () {
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         parser.openParts("gallery/pptx/fixtures" "38-smartart-drawing.pptx")
         return parser
     }
@@ -144,12 +144,12 @@ class PptxSmartArtTest {
     sfn testDraw:void (c:SmartArtCheck) {
         print "-- drawn --"
         def parser:PptxParser (PptxSmartArtTest.open())
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def slide:PptxSlide (itemAt pres.slides 0)
         def d:PptxShape (PptxSmartArtTest.byName(slide.shapes "Process"))
         c.ok("the resolver keeps it a diagram" d.isDiagram)
         c.eqStr("and keeps its signature" d.diagramSig (d.diagramSignature()))
-        def conv (new PptxToEvg())
+        def conv (PptxToEvg.new_())
         def dl:EVGDisplayList (conv.slideToDisplayList(slide))
         def planX:double -1.0
         def shipX:double -1.0
@@ -191,7 +191,7 @@ class PptxSmartArtTest {
     }
 
     sfn edited:PptxPresentation (parser:PptxParser) {
-        return ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        return ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
     }
 
     sfn testSaveMoved:void (c:SmartArtCheck) {
@@ -233,7 +233,7 @@ class PptxSmartArtTest {
         c.ok("and the parts are in the package"
             ((out.hasPart("ppt/diagrams/data1.xml")) && (out.hasPart("ppt/diagrams/drawing1.xml"))))
         ; and it reads back as the same diagram, where it was put
-        def again (new PptxParser())
+        def again (PptxParser.new_())
         again.openParts("gallery/pptx/bin" "smartart-moved.pptx")
         def raw2:PptxPresentation (again.parsePresentation())
         def s2:PptxSlide (itemAt raw2.slides 0)
@@ -354,7 +354,7 @@ class PptxSmartArtTest {
         c.ok("in the drawing's own namespace" ((indexOf dr "<p:") < 0))
         c.ok("its text shrinks rather than breaking words in a wider font" ((indexOf dr "<a:normAutofit/></a:bodyPr>") >= 0))
         ; read back: the same diagram, from the drawing written here
-        def again (new PptxParser())
+        def again (PptxParser.new_())
         again.openParts("gallery/pptx/bin" "smartart-native.pptx")
         def raw:PptxPresentation (again.parsePresentation())
         def s0:PptxSlide (itemAt raw.slides 0)
@@ -370,7 +370,7 @@ class PptxSmartArtTest {
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
         def slide:PptxSlide (itemAt pres.slides 0)
         def texts:[string] ([] _:string ("Spring" "Summer" "Autumn"))
-        def r:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (new SaOptions()) 300.0 200.0))
+        def r:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (SaOptions.new_()) 300.0 200.0))
         c.ok("laid out" r.ok)
         def g:PptxShape r.shape
         g.name = "Seasons"
@@ -399,7 +399,7 @@ class PptxSmartArtTest {
         c.ok("the new ones there" ((out.hasPart("ppt/diagrams/data4.xml")) && (out.hasPart("ppt/diagrams/drawing3.xml"))))
         def ct:string (out.readXml("[Content_Types].xml"))
         c.ok("and typed" ((indexOf ct "/ppt/diagrams/drawing3.xml\" ContentType=\"application/vnd.ms-office.drawingml.diagramDrawing+xml\"") >= 0))
-        def again (new PptxParser())
+        def again (PptxParser.new_())
         again.openParts("gallery/pptx/bin" "smartart-native-over.pptx")
         def raw:PptxPresentation (again.parsePresentation())
         def s0:PptxSlide (itemAt raw.slides 0)
@@ -407,7 +407,7 @@ class PptxSmartArtTest {
         c.ok("read back, a diagram" back.isDiagram)
         c.eqInt("three seasons and three arrows" (array_length back.children) 6)
         ; saved again over itself: the frame kept, nothing doubled
-        def pres2:PptxPresentation ((new PptxResolver()).resolvePresentation(raw))
+        def pres2:PptxPresentation ((PptxResolver.new_()).resolvePresentation(raw))
         def sl2:PptxSlide (itemAt pres2.slides 0)
         sl2.dirty = true
         def w2 (new PptxWriter())
@@ -451,12 +451,12 @@ class PptxSmartArtTest {
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
         def slide:PptxSlide (itemAt pres.slides 0)
         def texts:[string] ([] _:string ("Spring" "Summer" "Autumn"))
-        def r:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (new SaOptions()) 300.0 200.0))
+        def r:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (SaOptions.new_()) 300.0 200.0))
         def g:PptxShape r.shape
         g.name = "Seasons"
         g.x = 400.0
         g.y = 300.0
-        def rs (new PptxResolver())
+        def rs (PptxResolver.new_())
         rs.resolveShape(g pres.theme)
         push slide.shapes g
         def ed (new PptxEditor())
@@ -536,9 +536,9 @@ class PptxSmartArtTest {
 
     sfn testRelayoutReopened:void (c:SmartArtCheck) {
         print "-- a diagram reopened from the file we wrote, edited --"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         parser.openParts("gallery/pptx/bin" "smartart-native-over.pptx")
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def slide:PptxSlide (itemAt pres.slides 0)
         def d:PptxShape (PptxSmartArtTest.byName(slide.shapes "Seasons"))
         c.ok("read from its drawing" d.diagramHadDrawing)
@@ -556,7 +556,7 @@ class PptxSmartArtTest {
         c.ok("no longer PowerPoint's drawing of it" (d2.diagramHadDrawing == false))
         def w (new PptxWriter())
         w.saveOver(pres parser.pkg "gallery/pptx/bin" "smartart-reopened.pptx")
-        def again (new PptxParser())
+        def again (PptxParser.new_())
         again.openParts("gallery/pptx/bin" "smartart-reopened.pptx")
         def raw:PptxPresentation (again.parsePresentation())
         def s0:PptxSlide (itemAt raw.slides 0)
@@ -587,13 +587,13 @@ class PptxSmartArtTest {
         ; a diagram as PowerPoint keeps it: its parts, with a colour set and a
         ; quick style of its own
         def texts:[string] ([] _:string ("Alpha" "Beta" "Gamma"))
-        def r0:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (new SaOptions()) 300.0 200.0))
+        def r0:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (SaOptions.new_()) 300.0 200.0))
         def nb:SaNumbering (SaPackage.number(r0.shape.diagramModelXml))
         def colors:string "<dgm:colorsDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/houseColours\"><dgm:styleLbl name=\"node1\"><dgm:fillClrLst><a:srgbClr val=\"336699\"/></dgm:fillClrLst><dgm:linClrLst/><dgm:txFillClrLst><a:schemeClr val=\"lt1\"/></dgm:txFillClrLst></dgm:styleLbl></dgm:colorsDef>"
         def style:string "<dgm:styleDef xmlns:dgm=\"http://schemas.openxmlformats.org/drawingml/2006/diagram\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" uniqueId=\"urn:example/houseStyle\"><dgm:styleLbl name=\"node1\"><dgm:style><a:lnRef idx=\"0\"/><a:fillRef idx=\"1\"/><a:effectRef idx=\"0\"/><a:fontRef idx=\"minor\"/></dgm:style></dgm:styleLbl></dgm:styleDef>"
         def parts:string ((PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramData" (nb.dataXml("")))) + (PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramLayout" r0.shape.diagramLayoutXml)) + (PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramColors" colors)) + (PptxSmartArtTest.wholePart("openxmlformats-officedocument.drawingml.diagramStyle" style)) + (PptxSmartArtTest.wholePart("ms-office.drawingml.diagramDrawing" (PptxWriter.diagramDrawingXml(r0.shape nb)))))
         def file:string ("<pkg:package xmlns:pkg=\"http://schemas.microsoft.com/office/2006/xmlPackage\">" + parts + "</pkg:package>")
-        def r:SaResult (SaWhole.layout(file (new SaOptions()) 400.0 225.0))
+        def r:SaResult (SaWhole.layout(file (SaOptions.new_()) 400.0 225.0))
         c.ok("read and drawn from its drawing" r.ok)
         def g:PptxShape r.shape
         c.eqInt("its six shapes" (array_length g.children) 6)
@@ -626,7 +626,7 @@ class PptxSmartArtTest {
             i = (i + 1)
         }
         c.ok(("saved with its own colour set and quick style (" + found + ")") (((indexOf found "colours") >= 0) && ((indexOf found "style") >= 0)))
-        def again (new PptxParser())
+        def again (PptxParser.new_())
         again.openParts("gallery/pptx/bin" "smartart-whole.pptx")
         def raw:PptxPresentation (again.parsePresentation())
         def s0:PptxSlide (itemAt raw.slides 0)
@@ -641,7 +641,7 @@ class PptxSmartArtTest {
         def pres:PptxPresentation (PptxSmartArtTest.edited(parser))
         def slide:PptxSlide (itemAt pres.slides 0)
         def texts:[string] ([] _:string ("One" "Two"))
-        def r:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (new SaOptions()) 300.0 200.0))
+        def r:SaResult (SaEngine.layout((PptxSmartArtTest.dataOf(texts)) (SaOptions.new_()) 300.0 200.0))
         def g:PptxShape r.shape
         g.name = "Moved"
         def first:PptxShape (itemAt g.children 0)
@@ -652,7 +652,7 @@ class PptxSmartArtTest {
         c.eqInt("not SmartArt any more: the two old frames only" (PptxSmartArtTest.countOf(after "<dgm:relIds")) 2)
         c.ok("its shapes, as they were left" (((indexOf after "name=\"Moved\"") >= 0) && ((indexOf after ">One<") >= 0)))
         ; nothing to write it from: shapes
-        def bare (new PptxShape())
+        def bare (PptxShape.new_())
         bare.kind = (PptxShapeKind.group())
         bare.isDiagram = true
         bare.name = "Bare"

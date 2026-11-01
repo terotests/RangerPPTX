@@ -9,7 +9,7 @@ Import "../SaEdit.rgr"
 class SaEditTest {
 
     sfn draw:PptxShape (xml:string) {
-        def r:SaResult (SaEngine.layout(xml (new SaOptions()) 480.0 270.0))
+        def r:SaResult (SaEngine.layout(xml (SaOptions.new_()) 480.0 270.0))
         return r.shape
     }
 
@@ -82,7 +82,7 @@ class SaEditTest {
         c.eqStr("the same layout" r.shape.diagramLayoutId g.diagramLayoutId)
         c.eqStr("the same colours" r.shape.diagramColorsId g.diagramColorsId)
         ; the colours a Markdown asked for are kept
-        def o (new SaOptions())
+        def o (SaOptions.new_())
         o.colors = "colorful1"
         def r2:SaResult (SaEngine.layout((SaKit.flat("process1" 2)) o 480.0 270.0))
         def k0:PptxShape (itemAt (SaEditTest.kids(r2.shape "node")) 0)
@@ -98,8 +98,8 @@ class SaEditTest {
         def v:PptxShape (SaEditTest.draw((SaKit.twoLevels("vList2" 2 2))))
         def ct:PptxShape (itemAt (SaEditTest.kids(v "childText")) 0)
         ; three lines where there were two: the third goes to the last point
-        def extra (new PptxParagraph())
-        def run (new PptxTextRun())
+        def extra (PptxParagraph.new_())
+        def run (PptxTextRun.new_())
         run.text = "and more"
         push extra.runs run
         push ct.text.paragraphs extra
@@ -128,7 +128,7 @@ class SaEditTest {
 
     sfn testRefusals:void (c:SaKit) {
         print "-- what cannot be laid out again --"
-        def bare (new PptxShape())
+        def bare (PptxShape.new_())
         bare.isDiagram = true
         c.ok("no data: no" ((SaEdit.canRelayout(bare)) == false))
         def r:SaResult (SaEdit.relayout(bare bare))
@@ -136,7 +136,7 @@ class SaEditTest {
         c.ok("saying why" ((strlen r.error) > 0))
         def g:PptxShape (SaEditTest.draw((SaKit.flat("process1" 2))))
         c.ok("an engine diagram: yes" (SaEdit.canRelayout(g)))
-        def notDiagram (new PptxShape())
+        def notDiagram (PptxShape.new_())
         c.ok("not a diagram: no" ((SaEdit.canRelayout(notDiagram)) == false))
         def arrow:PptxShape (itemAt (SaEditTest.kids(g "sibTrans")) 0)
         def r2:SaResult (SaEdit.relayout(g arrow))

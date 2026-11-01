@@ -99,14 +99,14 @@ class PptxWriterTest {
     ; A deck assembled in memory, written, and read back.
     fn testRoundTripBuilt:void () {
         print "--- a deck built here ---"
-        def pres (new PptxPresentation())
+        def pres (PptxPresentation.new_())
         pres.slideWidth = 960.0
         pres.slideHeight = 540.0
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         slide.width = 960.0
         slide.height = 540.0
         slide.bg = (PptxColor.srgbOf("FFFFFF"))
-        def box (new PptxShape())
+        def box (PptxShape.new_())
         box.name = "Box"
         box.x = 100.0
         box.y = 80.0
@@ -118,10 +118,10 @@ class PptxWriterTest {
         box.line = (PptxColor.srgbOf("203864"))
         box.lineWidthPt = 2.0
         box.hasText = true
-        def para (new PptxParagraph())
+        def para (PptxParagraph.new_())
         para.align = "ctr"
         para.alignSet = true
-        def run (new PptxTextRun())
+        def run (PptxTextRun.new_())
         run.text = "Sähkö & <deck>"
         run.fontSizePt = 24.0
         run.sizeSet = true
@@ -130,7 +130,7 @@ class PptxWriterTest {
         push para.runs run
         push box.text.paragraphs para
         push slide.shapes box
-        def oval (new PptxShape())
+        def oval (PptxShape.new_())
         oval.name = "Oval"
         oval.preset = "ellipse"
         oval.x = 500.0
@@ -142,10 +142,10 @@ class PptxWriterTest {
         push slide.shapes oval
         push pres.slides slide
 
-        def second (new PptxSlide())
+        def second (PptxSlide.new_())
         second.width = 960.0
         second.height = 540.0
-        def grp (new PptxShape())
+        def grp (PptxShape.new_())
         grp.kind = 2
         grp.x = 40.0
         grp.y = 40.0
@@ -155,7 +155,7 @@ class PptxWriterTest {
         grp.chY = 40.0
         grp.chW = 200.0
         grp.chH = 100.0
-        def child (new PptxShape())
+        def child (PptxShape.new_())
         child.x = 60.0
         child.y = 60.0
         child.width = 80.0
@@ -169,14 +169,14 @@ class PptxWriterTest {
         def writer (new PptxWriter())
         writer.save(pres "gallery/pptx/bin" "roundtrip.pptx")
 
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         def ok:boolean (parser.openParts("gallery/pptx/bin" "roundtrip.pptx"))
         this.check("the package opens" ok)
         if (ok == false) {
             return
         }
         def raw:PptxPresentation (parser.parsePresentation())
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation(raw))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation(raw))
         this.check("two slides came back" ((back.slideCount()) == 2))
         this.check("the slide size survived" (this.near(back.slideWidth 960.0)))
         def s1:PptxSlide (itemAt back.slides 0)
@@ -241,23 +241,23 @@ class PptxWriterTest {
     }
 
     fn roundTripFixture:void (name:string) {
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" name)) == false) {
             this.check(("open " + name) false)
             return
         }
-        def before:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def before:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def writer (new PptxWriter())
         writer.save(before "gallery/pptx/bin" ("rt-" + name))
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" ("rt-" + name)))
         this.check((name + ": reopens") ok)
         if (ok == false) {
             return
         }
-        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def after:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         this.check((name + ": same slide count") ((after.slideCount()) == (before.slideCount())))
         def si:int 0
         def sameShapes:boolean true
@@ -308,12 +308,12 @@ class PptxWriterTest {
     ; left to inherit from.
     fn testFlattening:void () {
         print "--- what the writer flattens ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "15-master-layout-mixed.pptx")) == false) {
             this.check("open 15-master-layout-mixed" false)
             return
         }
-        def before:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def before:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def slideBefore:PptxSlide (itemAt before.slides 0)
         def inheritedBefore:int 0
         def i:int 0
@@ -328,12 +328,12 @@ class PptxWriterTest {
         def writer (new PptxWriter())
         writer.save(before "gallery/pptx/bin" "rt-flat.pptx")
         parser.close()
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         if ((p2.openParts("gallery/pptx/bin" "rt-flat.pptx")) == false) {
             this.check("the flattened deck opens" false)
             return
         }
-        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def after:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def slideAfter:PptxSlide (itemAt after.slides 0)
         def inheritedAfter:int 0
         def j:int 0
@@ -352,12 +352,12 @@ class PptxWriterTest {
     ; The point of the writer: what an edit did is in the file afterwards.
     fn testEditedDeck:void () {
         print "--- an edited deck ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "01-text.pptx")) == false) {
             this.check("open 01-text" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def ed (new PptxEditor())
         ed.attach(pres)
         def id:int (ed.addShapeAt("roundRect" 120.0 200.0 300.0 90.0))
@@ -368,13 +368,13 @@ class PptxWriterTest {
         writer.save(pres "gallery/pptx/bin" "edited.pptx")
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "edited.pptx"))
         this.check("the edited deck opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def slide:PptxSlide (itemAt back.slides 0)
         def found:boolean false
         def i:int 0
@@ -410,12 +410,12 @@ class PptxWriterTest {
     ; check below has two halves and needs both.
     fn testEditKeepsInheritance:void () {
         print "--- an edit does not bake the slide ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "29-theme-styles.pptx")) == false) {
             this.check("open 29-theme-styles" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def slide:PptxSlide (itemAt pres.slides 0)
         ; The smallest real edit there is: move one shape.
         def moved:PptxShape (itemAt slide.shapes 0)
@@ -451,12 +451,12 @@ class PptxWriterTest {
         pkg.close()
 
         ; --- and the edit itself survived, which is the half that matters more
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         if ((p2.openParts("gallery/pptx/bin" "inherit-29.pptx")) == false) {
             this.check("it reopens as a deck" false)
             return
         }
-        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def after:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s2:PptxSlide (itemAt after.slides 0)
         def back:PptxShape (itemAt s2.shapes 0)
         this.check("the move that was made is still in the file" (this.near(back.x moved.x)))
@@ -470,12 +470,12 @@ class PptxWriterTest {
     ; without them would start announcing every slide as "Slide 1, Slide 2".
     fn testPlaceholdersSurviveAnEdit:void () {
         print "--- and a placeholder is still a placeholder ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "20-business-deck.pptx")) == false) {
             this.check("open 20-business-deck" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def slide:PptxSlide (itemAt pres.slides 0)
         def before:int (PptxWriterTest.placeholders(slide))
         this.check("the fixture has placeholders to lose" (before > 0))
@@ -486,12 +486,12 @@ class PptxWriterTest {
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "inherit-20.pptx")
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         if ((p2.openParts("gallery/pptx/bin" "inherit-20.pptx")) == false) {
             this.check("the edited deck reopens" false)
             return
         }
-        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def after:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s2:PptxSlide (itemAt after.slides 0)
         this.check("they all came back" ((PptxWriterTest.placeholders(s2)) == before))
         p2.close()
@@ -522,13 +522,13 @@ class PptxWriterTest {
     ; to be sure the identity really comes from the content.
     fn testTwoPicturesOneName:void () {
         print "--- two pictures, one name ---"
-        def pres (new PptxPresentation())
+        def pres (PptxPresentation.new_())
         pres.slideWidth = 960.0
         pres.slideHeight = 540.0
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         slide.width = 960.0
         slide.height = 540.0
-        def a (new PptxShape())
+        def a (PptxShape.new_())
         a.kind = 1
         a.name = "A"
         a.x = 10.0
@@ -539,7 +539,7 @@ class PptxWriterTest {
         a.imagePart = "ppt/media/logo.png"
         a.imageBytes = (this.markedPng(11))
         push slide.shapes a
-        def b (new PptxShape())
+        def b (PptxShape.new_())
         b.kind = 1
         b.name = "B"
         b.x = 200.0
@@ -552,7 +552,7 @@ class PptxWriterTest {
         push slide.shapes b
         ; And a third shape showing the first picture again, under a name of
         ; its own. That one must NOT produce a second copy in the file.
-        def c (new PptxShape())
+        def c (PptxShape.new_())
         c.kind = 1
         c.name = "C"
         c.x = 400.0
@@ -569,13 +569,13 @@ class PptxWriterTest {
         writer.save(pres "gallery/pptx/bin" "two-logos.pptx")
         this.check("the two different pictures are two entries" ((array_length writer.media) == 2))
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "two-logos.pptx"))
         this.check("the deck reopens" ok)
         if (ok == false) {
             return
         }
-        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def after:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s2:PptxSlide (itemAt after.slides 0)
         this.check("all three shapes came back" ((array_length s2.shapes) == 3))
         if ((array_length s2.shapes) < 3) {
@@ -598,13 +598,13 @@ class PptxWriterTest {
     ; the PNG stays the picture every reader can draw.
     fn testSvgPicture:void () {
         print "--- a picture with its SVG ---"
-        def pres (new PptxPresentation())
+        def pres (PptxPresentation.new_())
         pres.slideWidth = 960.0
         pres.slideHeight = 540.0
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         slide.width = 960.0
         slide.height = 540.0
-        def a (new PptxShape())
+        def a (PptxShape.new_())
         a.kind = 1
         a.name = "Vector"
         a.x = 10.0
@@ -638,13 +638,13 @@ class PptxWriterTest {
         this.check("svg has a content type" ((indexOf types "Extension=\"svg\" ContentType=\"image/svg+xml\"") > 0))
         pkg.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "svg-picture.pptx"))
         this.check("the deck reopens" ok)
         if (ok == false) {
             return
         }
-        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def after:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s2:PptxSlide (itemAt after.slides 0)
         def sa:PptxShape (itemAt s2.shapes 0)
         this.check("and its picture is still the PNG" ((this.pngMark(sa.imageBytes)) == 33))
@@ -689,24 +689,24 @@ class PptxWriterTest {
     ; the deck we read — the file has to stand on its own.
     fn testPictures:void () {
         print "--- pictures ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "18-image-mixed.pptx")) == false) {
             this.check("open 18-image-mixed" false)
             return
         }
-        def before:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def before:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def writer (new PptxWriter())
         writer.save(before "gallery/pptx/bin" "rt-images.pptx")
         this.check("the media were collected" ((array_length writer.media) > 0))
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "rt-images.pptx"))
         this.check("the deck with pictures reopens" ok)
         if (ok == false) {
             return
         }
-        def after:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def after:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def pics:int 0
         def withBytes:int 0
         def si:int 0
@@ -733,11 +733,11 @@ class PptxWriterTest {
 
     fn testLockRoundTrip:void () {
         print "--- a lock is in the file ---"
-        def pres (new PptxPresentation())
-        def slide (new PptxSlide())
+        def pres (PptxPresentation.new_())
+        def slide (PptxSlide.new_())
         slide.width = 720.0
         slide.height = 540.0
-        def a (new PptxShape())
+        def a (PptxShape.new_())
         a.x = 50.0
         a.y = 50.0
         a.width = 100.0
@@ -746,7 +746,7 @@ class PptxWriterTest {
         a.locked = true
         a.fill = (PptxColor.srgbOf("4472C4"))
         push slide.shapes a
-        def b (new PptxShape())
+        def b (PptxShape.new_())
         b.x = 200.0
         b.y = 50.0
         b.width = 100.0
@@ -757,13 +757,13 @@ class PptxWriterTest {
         push pres.slides slide
         def writer (new PptxWriter())
         writer.save(pres "gallery/pptx/bin" "locks.pptx")
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "locks.pptx"))
         this.check("a deck with a lock opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s1:PptxSlide (itemAt back.slides 0)
         def locked:int 0
         def free:int 0
@@ -786,11 +786,11 @@ class PptxWriterTest {
 
     fn testFlipRoundTrip:void () {
         print "--- a mirror is in the file ---"
-        def pres (new PptxPresentation())
-        def slide (new PptxSlide())
+        def pres (PptxPresentation.new_())
+        def slide (PptxSlide.new_())
         slide.width = 720.0
         slide.height = 540.0
-        def a (new PptxShape())
+        def a (PptxShape.new_())
         a.x = 40.0
         a.y = 40.0
         a.width = 120.0
@@ -800,7 +800,7 @@ class PptxWriterTest {
         a.preset = "triangle"
         a.fill = (PptxColor.srgbOf("4472C4"))
         push slide.shapes a
-        def b (new PptxShape())
+        def b (PptxShape.new_())
         b.x = 200.0
         b.y = 40.0
         b.width = 120.0
@@ -813,13 +813,13 @@ class PptxWriterTest {
         push pres.slides slide
         def writer (new PptxWriter())
         writer.save(pres "gallery/pptx/bin" "flips.pptx")
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "flips.pptx"))
         this.check("a deck with mirrors opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s1:PptxSlide (itemAt back.slides 0)
         def authored:[PptxShape]
         def i:int 0
@@ -845,11 +845,11 @@ class PptxWriterTest {
 
     fn testNotesRoundTrip:void () {
         print "--- the speaker's notes are in the file ---"
-        def pres (new PptxPresentation())
-        def slide (new PptxSlide())
+        def pres (PptxPresentation.new_())
+        def slide (PptxSlide.new_())
         slide.width = 720.0
         slide.height = 540.0
-        def a (new PptxShape())
+        def a (PptxShape.new_())
         a.x = 40.0
         a.y = 40.0
         a.width = 200.0
@@ -858,7 +858,7 @@ class PptxWriterTest {
         a.fill = (PptxColor.srgbOf("4472C4"))
         push slide.shapes a
         push pres.slides slide
-        def second (new PptxSlide())
+        def second (PptxSlide.new_())
         second.width = 720.0
         second.height = 540.0
         push pres.slides second
@@ -868,13 +868,13 @@ class PptxWriterTest {
         ed.setNotes("Open with the numbers\nThen the demo")
         def writer (new PptxWriter())
         writer.save(pres "gallery/pptx/bin" "notes.pptx")
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "notes.pptx"))
         this.check("a deck with notes opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s1:PptxSlide (itemAt back.slides 0)
         this.check("the notes came back" ((s1.notesText()) == "Open with the numbers\nThen the demo"))
         this.check("and the slide points at them" ((strlen s1.notesPart) > 0))
@@ -889,10 +889,10 @@ class PptxWriterTest {
     ; slide 1, and Keynote refused the file.
     fn testNotesAfterASlideWithout:void () {
         print "--- notes on a slide after one without ---"
-        def pres (new PptxPresentation())
+        def pres (PptxPresentation.new_())
         def k:int 0
         while (k < 3) {
-            def sl (new PptxSlide())
+            def sl (PptxSlide.new_())
             sl.width = 720.0
             sl.height = 540.0
             push pres.slides sl
@@ -904,7 +904,7 @@ class PptxWriterTest {
         ed.setNotes("Only the middle one")
         def writer (new PptxWriter())
         writer.save(pres "gallery/pptx/bin" "notes-middle.pptx")
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "notes-middle.pptx"))
         this.check("the deck opens" ok)
         if (ok == false) {
@@ -917,7 +917,7 @@ class PptxWriterTest {
         this.check("and has a theme of its own" (p2.pkg.hasPart("ppt/theme/theme2.xml")))
         def presXml:string (p2.pkg.readXml("ppt/presentation.xml"))
         this.check("the presentation lists it" ((indexOf presXml "<p:notesMasterIdLst>") >= 0))
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         this.check("the notes came back on slide 2" (((itemAt back.slides 1).notesText()) == "Only the middle one"))
         this.check("and not on slide 1" (((itemAt back.slides 0).notesText()) == ""))
         p2.close()
@@ -925,12 +925,12 @@ class PptxWriterTest {
 
     fn testNotesOverExistingDeck:void () {
         print "--- notes added to a deck that had none ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "04-multi.pptx")) == false) {
             this.check("open 04-multi" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def ed (new PptxEditor())
         ed.attach(pres)
         ed.gotoSlide(1)
@@ -938,13 +938,13 @@ class PptxWriterTest {
         def writer (new PptxWriter())
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-notes.pptx")
         parser.close()
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "over-notes.pptx"))
         this.check("the kept-package deck opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s2:PptxSlide (itemAt back.slides 1)
         this.check("the notes are on the slide they were typed on" ((s2.notesText()) == "Said out loud, not on the slide"))
         def s1:PptxSlide (itemAt back.slides 0)
@@ -965,21 +965,21 @@ class PptxWriterTest {
     ; thing that was wrong was the colour of the part underneath them.
     fn testDefaultTheme:void () {
         print "--- a deck nobody themed is white, not black ---"
-        def pres (new PptxPresentation())
+        def pres (PptxPresentation.new_())
         pres.slideWidth = 960.0
         pres.slideHeight = 540.0
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         slide.width = 960.0
         slide.height = 540.0
         push pres.slides slide
         def writer (new PptxWriter())
         writer.save(pres "gallery/pptx/bin" "untitled.pptx")
 
-        def p (new PptxParser())
+        def p (PptxParser.new_())
         def ok:boolean (p.openParts("gallery/pptx/bin" "untitled.pptx"))
         this.check("an untouched deck opens" ok)
         if (ok == false) { return }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p.parsePresentation())))
 
         ; The one that is the background, through the colour map every master
         ; this writer emits states: bg1 → lt1.
@@ -1012,12 +1012,12 @@ class PptxWriterTest {
 
     fn testThemeInFile:void () {
         print "--- a re-themed deck keeps its palette ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "07-theme-fills.pptx")) == false) {
             this.check("open 07-theme-fills" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def ed (new PptxEditor())
         ed.attach(pres)
         ed.applyPalette("berry")
@@ -1025,13 +1025,13 @@ class PptxWriterTest {
         def writer (new PptxWriter())
         writer.save(pres "gallery/pptx/bin" "themed.pptx")
         parser.close()
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "themed.pptx"))
         this.check("the themed deck opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         this.check("the palette is in the theme part" ((back.theme.colorOf("accent1")) == wanted))
         ; A shape that took its colour from the palette resolves to the new one
         ; when the file is read again.
@@ -1058,12 +1058,12 @@ class PptxWriterTest {
 
     fn testSaveOver:void () {
         print "--- save over: the parts nobody edited are untouched ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "20-business-deck.pptx")) == false) {
             this.check("open the business deck" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def ed (new PptxEditor())
         ed.attach(pres)
         ; Touch slide 2 and nothing else.
@@ -1131,13 +1131,13 @@ class PptxWriterTest {
         this.check("and the rest came through untouched" (same == 4))
         ; The master and the layouts came through, so the chrome is inherited
         ; again rather than baked into the slides.
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok2:boolean (p2.openParts("gallery/pptx/bin" "over-business.pptx"))
         this.check("it reopens as a deck" ok2)
         if (ok2 == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         this.check("same number of slides" ((back.slideCount()) == (pres.slideCount())))
         def inherited:int 0
         def authored:int 0
@@ -1187,12 +1187,12 @@ class PptxWriterTest {
 
     fn testSaveOverStructure:void () {
         print "--- save over: slides added and removed ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "04-multi.pptx")) == false) {
             this.check("open 04-multi" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def before:int (pres.slideCount())
         def ed (new PptxEditor())
         ed.attach(pres)
@@ -1204,13 +1204,13 @@ class PptxWriterTest {
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-multi.pptx")
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "over-multi.pptx"))
         this.check("a deck with a new slide opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         this.check("it has one more slide" ((back.slideCount()) == (before + 1)))
         def added:PptxSlide (itemAt back.slides 1)
         def found:boolean false
@@ -1229,9 +1229,9 @@ class PptxWriterTest {
         p2.close()
 
         ; …and taking one away removes its part.
-        def p3 (new PptxParser())
+        def p3 (PptxParser.new_())
         p3.openParts("gallery/pptx/bin" "over-multi.pptx")
-        def pres3:PptxPresentation ((new PptxResolver()).resolvePresentation((p3.parsePresentation())))
+        def pres3:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p3.parsePresentation())))
         def ed3 (new PptxEditor())
         ed3.attach(pres3)
         ed3.gotoSlide(1)
@@ -1243,9 +1243,9 @@ class PptxWriterTest {
         def out3 (new OpcPackage())
         if (out3.openParts("gallery/pptx/bin" "over-multi-less.pptx")) {
             this.check("the deleted slide's part is gone" ((out3.hasPart(goneName)) == false))
-            def p4 (new PptxParser())
+            def p4 (PptxParser.new_())
             if (p4.openParts("gallery/pptx/bin" "over-multi-less.pptx")) {
-                def back4:PptxPresentation ((new PptxResolver()).resolvePresentation((p4.parsePresentation())))
+                def back4:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p4.parsePresentation())))
                 this.check("and the deck is one shorter" ((back4.slideCount()) == before))
                 p4.close()
             }
@@ -1257,12 +1257,12 @@ class PptxWriterTest {
 
     fn testSectionsRoundTrip:void () {
         print "--- sections survive a save ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "04-multi.pptx")) == false) {
             this.check("open 04-multi" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         this.check("slides come back with ids" (((itemAt pres.slides 0).slideId) > 0))
         def ed (new PptxEditor())
         ed.attach(pres)
@@ -1277,13 +1277,13 @@ class PptxWriterTest {
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-sections.pptx")
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "over-sections.pptx"))
         this.check("a sectioned deck opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         this.check("both sections came back" ((array_length back.sections) == 2))
         if ((array_length back.sections) == 2) {
             this.check("with their names" (((itemAt back.sections 0).name) == "Opening"))
@@ -1299,9 +1299,9 @@ class PptxWriterTest {
             ed2.removeSection(0)
             def w2 (new PptxWriter())
             w2.saveOver(back p2.pkg "gallery/pptx/bin" "over-unsectioned.pptx")
-            def p3 (new PptxParser())
+            def p3 (PptxParser.new_())
             if (p3.openParts("gallery/pptx/bin" "over-unsectioned.pptx")) {
-                def back3:PptxPresentation ((new PptxResolver()).resolvePresentation((p3.parsePresentation())))
+                def back3:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p3.parsePresentation())))
                 this.check("the unsectioned deck has none" ((array_length back3.sections) == 0))
                 this.check("and still has its slides" ((back3.slideCount()) == (back.slideCount())))
                 p3.close()
@@ -1314,12 +1314,12 @@ class PptxWriterTest {
 
     fn testSheetEditRoundTrip:void () {
         print "--- an edited master is written back ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "20-business-deck.pptx")) == false) {
             this.check("open the business deck" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def ed (new PptxEditor())
         ed.attach(pres)
         ed.gotoSlide(0)
@@ -1337,13 +1337,13 @@ class PptxWriterTest {
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-master.pptx")
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "over-master.pptx"))
         this.check("the deck with an edited master opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def sheet@(optional):PptxSheet (get back.masters master)
         this.check("the master is still there" (!null? sheet))
         if (null? sheet) {
@@ -1368,12 +1368,12 @@ class PptxWriterTest {
 
     fn testFooterRoundTrip:void () {
         print "--- a footer and page numbers reach the file ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "20-business-deck.pptx")) == false) {
             this.check("open the business deck" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def ed (new PptxEditor())
         ed.attach(pres)
         ed.gotoSlide(1)
@@ -1385,13 +1385,13 @@ class PptxWriterTest {
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-footer.pptx")
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "over-footer.pptx"))
         this.check("the deck with a footer opens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def ed2 (new PptxEditor())
         ed2.attach(back)
         ed2.gotoSlide(1)
@@ -1428,12 +1428,12 @@ class PptxWriterTest {
 
     fn testShowRoundTrip:void () {
         print "--- a transition and a build survive a save ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "28-transitions.pptx")) == false) {
             this.check("open the show fixture" false)
             return
         }
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation((parser.parsePresentation())))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation((parser.parsePresentation())))
         def ed (new PptxEditor())
         ed.attach(pres)
         ; Touch both slides so both parts are rewritten from the model rather
@@ -1453,13 +1453,13 @@ class PptxWriterTest {
         writer.saveOver(pres parser.pkg "gallery/pptx/bin" "over-show.pptx")
         parser.close()
 
-        def p2 (new PptxParser())
+        def p2 (PptxParser.new_())
         def ok:boolean (p2.openParts("gallery/pptx/bin" "over-show.pptx"))
         this.check("the show reopens" ok)
         if (ok == false) {
             return
         }
-        def back:PptxPresentation ((new PptxResolver()).resolvePresentation((p2.parsePresentation())))
+        def back:PptxPresentation ((PptxResolver.new_()).resolvePresentation((p2.parsePresentation())))
         def s1:PptxSlide (itemAt back.slides 0)
         this.check("the transition that was set came back" (s1.transition.kind == "wipe"))
         this.check("with its direction" (s1.transition.dir == "d"))
@@ -1487,23 +1487,23 @@ class PptxWriterTest {
     ; the text built paragraph by paragraph, and only filters in the list.
     fn testBuildForKeynote:void () {
         print "-- a build Keynote imports --"
-        def slide (new PptxSlide())
+        def slide (PptxSlide.new_())
         def k:int 0
         while (k < 2) {
-            def st (new PptxBuildStep())
+            def st (PptxBuildStep.new_())
             st.shapeId = 3
             st.paragraph = k
             st.kind = "fade"
             push slide.build st
             k = (k + 1)
         }
-        def fly (new PptxBuildStep())
+        def fly (PptxBuildStep.new_())
         fly.shapeId = 4
         fly.paragraph = 0
         fly.kind = "fly"
         fly.dir = "l"
         push slide.build fly
-        def odd (new PptxBuildStep())
+        def odd (PptxBuildStep.new_())
         odd.shapeId = 5
         odd.kind = "rise"
         push slide.build odd
@@ -1548,7 +1548,7 @@ class PptxWriterTest {
     ; nothing.
     fn testUnmodelledContentSurvives:void () {
         print "--- what the model does not describe survives a save ---"
-        def parser (new PptxParser())
+        def parser (PptxParser.new_())
         if ((parser.openParts("gallery/pptx/fixtures" "32-unmodelled-content.pptx")) == false) {
             this.check("open the deck with unmodelled content" false)
             return
@@ -1584,7 +1584,7 @@ class PptxWriterTest {
             this.check("the tail one is the extension list" (tail0.name == "extLst"))
         }
 
-        def pres:PptxPresentation ((new PptxResolver()).resolvePresentation(raw))
+        def pres:PptxPresentation ((PptxResolver.new_()).resolvePresentation(raw))
         def ed (new PptxEditor())
         ed.attach(pres)
         ed.gotoSlide(0)
@@ -1663,7 +1663,7 @@ class PptxWriterTest {
             ((strlen (out.contentTypeFor("ppt/diagrams/data1.xml"))) > 0))
 
         ; And the deck still reads back as a deck.
-        def again (new PptxParser())
+        def again (PptxParser.new_())
         if (again.openParts("gallery/pptx/bin" "over-unmodelled.pptx")) {
             def back:PptxPresentation (again.parsePresentation())
             def backSlide:PptxSlide (itemAt back.slides 0)
@@ -1681,17 +1681,17 @@ class PptxWriterTest {
     ; A run's link: an address as an external hyperlink, a slide of the deck
     ; as a slide jump, each named once in the slide's relationships.
     fn linkBox:PptxShape (words:[string] urls:[string] slides:[int]) {
-        def a (new PptxShape())
+        def a (PptxShape.new_())
         a.x = 40.0
         a.y = 40.0
         a.width = 400.0
         a.height = 80.0
         a.hasXfrm = true
         a.hasText = true
-        def para (new PptxParagraph())
+        def para (PptxParagraph.new_())
         def i:int 0
         while (i < (array_length words)) {
-            def r (new PptxTextRun())
+            def r (PptxTextRun.new_())
             r.text = (itemAt words i)
             r.fontFamily = "Lato"
             r.link = (itemAt urls i)
@@ -1705,8 +1705,8 @@ class PptxWriterTest {
 
     fn testLinks:void () {
         print "--- links: a hyperlink, a slide jump ---"
-        def pres (new PptxPresentation())
-        def s1 (new PptxSlide())
+        def pres (PptxPresentation.new_())
+        def s1 (PptxSlide.new_())
         s1.width = 720.0
         s1.height = 540.0
         def words:[string] ([] _:string ( "see " "docs" " and " "again" " or " "the end" " and " "#nowhere" ))
@@ -1714,7 +1714,7 @@ class PptxWriterTest {
         def slides:[int] ([] _:int ( -1 -1 -1 -1 -1 1 -1 -1 ))
         push s1.shapes (this.linkBox(words urls slides))
         push pres.slides s1
-        def s2 (new PptxSlide())
+        def s2 (PptxSlide.new_())
         s2.width = 720.0
         s2.height = 540.0
         def w2:[string] ([] _:string ( "gone" ))
