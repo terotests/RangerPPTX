@@ -93,9 +93,13 @@ impl SaEdit {
                 let mut mine: Vec<Rc<RefCell<PptxParagraph>>> = Vec::new();
                 let mut j: i64 = 0;
                 while j < (edited.borrow().text.borrow().paragraphs.len() as i64) {
-                    let mut owner: String = last.clone();
+                    // the fallback is assigned, not the initial value: Ranger's
+                    // Rust target moves `last` out of a `let` inside the loop
+                    let mut owner: String = String::new();
                     if j < (pts.len() as i64) {
                         owner = pts[j as usize].clone();
+                    } else {
+                        owner = last.clone();
                     }
                     if owner == pid {
                         mine.push(edited.borrow().text.borrow().paragraphs[j as usize].clone());
