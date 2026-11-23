@@ -1,0 +1,45 @@
+# Runs RangerPPTX's checks (tools/ci.sh) on every push and pull request.
+#
+# RangerPPTX builds inside a Ranger checkout: the job checks out Ranger
+# master, fetches its deps (npm ci) and puts this commit at gallery/pptx,
+# where Ranger's .gitignore leaves room for it.
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out RangerPPTX
+        uses: actions/checkout@v4
+        with:
+          path: rangerpptx
+      - name: Check out Ranger
+        uses: actions/checkout@v4
+        with:
+          repository: terotests/Ranger
+          ref: master
+          path: ranger
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: ranger/package-lock.json
+      - name: Install Ranger and its deps
+        working-directory: ranger
+        run: npm ci
+      - name: Use this commit as gallery/pptx
+        run: |
+          rm -rf ranger/gallery/pptx
+          cp -R rangerpptx ranger/gallery/pptx
+      - name: Run the checks
+        working-directory: ranger
+        run: bash gallery/pptx/tools/ci.sh

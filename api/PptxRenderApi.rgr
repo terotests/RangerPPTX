@@ -235,7 +235,7 @@ class PptxRenderer {
     ; `setMeasurer` — which does not fail, it falls back to guessed widths, so
     ; every line on every page was laid out against a font nobody measured.
     fn pdfRenderer:EVGPDFRenderer (w:double h:double) {
-        def renderer (new EVGPDFRenderer())
+        def renderer (EVGPDFRenderer.new_())
         renderer.init(renderer)
         renderer.setPageSize(w h)
         renderer.setFontManager(view.ctx.tr.fm)
