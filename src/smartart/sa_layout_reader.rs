@@ -115,23 +115,25 @@ impl SaLayoutReader {
     /// "1 2 3" → words
     pub fn words(s: &str) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
-        let mut cur: String = String::new();
+        // Each word is cut out whole between separator bytes: appending one
+        // byte at a time split every non-ASCII character. The separators are
+        // ASCII, so the cuts are character boundaries.
+        let mut start: i64 = 0;
         let mut i: i64 = 0;
         let n: i64 = s.as_bytes().len() as i64;
-        while i < n {
-            let c: i64 = (s.as_bytes()[i as usize] as i64);
-            if (c == 32 || c == 9) || (c == 10 || c == 13) {
-                if !cur.is_empty() {
-                    out.push(cur.clone());
-                    cur = String::new();
+        while i <= n {
+            let mut sep: bool = i == n;
+            if !sep {
+                let c: i64 = (s.as_bytes()[i as usize] as i64);
+                sep = (c == 32 || c == 9) || (c == 10 || c == 13);
+            }
+            if sep {
+                if i > start {
+                    out.push(s[(start) as usize..(i) as usize].to_string());
                 }
-            } else {
-                cur = format!("{}{}", cur, s[(i) as usize..(i + 1) as usize].to_string());
+                start = i + 1;
             }
             i += 1;
-        }
-        if !cur.is_empty() {
-            out.push(cur.clone());
         }
         out
     }

@@ -686,22 +686,32 @@ impl SaColors {
         ((v * 100000.0 + 0.5).floor() as i64).to_string()
     }
     pub fn esc(s: &str) -> String {
+        // Runs of ordinary text are copied whole and only the four ASCII
+        // specials are replaced: copying one byte at a time split every
+        // non-ASCII character.
         let mut out: String = String::new();
+        let n: i64 = s.as_bytes().len() as i64;
+        let mut start: i64 = 0;
         let mut i: i64 = 0;
-        while i < (s.as_bytes().len() as i64) {
-            let mut ch: String = s[(i) as usize..(i + 1) as usize].to_string();
-            if ch == "&" {
-                ch = "&amp;".to_string();
+        while i < n {
+            let c: i64 = (s.as_bytes()[i as usize] as i64);
+            let mut rep: String = String::new();
+            if c == 38 {
+                rep = "&amp;".to_string();
             }
-            if ch == "<" {
-                ch = "&lt;".to_string();
+            if c == 60 {
+                rep = "&lt;".to_string();
             }
-            if ch == "\"" {
-                ch = "&quot;".to_string();
+            if c == 34 {
+                rep = "&quot;".to_string();
             }
-            out = format!("{}{}", out, ch);
+            if !rep.is_empty() {
+                out = format!("{}{}{}", out, s[(start) as usize..(i) as usize].to_string(), rep);
+                start = i + 1;
+            }
             i += 1;
         }
+        out = format!("{}{}", out, s[(start) as usize..(n) as usize].to_string());
         out
     }
 }

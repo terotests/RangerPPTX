@@ -1011,23 +1011,30 @@ impl PptxApi {
     /// empty lines — a caller who writes "a\n\nb" means a blank paragraph
     /// between them, and dropping it silently renumbers everything after.
     pub fn lines(s: &str) -> Vec<String> {
+        // Cut at the newline bytes and take each line whole: slicing one byte
+        // at a time split every non-ASCII character ("ä" came out as two
+        // replacement characters). A newline is ASCII, so the cuts are always
+        // character boundaries.
         let mut out: Vec<String> = Vec::new();
-        let mut cur: String = String::new();
-        let mut i: i64 = 0;
         let n: i64 = s.as_bytes().len() as i64;
-        while i < n {
-            let cp: i64 = (s.as_bytes()[i as usize] as i64);
-            if cp == 10 {
-                out.push(cur.clone());
-                cur = String::new();
-            } else {
-                if cp != 13 {
-                    cur = format!("{}{}", cur, s[(i) as usize..(i + 1) as usize].to_string());
+        let mut start: i64 = 0;
+        let mut i: i64 = 0;
+        while i <= n {
+            let at_end: bool = i == n;
+            let mut nl: bool = false;
+            if !at_end {
+                nl = (s.as_bytes()[i as usize] as i64) == 10;
+            }
+            if at_end || nl {
+                let mut stop: i64 = i;
+                if stop > start && (s.as_bytes()[(stop - 1) as usize] as i64) == 13 {
+                    stop = stop - 1;
                 }
+                out.push(s[(start) as usize..(stop) as usize].to_string());
+                start = i + 1;
             }
             i += 1;
         }
-        out.push(cur);
         out
     }
     /// @internal "4472C4", "#4472C4" — and a name nobody can parse gives a colour that is

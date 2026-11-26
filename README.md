@@ -59,30 +59,37 @@ only resolved geometry, sRGB, fonts, and image part paths.
 
 ## Layout
 
+The default branch is **`main`**.
+
 ```text
 gallery/pptx/
-  src/
-    PptxXml.rgr         tiny XML DOM (preserves a:t leading spaces)
-    PptxModel.rgr       EMU→pt scene types + placeholders
-    PptxParser.rgr      presentation / slide / theme / master / layout
-    PptxResolver.rgr    theme → master → layout → slide
-    PptxImageDecode.rgr PNG/JPEG bytes → ImageBuffer
-    PptxGeom.rgr        Preset / custGeom unit polygons
-    PptxChartVela.rgr   ChartML → VL JSON → Vela → display list
-    PptxToEvg.rgr       ResolvedSlide → EVG + display list
-    PptxView.rgr        SoftCanvas / sceneJson (+ image cache)
-    PptxEdit.rgr        editing core: selection, transforms, history
-    PptxTextEdit.rgr    the caret inside a shape, and the runs it splits
-    PptxTextLayout.rgr  text broken into lines, once, for painter and caret
-    PptxTextMeasure.rgr how wide a string is — one answer, for both
-    PptxWriter.rgr      model → OPC package (save)
-    PptxApp.rgr         UIInput navigation + editing host
-    pptx_demo.rgr       headless PNG demo
-    pptx_oracle_dump.rgr  inspect.json + oracle PNGs
+  src/                  the core crate (Rust syntax, src/lib.rs)
+    pptx_model.rs       EMU→pt scene types + placeholders
+    pptx_parser.rs      presentation / slide / theme / master / layout
+    pptx_resolver.rs    theme → master → layout → slide
+    pptx_geom.rs        preset / custGeom unit polygons
+    pptx_chart_vela.rs  ChartML → VL JSON → Vela → display list
+    pptx_text_layout.rs text broken into lines, once, for painter and caret
+    pptx_to_evg.rs      ResolvedSlide → EVG + display list
+    text.rs             index searches in byte offsets
+    smartart/           the SmartArt engine (sa_*.rs)
+    PptxApp.rgr         UIInput navigation + editing host (still .rgr)
+    PptxChrome.rgr, PptxStripView.rgr, PptxHost.rgr   (still .rgr)
+    Pptx*.rgr           one-line imports kept for importers
+  edit/src/             the editor crate (Rust syntax, depends on src/)
+    pptx_edit.rs        editing core: selection, transforms, history
+    pptx_text_edit.rs   the caret inside a shape, and the runs it splits
+    pptx_view.rs        SoftCanvas / sceneJson (+ image cache)
+    pptx_writer.rs      model → OPC package (save)
+    pptx_api.rs, pptx_chart_api.rs   the document API (api/js)
+    pptx_from_evg.rs, pptx_css.rs, pptx_a11y.rs, ...
+  api/                  PptxRenderApi.rgr (PNG / PDF) + api/js (@ranger/pptx)
+  tests/                the suites (tools/ci.sh runs them all)
   harness/              feature + semantic + visual oracles
-  fixtures/             OOXML decks 01–26
-  tools/make_fixtures.py
-  web/                  interactive WebGL present host
+  fixtures/             OOXML decks 01–38
+  tools/                make_fixtures.py, pptx_audit, rs_check.sh, ci.sh
+  web/                  standalone, wasm, playground, html and hosted builds
+  android/              the viewer as an Android app (Kotlin)
 
 gallery/ooxml/           shared with the .docx and .xlsx readers
   OpcPackage.rgr         OPC ZIP: parts, content types, relationships
@@ -90,7 +97,21 @@ gallery/ooxml/           shared with the .docx and .xlsx readers
 
 gallery/office/          likewise — see office/README.md
   assets/OfficeAsset.rgr a picture identified by its bytes, not its file name
-  text/, drawing/, editor/, core/
+  text/, drawing/, editor/, geom/
+```
+
+## Continuous integration
+
+`.github/workflows/test.yml` runs [`tools/ci.sh`](tools/ci.sh) on every push
+to `main` and every pull request: it checks out Ranger master, runs `npm ci`
+there, copies this commit to `gallery/pptx` and runs every suite in `tests/`,
+the reader audit over the fixtures (`pptx:audit:check`), the npm API's tests
+(`pptx:api:js:test`) and the two Rust-syntax crates through Ranger
+(`rs_check.sh` go core, go edit, es6 edit). Locally, from a Ranger checkout
+with this repository at `gallery/pptx`:
+
+```bash
+bash gallery/pptx/tools/ci.sh     # about three minutes
 ```
 
 ## Rust syntax
